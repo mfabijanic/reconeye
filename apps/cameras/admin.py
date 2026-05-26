@@ -13,7 +13,7 @@ from apps.common.cache import (
     invalidate_scrape_jobs,
 )
 
-from .models import Camera, CameraCheckLog
+from .models import Camera, CameraCheckLog, MapUISettings
 
 logger = logging.getLogger(__name__)
 
@@ -84,4 +84,29 @@ class CameraCheckLogAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def has_add_permission(self, request) -> bool:
+        return False
+
+
+@admin.register(MapUISettings)
+class MapUISettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "disable_clustering_at_zoom",
+        "marker_limit",
+        "status_stale_minutes",
+        "popup_close_on_mouseout",
+        "updated_at",
+    )
+    fields = (
+        "disable_clustering_at_zoom",
+        "marker_limit",
+        "status_stale_minutes",
+        "popup_close_on_mouseout",
+        "updated_at",
+    )
+    readonly_fields = ("updated_at",)
+
+    def has_add_permission(self, request) -> bool:
+        return not MapUISettings.objects.exists()
+
+    def has_delete_permission(self, request, obj: MapUISettings | None = None) -> bool:
         return False

@@ -53,6 +53,12 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}"
+             href="{% url 'cameras:map' %}">
+            <i class="bi bi-geo-alt me-1"></i>Map
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
              href="{% url 'scraping:job_list' %}">
             <i class="bi bi-arrow-repeat me-1"></i>Scrape Jobs
@@ -68,10 +74,23 @@
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+          <button
+            class="nav-link dropdown-toggle btn btn-link p-0 border-0 text-decoration-none"
+            type="button"
+            id="userMenuToggle"
+            data-bs-toggle="dropdown"
+            data-bs-display="static"
+            aria-expanded="false"
+          >
             <i class="bi bi-person-circle me-1"></i>{{ user.username }}
-          </a>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+          </button>
+          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userMenuToggle">
+            <li>
+              <a class="dropdown-item" href="{% url 'users:settings' %}">
+                <i class="bi bi-sliders me-1"></i>Settings
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
             <li>
               <form method="post" action="{% url 'users:logout' %}">
                 {% csrf_token %}
@@ -111,6 +130,50 @@
   crossorigin="anonymous"
 ></script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const userToggle = document.getElementById("userMenuToggle");
+    if (!userToggle) {
+      return;
+    }
+    const userMenu = userToggle.nextElementSibling;
+    if (!userMenu) {
+      return;
+    }
+
+    if (window.bootstrap && window.bootstrap.Dropdown) {
+      if (!window.bootstrap.Dropdown.getInstance(userToggle)) {
+        new window.bootstrap.Dropdown(userToggle);
+      }
+      return;
+    }
+
+    const closeMenu = () => {
+      userMenu.classList.remove("show");
+      userToggle.setAttribute("aria-expanded", "false");
+    };
+
+    userToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const willOpen = !userMenu.classList.contains("show");
+      userMenu.classList.toggle("show", willOpen);
+      userToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!userMenu.contains(event.target) && !userToggle.contains(event.target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+  });
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

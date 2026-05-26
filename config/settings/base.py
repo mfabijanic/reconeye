@@ -148,6 +148,7 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 CSRF_COOKIE_HTTPONLY = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Session
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -157,6 +158,7 @@ SESSION_COOKIE_AGE = 60 * 60 * 8  # 8 hours
 # Scraping configuration
 # Complete list fetched from http://www.insecam.org/en/jsoncountries/ (2026-05-26)
 # Override via .env: INSECAM_COUNTRY_CODES=US,JP,DE,...
+# All countries available on Insecam (sorted by camera count) — see apps/scraping/config.py
 INSECAM_COUNTRY_CODES = env.list(
     "INSECAM_COUNTRY_CODES",
     default=[

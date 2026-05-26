@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from django.db import transaction
@@ -74,6 +75,105 @@ def get_country_choices() -> list[str]:
     )
     cache.set(key, countries, TTL_CAMERAS)
     return countries
+
+
+def get_camera_map_markers(
+    *,
+    source_type: str | None = None,
+    country: str | None = None,
+    is_online: bool | None = None,
+    min_lat: float | None = None,
+    max_lat: float | None = None,
+    min_lng: float | None = None,
+    max_lng: float | None = None,
+    limit: int = 1500,
+    include_preview: bool = False,
+) -> dict[str, Any]:
+    """Return cached marker payload for the map view.
+
+    Returns:
+        {
+            "markers": list[dict[str, Any]],
+            "count": int,
+            "total": int,
+            "truncated": bool,
+        }
+    """
+    from django.core.cache import cache
+
+    started = time.monotonic()
+
+    cache_key = versioned_key(
+        DOMAIN_CAMERAS,
+        "map:"
+        f"src={source_type}:country={country}:online={is_online}:"
+        f"min_lat={min_lat}:max_lat={max_lat}:min_lng={min_lng}:max_lng={max_lng}:"
+        f"limit={limit}:preview={include_preview}",
+    )
+    cached = cache.get(cache_key)
+    if cached is not None:
+        logger.info(
+            "camera_map_data cache_hit=1 count=%s total=%s truncated=%s elapsed_ms=%.2f",
+            cached.get("count"),
+            cached.get("total"),
+            cached.get("truncated"),
+            (time.monotonic() - started) * 1000,
+        )
+        return cached
+
+    qs = Camera.objects.filter(is_active=True, latitude__isnull=False, longitude__isnull=False)
+    # In source data, (0, 0) typically means unknown geolocation.
+    qs = qs.exclude(latitude=0, longitude=0)
+
+    if source_type:
+        qs = qs.filter(source_type=source_type)
+    if country:
+        qs = qs.filter(country__iexact=country)
+    if is_online is not None:
+        qs = qs.filter(is_online=is_online)
+    if min_lat is not None:
+        qs = qs.filter(latitude__gte=min_lat)
+    if max_lat is not None:
+        qs = qs.filter(latitude__lte=max_lat)
+    if min_lng is not None:
+        qs = qs.filter(longitude__gte=min_lng)
+    if max_lng is not None:
+        qs = qs.filter(longitude__lte=max_lng)
+
+    total = qs.count()
+
+    fields = [
+        "id",
+        "title",
+        "source_type",
+        "country",
+        "city",
+        "latitude",
+        "longitude",
+        "stream_url",
+        "is_online",
+        "has_partial_metadata",
+        "last_checked",
+    ]
+    if include_preview:
+        fields.append("preview_image")
+
+    markers = list(qs.values(*fields)[:limit])
+    payload = {
+        "markers": markers,
+        "count": len(markers),
+        "total": total,
+        "truncated": total > limit,
+    }
+    cache.set(cache_key, payload, TTL_CAMERAS)
+    logger.info(
+        "camera_map_data cache_hit=0 count=%s total=%s truncated=%s elapsed_ms=%.2f",
+        payload["count"],
+        payload["total"],
+        payload["truncated"],
+        (time.monotonic() - started) * 1000,
+    )
+    return payload
 
 
 def cleanup_check_logs(days: int = CAMERA_LOG_RETENTION_DAYS) -> int:

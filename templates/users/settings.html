@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Settings — ReconEye{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4><i class="bi bi-sliders me-2 text-info"></i>Settings</h4>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card bg-dark border-secondary">
+      <div class="card-body">
+        <div class="accordion" id="settings-accordion">
+          <div class="accordion-item bg-dark text-light border-secondary">
+            <h2 class="accordion-header" id="map-settings-heading">
+              <button
+                class="accordion-button bg-dark text-light"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#map-settings-collapse"
+                aria-expanded="true"
+                aria-controls="map-settings-collapse"
+              >
+                <i class="bi bi-geo-alt me-2"></i>Map settings
+              </button>
+            </h2>
+            <div
+              id="map-settings-collapse"
+              class="accordion-collapse collapse show"
+              aria-labelledby="map-settings-heading"
+              data-bs-parent="#settings-accordion"
+            >
+              <div class="accordion-body">
+                <form method="post" novalidate>
+                  {% csrf_token %}
+
+                  <div class="mb-3">
+                    <label class="form-label" for="{{ map_settings_form.disable_clustering_at_zoom.id_for_label }}">
+                      Disable clustering at zoom
+                    </label>
+                    {{ map_settings_form.disable_clustering_at_zoom }}
+                    <div class="form-text">Empty = use global default.</div>
+                    {% for error in map_settings_form.disable_clustering_at_zoom.errors %}
+                      <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label" for="{{ map_settings_form.marker_limit.id_for_label }}">
+                      Marker limit
+                    </label>
+                    {{ map_settings_form.marker_limit }}
+                    <div class="form-text">Empty = use global default.</div>
+                    {% for error in map_settings_form.marker_limit.errors %}
+                      <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label" for="{{ map_settings_form.status_stale_minutes.id_for_label }}">
+                      Status stale minutes
+                    </label>
+                    {{ map_settings_form.status_stale_minutes }}
+                    <div class="form-text">Empty = use global default.</div>
+                    {% for error in map_settings_form.status_stale_minutes.errors %}
+                      <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label" for="{{ map_settings_form.popup_close_on_mouseout.id_for_label }}">
+                      Popup close on mouse out
+                    </label>
+                    {{ map_settings_form.popup_close_on_mouseout }}
+                    {% for error in map_settings_form.popup_close_on_mouseout.errors %}
+                      <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  {% if map_settings_form.non_field_errors %}
+                    <div class="alert alert-danger py-2">
+                      {{ map_settings_form.non_field_errors }}
+                    </div>
+                  {% endif %}
+
+                  <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-info">
+                      <i class="bi bi-check2-circle me-1"></i>Save settings
+                    </button>
+                    <a href="{% url 'cameras:map' %}" class="btn btn-outline-secondary">Back to map</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

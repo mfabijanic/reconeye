@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+{% block title %}Camera Map — ReconEye{% endblock %}
+
+{% block extra_css %}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+/>
+<style>
+  .map-wrap {
+    position: relative;
+  }
+  #camera-map {
+    min-height: 68vh;
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .map-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 17, 23, 0.5);
+    border-radius: 0.5rem;
+    z-index: 500;
+    pointer-events: none;
+    backdrop-filter: blur(1px);
+  }
+  .map-loading.active {
+    display: flex;
+  }
+  .map-sidebar {
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
+    background: #161b22;
+    min-height: 68vh;
+  }
+  .map-sidebar .preview {
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 0.375rem;
+    background: #0d1117;
+  }
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+  }
+  .map-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  .cluster-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    border: 2px solid #0d1117;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+  .cluster-online { background: #238636; }
+  .cluster-mixed { background: #9a6700; }
+  .cluster-offline { background: #da3633; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4><i class="bi bi-geo-alt-fill me-2 text-info"></i>Camera Map</h4>
+  </div>
+  <div class="col-auto map-controls">
+    <button type="button" id="fit-map" class="btn btn-sm btn-outline-info">
+      <i class="bi bi-bounding-box-circles me-1"></i>Fit markers
+    </button>
+    <button type="button" id="locate-me" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-crosshair me-1"></i>Locate me
+    </button>
+  </div>
+  <div class="col-auto text-muted small">
+    <span id="map-count">0</span> cameras on map
+  </div>
+</div>
+
+<div id="map-notice" class="alert alert-warning py-2 px-3 small d-none" role="alert"></div>
+
+<form id="map-filters" class="row g-2 mb-3">
+  <div class="col-md-3">
+    <select name="source" class="form-select form-select-sm">
+      <option value="">All sources</option>
+      {% for val, label in source_types %}
+        <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select name="country" class="form-select form-select-sm">
+      <option value="">All countries</option>
+      {% for country in countries %}
+        <option value="{{ country }}">{{ country }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="online" class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      <option value="1">Online</option>
+      <option value="0">Offline</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="button" id="reset-map-filters" class="btn btn-sm btn-outline-secondary">Reset</button>
+  </div>
+</form>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="map-wrap">
+      <div id="camera-map"></div>
+      <div id="map-loading" class="map-loading">
+        <div class="spinner-border text-info" role="status" aria-label="Loading"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="map-sidebar p-3" id="camera-panel">
+      <h6 class="text-info mb-3">Camera details</h6>
+      <p class="text-muted small mb-0">Click a marker to preview the camera and view metadata.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  (() => {
+    const map = L.map("camera-map", { zoomControl: true }).setView([20, 0], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      referrerPolicy: "strict-origin-when-cross-origin",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const clusterLayer = L.markerClusterGroup({
+      disableClusteringAtZoom: {{ map_disable_clustering_at_zoom|default:8 }},
+      zoomToBoundsOnClick: false,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      iconCreateFunction(cluster) {
+        const markers = cluster.getAllChildMarkers();
+        const onlineCount = markers.filter((m) => m.options.cameraOnline === true).length;
+        const total = markers.length;
+        let statusClass = "cluster-offline";
+        if (onlineCount === total) {
+          statusClass = "cluster-online";
+        } else if (onlineCount > 0) {
+          statusClass = "cluster-mixed";
+        }
+
+        return L.divIcon({
+          html: `<div class="cluster-icon ${statusClass}">${total}</div>`,
+          className: "",
+          iconSize: [38, 38],
+        });
+      },
+    });
+    map.addLayer(clusterLayer);
+
+    const dataUrl = "{% url 'cameras:map_data' %}";
+    const panelUrlTemplate = "{% url 'cameras_htmx:map_panel' 0 %}";
+    const panelEl = document.getElementById("camera-panel");
+    const countEl = document.getElementById("map-count");
+    const noticeEl = document.getElementById("map-notice");
+    const loadingEl = document.getElementById("map-loading");
+    const formEl = document.getElementById("map-filters");
+    const resetEl = document.getElementById("reset-map-filters");
+    const fitBtnEl = document.getElementById("fit-map");
+    const locateBtnEl = document.getElementById("locate-me");
+    let lastBounds = null;
+    let isProgrammaticMapMove = false;
+    let currentFetchController = null;
+    let moveDebounceHandle = null;
+    const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
+    const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
+    const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
+
+    function getPanelUrl(cameraId) {
+      return panelUrlTemplate.replace("/0/", `/${cameraId}/`);
+    }
+
+    function applyFiltersFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      ["source", "country", "online"].forEach((name) => {
+        const val = params.get(name);
+        if (val !== null) {
+          const field = formEl.querySelector(`[name="${name}"]`);
+          if (field) {
+            field.value = val;
+          }
+        }
+      });
+    }
+
+    function persistFiltersToUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const formData = new FormData(formEl);
+      ["source", "country", "online"].forEach((name) => {
+        const val = String(formData.get(name) || "").trim();
+        if (val) {
+          params.set(name, val);
+        } else {
+          params.delete(name);
+        }
+      });
+      const qs = params.toString();
+      const next = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
+      window.history.replaceState({}, "", next);
+    }
+
+    function esc(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function statusBadge(camera) {
+      return camera.is_online
+        ? '<span class="badge badge-online">Online</span>'
+        : '<span class="badge badge-offline">Offline</span>';
+    }
+
+    function isStatusStale(camera) {
+      if (!camera.last_checked) {
+        return true;
+      }
+      const checkedAt = new Date(camera.last_checked);
+      if (Number.isNaN(checkedAt.getTime())) {
+        return true;
+      }
+      const ageMs = Date.now() - checkedAt.getTime();
+      return ageMs > STATUS_STALE_MINUTES * 60 * 1000;
+    }
+
+    function staleBadge(camera) {
+      return isStatusStale(camera)
+        ? '<span class="badge text-bg-warning ms-1">Stale</span>'
+        : '';
+    }
+
+    function popupContent(camera) {
+      const title = esc(camera.title || `Camera #${camera.id}`);
+      const country = esc(camera.country || "Unknown");
+      const city = esc(camera.city || "-");
+      const preview = esc(camera.preview_image || "");
+      return `
+        <div style="min-width:220px; max-width:260px;">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong>${title}</strong>
+            <span>${statusBadge(camera)}${staleBadge(camera)}</span>
+          </div>
+          ${preview ? `<img src="${preview}" alt="Camera preview" style="width:100%; border-radius:6px; margin-bottom:8px;" loading="lazy" onerror="this.onerror=null; this.style.display='none';" />` : ""}
+          <div class="small text-muted mb-2">${city}, ${country}</div>
+          <a class="btn btn-sm btn-outline-info" href="/cameras/${camera.id}/">Open details</a>
+        </div>
+      `;
+    }
+
+    function markerIcon(camera) {
+      const color = camera.is_online ? "#238636" : "#da3633";
+      return L.divIcon({
+        className: "",
+        html: `<span style="display:block;width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #0d1117;"></span>`,
+        iconSize: [14, 14],
+      });
+    }
+
+    function setLoading(active) {
+      loadingEl.classList.toggle("active", active);
+    }
+
+    function setNotice(message) {
+      if (!message) {
+        noticeEl.classList.add("d-none");
+        noticeEl.textContent = "";
+        return;
+      }
+      noticeEl.textContent = message;
+      noticeEl.classList.remove("d-none");
+    }
+
+    function scheduleLoadMarkers(opts = {}, delayMs = 250) {
+      if (moveDebounceHandle) {
+        window.clearTimeout(moveDebounceHandle);
+      }
+      moveDebounceHandle = window.setTimeout(() => {
+        loadMarkers(opts).catch((error) => {
+          if (error && error.name === "AbortError") {
+            return;
+          }
+          console.error(error);
+        });
+      }, delayMs);
+    }
+
+    async function loadMarkers({ useViewport = true } = {}) {
+      const params = new URLSearchParams(new FormData(formEl));
+      params.set("limit", String(DEFAULT_MARKER_LIMIT));
+      // Keep marker payload light; detailed preview comes from side panel endpoint.
+      params.set("preview", "0");
+      if (useViewport) {
+        const bounds = map.getBounds();
+        params.set("min_lat", String(bounds.getSouth()));
+        params.set("max_lat", String(bounds.getNorth()));
+        params.set("min_lng", String(bounds.getWest()));
+        params.set("max_lng", String(bounds.getEast()));
+      }
+
+      if (currentFetchController) {
+        currentFetchController.abort();
+      }
+      currentFetchController = new AbortController();
+      const fetchController = currentFetchController;
+
+      setLoading(true);
+      try {
+        const response = await fetch(`${dataUrl}?${params.toString()}`, {
+          headers: { "Accept": "application/json" },
+          signal: fetchController.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Map data request failed: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const markers = payload.markers || [];
+
+        clusterLayer.clearLayers();
+        countEl.textContent = String(payload.count || markers.length);
+        if (payload.truncated) {
+          setNotice(`Showing ${payload.count} of ${payload.total} markers in this area. Zoom in or filter to narrow results.`);
+        } else {
+          setNotice("");
+        }
+
+        const bounds = [];
+        markers.forEach((camera) => {
+          const marker = L.marker([camera.latitude, camera.longitude], {
+            icon: markerIcon(camera),
+            cameraOnline: camera.is_online === true,
+          });
+          marker.bindPopup(popupContent(camera), {
+            autoPan: false,
+          });
+          marker.on("click", () => {
+            htmx.ajax("GET", getPanelUrl(camera.id), { target: "#camera-panel", swap: "innerHTML" });
+          });
+          if (CLOSE_POPUP_ON_MOUSEOUT) {
+            marker.on("mouseout", () => {
+              marker.closePopup();
+            });
+          }
+          clusterLayer.addLayer(marker);
+          bounds.push([camera.latitude, camera.longitude]);
+        });
+
+        if (bounds.length > 0) {
+          const isFirstFit = lastBounds === null;
+          lastBounds = L.latLngBounds(bounds);
+          if (isProgrammaticMapMove || isFirstFit || !useViewport) {
+            map.fitBounds(bounds, { padding: [25, 25], maxZoom: 8 });
+          }
+        } else {
+          map.setView([20, 0], 2);
+          lastBounds = null;
+          panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-muted small mb-0">No cameras found for current filters.</p>';
+        }
+
+        persistFiltersToUrl();
+      } finally {
+        if (currentFetchController === fetchController) {
+          setLoading(false);
+        }
+      }
+    }
+
+    formEl.addEventListener("change", () => {
+      isProgrammaticMapMove = true;
+      scheduleLoadMarkers({}, 100);
+      window.setTimeout(() => {
+        isProgrammaticMapMove = false;
+      }, 120);
+    });
+
+    resetEl.addEventListener("click", () => {
+      formEl.reset();
+      isProgrammaticMapMove = true;
+      scheduleLoadMarkers({}, 100);
+      window.setTimeout(() => {
+        isProgrammaticMapMove = false;
+      }, 120);
+    });
+
+    fitBtnEl.addEventListener("click", () => {
+      if (lastBounds) {
+        map.fitBounds(lastBounds, { padding: [25, 25], maxZoom: 8 });
+      }
+    });
+
+    locateBtnEl.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          map.setView([lat, lng], 11);
+          L.circleMarker([lat, lng], {
+            radius: 7,
+            color: "#58a6ff",
+            weight: 2,
+            fillColor: "#58a6ff",
+            fillOpacity: 0.4,
+          })
+            .addTo(map)
+            .bindPopup("You are here")
+            .openPopup();
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 7000 }
+      );
+    });
+
+    map.on("moveend", () => {
+      if (isProgrammaticMapMove) {
+        return;
+      }
+      scheduleLoadMarkers({ useViewport: true }, 320);
+    });
+
+    applyFiltersFromUrl();
+    // First load globally (without bbox) so users always see initial markers,
+    // then viewport-based updates take over on pan/zoom/filter changes.
+    loadMarkers({ useViewport: false }).catch((error) => {
+      console.error(error);
+      setLoading(false);
+      panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-danger small mb-0">Failed to load map data.</p>';
+    });
+  })();
+</script>
+{% endblock %}

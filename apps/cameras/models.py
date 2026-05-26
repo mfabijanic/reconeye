@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -82,3 +83,44 @@ class CameraCheckLog(models.Model):
     def __str__(self) -> str:
         status = "online" if self.is_online else "offline"
         return f"{self.camera} — {status} @ {self.checked_at:%Y-%m-%d %H:%M}"
+
+
+class MapUISettings(models.Model):
+    """Singleton settings for map UX behavior, editable in Django admin."""
+
+    disable_clustering_at_zoom = models.PositiveSmallIntegerField(
+        default=8,
+        validators=[MinValueValidator(2), MaxValueValidator(18)],
+        help_text="At or above this zoom level, clusters expand into individual markers.",
+    )
+    marker_limit = models.PositiveIntegerField(
+        default=1500,
+        validators=[MinValueValidator(100), MaxValueValidator(5000)],
+        help_text="Maximum number of markers returned per map request.",
+    )
+    status_stale_minutes = models.PositiveIntegerField(
+        default=60,
+        validators=[MinValueValidator(1), MaxValueValidator(1440)],
+        help_text="Status older than this many minutes is shown as stale.",
+    )
+    popup_close_on_mouseout = models.BooleanField(
+        default=True,
+        help_text="Auto-close marker popup when pointer leaves marker.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Map UI Settings"
+        verbose_name_plural = "Map UI Settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "MapUISettings":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self) -> str:
+        return "Map UI Settings"
