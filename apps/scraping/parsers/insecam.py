@@ -117,13 +117,35 @@ def parse_camera_page(html: str, page_url: str, base_data: dict[str, Any]) -> di
 
 async def _should_enrich_camera(base_data: dict[str, Any]) -> bool:
     """Check if a camera record needs enrichment.
-    
-    Skip enrichment if we already have a valid stream_url from listing.
-    Enrichment is only needed for cameras with missing stream URLs.
+
+    Enrich whenever key metadata is missing. Listing pages often contain direct
+    stream URLs but do not contain reliable geolocation/city/region details,
+    which are required for map rendering and filtering.
     """
     stream_url = base_data.get("stream_url", "").strip()
-    # Only enrich if stream_url is empty/missing
-    return not bool(stream_url)
+    lat = base_data.get("latitude")
+    lon = base_data.get("longitude")
+    country = str(base_data.get("country") or "").strip()
+    city = str(base_data.get("city") or "").strip()
+
+    # Always enrich if direct stream URL is missing.
+    if not stream_url:
+        return True
+
+    # Enrich if geolocation is missing or unknown (0,0).
+    if lat is None or lon is None:
+        return True
+    try:
+        if float(lat) == 0.0 and float(lon) == 0.0:
+            return True
+    except (TypeError, ValueError):
+        return True
+
+    # Enrich if basic location metadata is missing.
+    if not country or not city:
+        return True
+
+    return False
 
 
 def _listing_url(*, page: int, country_code: str | None) -> str:

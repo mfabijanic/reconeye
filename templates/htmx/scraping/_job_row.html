@@ -18,7 +18,7 @@
     <tr
       {% if not job.is_terminal %}
       hx-get="{% url 'scraping_htmx:htmx_job_row' job.pk %}"
-      hx-trigger="every 5s"
+      hx-trigger="every 2s"
       hx-target="closest tr"
       hx-swap="outerHTML"
       {% endif %}
@@ -49,11 +49,15 @@
       <td>
         <div class="progress" style="height:6px;" title="{{ job.progress_pct }}%">
           <div
-            class="progress-bar {% if job.status == 'SUCCESS' %}bg-success{% elif job.status == 'FAILED' %}bg-danger{% else %}bg-info{% endif %}"
+            class="progress-bar {% if job.status == 'SUCCESS' %}bg-success{% elif job.status == 'FAILED' %}bg-danger{% elif job.status == 'RUNNING' and job.total_processed == 0 and job.total_found > 0 %}bg-info progress-bar-striped progress-bar-animated{% else %}bg-info{% endif %}"
             style="width: {{ job.progress_pct }}%"
           ></div>
         </div>
-        <small class="text-muted">{{ job.progress_pct }}%</small>
+        {% if job.status == "RUNNING" and job.total_processed == 0 and job.total_found > 0 %}
+          <small class="text-muted">Discovering cameras…</small>
+        {% else %}
+          <small class="text-muted">{{ job.progress_pct }}%</small>
+        {% endif %}
       </td>
       <td>{{ job.total_found }}</td>
       <td class="text-success">{{ job.total_new }}</td>

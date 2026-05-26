@@ -48,6 +48,18 @@ class ScrapeJobDetailView(LoginRequiredMixin, DetailView):
 
 
 class TriggerScrapeView(LoginRequiredMixin, View):
+    @staticmethod
+    def _has_online_workers() -> bool:
+        """Best-effort worker availability check before enqueueing tasks."""
+        try:
+            from celery import current_app
+
+            inspector = current_app.control.inspect(timeout=1.0)
+            pings = inspector.ping() if inspector else None
+            return bool(pings)
+        except Exception:
+            return False
+
     def post(self, request):
         source = request.POST.get("source_type")
         country_code = (request.POST.get("insecam_country_code") or "").strip().upper()
@@ -97,23 +109,51 @@ class TriggerScrapeView(LoginRequiredMixin, View):
             )
             return redirect("scraping:job_list")
 
-        if source == "INSECAM":
-            from apps.scraping.tasks import scrape_insecam
+        if not self._has_online_workers():
+            messages.error(request, "No Celery workers are online. Start a worker and try again.")
+            return redirect("scraping:job_list")
 
-            task = scrape_insecam.delay(country_code=country_code)
+        if source == "INSECAM":
+            from apps.scraping.tasks import scrape_insecam_job
+
+            job = ScrapeJob.objects.create(
+                source_type=source,
+                target_country_code=country_code,
+            )
+            try:
+                task = scrape_insecam_job.delay(job_id=job.pk)
+            except Exception as exc:
+                job.mark_failed(error=f"Queue enqueue failed: {exc}")
+                logger.exception("Failed to enqueue Insecam scrape job #%s: %s", job.pk, exc)
+                messages.error(request, "Failed to enqueue Insecam scrape. Check broker/worker status.")
+                return redirect("scraping:job_list")
+
+            job.celery_task_id = task.id
+            job.save(update_fields=["celery_task_id"])
             logger.info(
-                "Triggered Insecam scrape: task_id=%s country=%s by user=%s",
+                "Triggered Insecam scrape: task_id=%s country=%s job_id=%s by user=%s",
                 task.id,
                 country_code,
+                job.pk,
                 request.user,
             )
-            messages.success(request, f"Insecam [{country_code}] scrape queued: {task.id}")
+            messages.success(request, f"Insecam [{country_code}] scrape queued (job #{job.pk}): {task.id}")
         elif source == "WHATSUPCAMS":
-            from apps.scraping.tasks import scrape_whatsupcams
+            from apps.scraping.tasks import scrape_whatsupcams_job
 
-            task = scrape_whatsupcams.delay()
-            logger.info("Triggered WUC scrape: task_id=%s by user=%s", task.id, request.user)
-            messages.success(request, f"WhatsUpCams scrape queued: {task.id}")
+            job = ScrapeJob.objects.create(source_type=source)
+            try:
+                task = scrape_whatsupcams_job.delay(job_id=job.pk)
+            except Exception as exc:
+                job.mark_failed(error=f"Queue enqueue failed: {exc}")
+                logger.exception("Failed to enqueue WhatsUpCams scrape job #%s: %s", job.pk, exc)
+                messages.error(request, "Failed to enqueue WhatsUpCams scrape. Check broker/worker status.")
+                return redirect("scraping:job_list")
+
+            job.celery_task_id = task.id
+            job.save(update_fields=["celery_task_id"])
+            logger.info("Triggered WUC scrape: task_id=%s job_id=%s by user=%s", task.id, job.pk, request.user)
+            messages.success(request, f"WhatsUpCams scrape queued (job #{job.pk}): {task.id}")
         return redirect("scraping:job_list")
 
 

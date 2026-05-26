@@ -12,7 +12,8 @@ from apps.scraping.models import ScrapeJob
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 50
+# Smaller batch size gives smoother progress updates in UI during RUNNING state.
+BATCH_SIZE = 10
 
 
 def run_scrape_job(job: ScrapeJob, *, resolve_streams: bool = True) -> None:

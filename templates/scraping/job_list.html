@@ -50,7 +50,7 @@
 <div
   id="job-table"
   hx-get="{% url 'scraping_htmx:htmx_jobs' %}"
-  hx-trigger="every 5s"
+  hx-trigger="every 2s"
   hx-swap="innerHTML"
 >
   {% include "htmx/scraping/_job_row.html" with jobs=jobs %}
