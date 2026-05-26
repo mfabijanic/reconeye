@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Cameras — ReconEye{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col"><h4><i class="bi bi-camera-video me-2 text-info"></i>Cameras</h4></div>
+  <div class="col-auto text-muted small">{{ paginator.count }} total</div>
+</div>
+
+{# Filters — HTMX submits to partial endpoint #}
+<form class="row g-2 mb-3" hx-get="{% url 'cameras_htmx:htmx_list' %}" hx-target="#camera-table" hx-trigger="change">
+  <div class="col-md-3">
+    <input
+      type="text"
+      name="q"
+      class="form-control form-control-sm"
+      placeholder="Search title…"
+      value="{{ q }}"
+      hx-trigger="keyup changed delay:500ms"
+    />
+  </div>
+  <div class="col-md-2">
+    <select name="country" class="form-select form-select-sm">
+      <option value="">All countries</option>
+      {% for country in countries %}
+        <option value="{{ country }}" {% if country == selected_country %}selected{% endif %}>{{ country }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="source" class="form-select form-select-sm">
+      <option value="">All sources</option>
+      {% for val, label in source_types %}
+        <option value="{{ val }}" {% if val == selected_source %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="online" class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      <option value="1" {% if selected_online == "1" %}selected{% endif %}>Online</option>
+      <option value="0" {% if selected_online == "0" %}selected{% endif %}>Offline</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.location='{% url 'cameras:list' %}'">Reset</button>
+  </div>
+</form>
+
+{# Camera table — swapped via HTMX #}
+<div id="camera-table">
+  {% include "htmx/cameras/_camera_table.html" %}
+</div>
+{% endblock %}

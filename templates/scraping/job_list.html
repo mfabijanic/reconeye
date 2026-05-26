@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Scrape Jobs — ReconEye{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col"><h4><i class="bi bi-arrow-repeat me-2 text-info"></i>Scrape Jobs</h4></div>
+  <div class="col-auto">
+    <form class="d-flex gap-2 align-items-center" method="post" action="{% url 'scraping:trigger' %}">
+      {% csrf_token %}
+      <select name="source_type" class="form-select form-select-sm">
+        <option value="INSECAM">Insecam</option>
+        <option value="WHATSUPCAMS">WhatsUpCams</option>
+      </select>
+      <select name="insecam_country_code" class="form-select form-select-sm">
+        <option value="">Insecam country…</option>
+        {% for code, label in insecam_countries %}
+          <option value="{{ code }}">{{ label }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-success">
+        <i class="bi bi-play-fill me-1"></i>Trigger scrape
+      </button>
+    </form>
+  </div>
+</div>
+
+{# Filters #}
+<form class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="source" class="form-select form-select-sm">
+      <option value="">All sources</option>
+      <option value="INSECAM">Insecam</option>
+      <option value="WHATSUPCAMS">WhatsUpCams</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="status" class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      {% for val, label in status_choices %}
+        <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-info">Filter</button>
+  </div>
+</form>
+
+{# Job table — auto-refresh every 5s for running jobs #}
+<div
+  id="job-table"
+  hx-get="{% url 'scraping_htmx:htmx_jobs' %}"
+  hx-trigger="every 5s"
+  hx-swap="innerHTML"
+>
+  {% include "htmx/scraping/_job_row.html" with jobs=jobs %}
+</div>
+
+{% include "scraping/_pagination.html" %}
+{% endblock %}

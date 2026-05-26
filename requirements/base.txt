@@ -1,0 +1,23 @@
+# Core
+Django>=5.0,<6.0
+psycopg[binary]>=3.1
+redis>=5.0
+celery[redis]>=5.4
+django-celery-beat>=2.6
+django-celery-results>=2.5
+
+# HTTP/scraping
+httpx[http2]>=0.27
+aiolimiter>=1.1
+tenacity>=8.3
+beautifulsoup4>=4.12
+lxml>=5.2
+Pillow>=10.3
+
+# Production
+gunicorn>=22.0
+whitenoise[brotli]>=6.7
+django-environ>=0.11
+
+# UI
+django-htmx>=1.17

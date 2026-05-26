@@ -1,0 +1,84 @@
+<table class="table table-hover table-sm align-middle">
+  <thead class="table-dark">
+    <tr>
+      <th>#</th>
+      <th>Source</th>
+      <th>Status</th>
+      <th style="min-width:120px">Progress</th>
+      <th>Found</th>
+      <th>New</th>
+      <th>Updated</th>
+      <th>Started</th>
+      <th>Duration</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr
+      {% if not job.is_terminal %}
+      hx-get="{% url 'scraping_htmx:htmx_job_row' job.pk %}"
+      hx-trigger="every 5s"
+      hx-target="closest tr"
+      hx-swap="outerHTML"
+      {% endif %}
+    >
+      <td class="text-muted small">{{ job.pk }}</td>
+      <td>
+        <span class="badge bg-secondary">{{ job.source_type }}</span>
+        {% if job.target_country_code %}
+          <span class="badge bg-dark border border-secondary">{{ job.target_country_code }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if job.status == "RUNNING" %}
+          <span class="badge bg-warning text-dark">
+            <span class="spinner-border spinner-border-sm me-1" style="width:.6rem;height:.6rem"></span>
+            Running
+          </span>
+        {% elif job.status == "SUCCESS" %}
+          <span class="badge bg-success">Success</span>
+        {% elif job.status == "FAILED" %}
+          <span class="badge bg-danger" title="{{ job.error_message }}">Failed</span>
+        {% elif job.status == "CANCELLED" %}
+          <span class="badge bg-secondary">Cancelled</span>
+        {% else %}
+          <span class="badge bg-dark border border-secondary">Pending</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="progress" style="height:6px;" title="{{ job.progress_pct }}%">
+          <div
+            class="progress-bar {% if job.status == 'SUCCESS' %}bg-success{% elif job.status == 'FAILED' %}bg-danger{% else %}bg-info{% endif %}"
+            style="width: {{ job.progress_pct }}%"
+          ></div>
+        </div>
+        <small class="text-muted">{{ job.progress_pct }}%</small>
+      </td>
+      <td>{{ job.total_found }}</td>
+      <td class="text-success">{{ job.total_new }}</td>
+      <td class="text-info">{{ job.total_updated }}</td>
+      <td class="text-muted small">{{ job.started_at|date:"d.m H:i"|default:"—" }}</td>
+      <td class="text-muted small">
+        {% if job.duration_seconds %}
+          {% widthratio job.duration_seconds 60 1 %}m
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if not job.is_terminal %}
+          <form method="post" action="{% url 'scraping:cancel' job.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-stop-fill me-1"></i>Cancel
+            </button>
+          </form>
+        {% else %}
+          <span class="text-muted small">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="10" class="text-center text-muted py-4">No jobs yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

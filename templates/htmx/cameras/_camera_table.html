@@ -1,0 +1,81 @@
+<div class="table-responsive">
+  <table class="table table-hover table-sm align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Source</th>
+        <th>Country</th>
+        <th>City</th>
+        <th>Status</th>
+        <th>Partial</th>
+        <th>Last checked</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for camera in cameras %}
+      <tr>
+        <td class="text-muted small">{{ camera.pk }}</td>
+        <td>
+          <a href="{% url 'cameras:detail' camera.pk %}">{{ camera.title|default:"(no title)" }}</a>
+        </td>
+        <td><span class="badge bg-secondary">{{ camera.source_type }}</span></td>
+        <td>{{ camera.country|default:"—" }}</td>
+        <td>{{ camera.city|default:"—" }}</td>
+        <td>
+          {% if camera.is_online %}
+            <span class="badge badge-online">Online</span>
+          {% else %}
+            <span class="badge badge-offline">Offline</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if camera.has_partial_metadata %}
+            <i class="bi bi-exclamation-triangle text-warning" title="Partial metadata"></i>
+          {% endif %}
+        </td>
+        <td class="text-muted small">{{ camera.last_checked|date:"d.m.Y H:i"|default:"—" }}</td>
+        <td>
+          {% if camera.stream_url %}
+            <a href="{{ camera.stream_url }}" target="_blank" class="btn btn-xs btn-outline-info btn-sm py-0 px-1">
+              <i class="bi bi-play-circle"></i>
+            </a>
+          {% elif camera.page_url %}
+            <a href="{{ camera.page_url }}" target="_blank" class="btn btn-xs btn-outline-secondary btn-sm py-0 px-1">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-4">No cameras found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Pagination #}
+{% if page_obj.has_other_pages %}
+<nav aria-label="Camera pagination" class="mt-2">
+  <ul class="pagination pagination-sm justify-content-center">
+    {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link"
+           hx-get="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           hx-target="#camera-table">&laquo;</a>
+      </li>
+    {% endif %}
+    <li class="page-item disabled">
+      <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    </li>
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link"
+           hx-get="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           hx-target="#camera-table">&raquo;</a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
