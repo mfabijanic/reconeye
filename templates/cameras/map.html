@@ -493,8 +493,13 @@
     const suggestionsUrl = "{% url 'cameras:map_locations_suggest' %}";
     let currentLocationFetch = null;
 
+    console.log("Location search initialized:", { locationSearchEl, suggestionsEl, suggestionsUrl });
+    if (!locationSearchEl) console.error("ERROR: location-search element not found!");
+    if (!suggestionsEl) console.error("ERROR: location-suggestions element not found!");
+
     locationSearchEl.addEventListener("input", async (event) => {
       const query = event.target.value.trim();
+      console.log("Input event fired, query:", query);
 
       if (query.length < 2) {
         suggestionsEl.style.display = "none";
