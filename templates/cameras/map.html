@@ -489,9 +489,12 @@
     });
 
     map.on("moveend", () => {
+      console.log("moveend event fired, isProgrammaticMapMove:", isProgrammaticMapMove);
       if (isProgrammaticMapMove) {
+        console.log("moveend: skipping because isProgrammaticMapMove is true");
         return;
       }
+      console.log("moveend: calling scheduleLoadMarkers");
       scheduleLoadMarkers({ useViewport: true }, 320);
     });
 
@@ -590,10 +593,15 @@
             // Zoom to location
             if (!isNaN(lat) && !isNaN(lng)) {
               console.log("Setting map view to:", [lat, lng]);
-              map.setView([lat, lng], 10);
+              // Set flag BEFORE map.setView to prevent moveend from loading markers
               isProgrammaticMapMove = true;
+              console.log("isProgrammaticMapMove set to true");
+              map.setView([lat, lng], 10);
+              // Schedule markers load after zoom
               scheduleLoadMarkers({ useViewport: false }, 100);
+              console.log("scheduleLoadMarkers called from location selection");
               window.setTimeout(() => {
+                console.log("Resetting isProgrammaticMapMove to false");
                 isProgrammaticMapMove = false;
               }, 120);
             } else {
