@@ -553,9 +553,14 @@
 
         suggestionsEl.style.display = "block";
 
+        console.log("Rendered suggestions in DOM, now attaching event listeners");
+        console.log("Found suggestion items:", suggestionsEl.querySelectorAll(".suggestion-item").length);
+
         // Add click handlers to suggestions
-        suggestionsEl.querySelectorAll(".suggestion-item").forEach((item) => {
+        suggestionsEl.querySelectorAll(".suggestion-item").forEach((item, index) => {
+          console.log(`Attaching handler to suggestion ${index}:`, item.dataset.label);
           item.addEventListener("mousedown", (e) => {
+            console.log("mousedown event fired on:", item.dataset.label);
             e.preventDefault(); // Prevent blur event from firing
             e.stopPropagation();
             
@@ -571,6 +576,7 @@
 
             // Zoom to location
             if (!isNaN(lat) && !isNaN(lng)) {
+              console.log("Setting map view to:", [lat, lng]);
               map.setView([lat, lng], 10);
               isProgrammaticMapMove = true;
               scheduleLoadMarkers({ useViewport: false }, 100);
