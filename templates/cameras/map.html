@@ -513,12 +513,14 @@
           signal: currentLocationFetch.signal,
         });
         if (!response.ok) {
-          console.error("Failed to fetch location suggestions");
+          console.error("Failed to fetch location suggestions:", response.status);
           return;
         }
 
         const data = await response.json();
         const suggestions = data.suggestions || [];
+
+        console.log("API suggestions:", suggestions); // Debug log
 
         if (suggestions.length === 0) {
           suggestionsEl.innerHTML = '<div class="text-muted small p-2">No locations found</div>';
@@ -530,13 +532,17 @@
           .map((loc) => {
             const label = esc(loc.label);
             const count = loc.camera_count || 0;
+            // Encode data attributes properly for HTML
+            const latAttr = loc.latitude.toString();
+            const lngAttr = loc.longitude.toString();
+            const labelAttr = loc.label.replace(/"/g, '&quot;'); // Only escape quotes in attributes
             return `
               <div
                 class="suggestion-item p-2 border-bottom"
                 style="cursor: pointer; transition: background 0.15s;"
-                data-lat="${loc.latitude}"
-                data-lng="${loc.longitude}"
-                data-label="${esc(label)}"
+                data-lat="${latAttr}"
+                data-lng="${lngAttr}"
+                data-label="${labelAttr}"
               >
                 <strong class="small">${label}</strong>
                 <span class="text-muted small ms-1">${count} camera${count === 1 ? '' : 's'}</span>
@@ -557,17 +563,23 @@
             const lng = parseFloat(item.dataset.lng);
             const label = item.dataset.label;
 
+            console.log("Location selected:", { lat, lng, label }); // Debug log
+            
             locationSearchEl.value = label;
             suggestionsEl.style.display = "none";
             locationSearchEl.blur(); // Release focus from input
 
             // Zoom to location
-            map.setView([lat, lng], 10);
-            isProgrammaticMapMove = true;
-            scheduleLoadMarkers({ useViewport: false }, 100);
-            window.setTimeout(() => {
-              isProgrammaticMapMove = false;
-            }, 120);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              map.setView([lat, lng], 10);
+              isProgrammaticMapMove = true;
+              scheduleLoadMarkers({ useViewport: false }, 100);
+              window.setTimeout(() => {
+                isProgrammaticMapMove = false;
+              }, 120);
+            } else {
+              console.error("Invalid coordinates:", { lat, lng });
+            }
           });
         });
       } catch (error) {
