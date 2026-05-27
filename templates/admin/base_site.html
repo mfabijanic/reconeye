@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script>
+    (function () {
+      const THEME_KEY = "reconeye-theme";
+      const root = document.documentElement;
+      let theme = null;
+      try {
+        theme = localStorage.getItem(THEME_KEY);
+      } catch (e) {
+        theme = null;
+      }
+      if (theme === "light" || theme === "dark") {
+        root.setAttribute("data-theme", theme);
+        root.setAttribute("data-bs-theme", theme);
+      }
+    })();
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const THEME_KEY = "reconeye-theme";
+      const root = document.documentElement;
+
+      const persistTheme = function () {
+        const theme = root.getAttribute("data-theme");
+        if (theme === "light" || theme === "dark") {
+          try {
+            localStorage.setItem(THEME_KEY, theme);
+          } catch (e) {
+            // Ignore storage errors.
+          }
+          root.setAttribute("data-bs-theme", theme);
+        }
+      };
+
+      persistTheme();
+      const observer = new MutationObserver(persistTheme);
+      observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    });
+  </script>
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/reconeye_admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+  <h1 id="site-name">
+    <a href="{% url 'admin:index' %}">ReconEye Admin</a>
+  </h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
