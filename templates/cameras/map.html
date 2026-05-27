@@ -549,13 +549,17 @@
 
         // Add click handlers to suggestions
         suggestionsEl.querySelectorAll(".suggestion-item").forEach((item) => {
-          item.addEventListener("click", () => {
+          item.addEventListener("mousedown", (e) => {
+            e.preventDefault(); // Prevent blur event from firing
+            e.stopPropagation();
+            
             const lat = parseFloat(item.dataset.lat);
             const lng = parseFloat(item.dataset.lng);
             const label = item.dataset.label;
 
             locationSearchEl.value = label;
             suggestionsEl.style.display = "none";
+            locationSearchEl.blur(); // Release focus from input
 
             // Zoom to location
             map.setView([lat, lng], 10);
@@ -573,7 +577,7 @@
       }
     });
 
-    // Hide suggestions on blur
+    // Hide suggestions on blur (with delay to allow click handling)
     locationSearchEl.addEventListener("blur", () => {
       window.setTimeout(() => {
         suggestionsEl.style.display = "none";
