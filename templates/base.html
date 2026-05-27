@@ -25,6 +25,18 @@
     a { color: #58a6ff; }
     a:hover { color: #79c0ff; }
     .table { --bs-table-bg: #161b22; --bs-table-border-color: #30363d; }
+    .nav-job-badge {
+      background-color: #9a6700;
+      font-size: .65rem;
+      vertical-align: middle;
+      padding: .2em .45em;
+      border-radius: .4em;
+      animation: badge-pulse 2s ease-in-out infinite;
+    }
+    @keyframes badge-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .55; }
+    }
   </style>
 </head>
 <body>
@@ -61,7 +73,12 @@
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
              href="{% url 'scraping:job_list' %}">
-            <i class="bi bi-arrow-repeat me-1"></i>Scrape Jobs
+            <i class="bi bi-arrow-repeat me-1"></i>Scrape Jobs<span
+              id="nav-job-status"
+              hx-get="{% url 'scraping_htmx:nav_job_status' %}"
+              hx-trigger="load, every 8s"
+              hx-swap="innerHTML"
+            ></span>
           </a>
         </li>
         {% if user.is_staff %}

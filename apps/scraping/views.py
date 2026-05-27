@@ -198,3 +198,20 @@ class HtmxJobRowView(LoginRequiredMixin, View):
             request=request,
         )
         return HttpResponse(html)
+
+
+class HtmxNavJobStatusView(LoginRequiredMixin, View):
+    """Returns a navbar badge fragment showing count of running/pending jobs."""
+
+    def get(self, request):
+        from django.template.loader import render_to_string
+
+        active_count = ScrapeJob.objects.filter(
+            status__in=[ScrapeJobStatus.RUNNING, ScrapeJobStatus.PENDING]
+        ).count()
+        html = render_to_string(
+            "htmx/scraping/_nav_job_status.html",
+            {"active_job_count": active_count},
+            request=request,
+        )
+        return HttpResponse(html)
