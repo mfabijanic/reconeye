@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any
 
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.common.cache import TTL_CAMERAS, versioned_key, DOMAIN_CAMERAS
@@ -13,6 +13,58 @@ from apps.cameras.models import Camera, CameraCheckLog, SourceType
 logger = logging.getLogger(__name__)
 
 CAMERA_LOG_RETENTION_DAYS = 30
+
+
+def get_location_suggestions(query: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Get location suggestions (country/city combos) for autocomplete.
+    
+    Aggregates geolocated cameras by country+city and returns centroids.
+    """
+    from django.core.cache import cache
+    
+    if not query or len(query.strip()) < 2:
+        return []
+    
+    cache_key = versioned_key(DOMAIN_CAMERAS, f"locations:suggest:{query.lower()}")
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
+    q = query.strip().lower()
+    qs = (
+        Camera.objects.filter(
+            is_active=True,
+            latitude__isnull=False,
+            longitude__isnull=False,
+        )
+        .exclude(latitude=0, longitude=0)
+        .filter(
+            models.Q(country__icontains=q)
+            | models.Q(city__icontains=q)
+        )
+        .values("country", "city")
+        .annotate(
+            lat=models.Avg("latitude"),
+            lng=models.Avg("longitude"),
+            count=models.Count("id"),
+        )
+        .order_by("-count")[: limit]
+    )
+    
+    result = [
+        {
+            "country": item["country"],
+            "city": item["city"],
+            "latitude": item["lat"],
+            "longitude": item["lng"],
+            "camera_count": item["count"],
+            "label": f"{item['city']}, {item['country']}",
+        }
+        for item in qs
+    ]
+    
+    cache.set(cache_key, result, TTL_CAMERAS)
+    return result
 
 
 def get_camera_list(

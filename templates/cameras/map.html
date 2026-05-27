@@ -81,6 +81,9 @@
   .cluster-online { background: #238636; }
   .cluster-mixed { background: #9a6700; }
   .cluster-offline { background: #da3633; }
+  .suggestion-item:hover {
+    background-color: #0d1117;
+  }
 </style>
 {% endblock %}
 
@@ -106,6 +109,22 @@
 
 <form id="map-filters" class="row g-2 mb-3">
   <div class="col-md-3">
+    <div class="position-relative">
+      <input
+        type="text"
+        id="location-search"
+        class="form-control form-control-sm"
+        placeholder="Search location…"
+        autocomplete="off"
+      />
+      <div
+        id="location-suggestions"
+        class="position-absolute bg-dark border border-secondary rounded mt-1"
+        style="width: 100%; max-height: 200px; overflow-y: auto; display: none; z-index: 1050;"
+      ></div>
+    </div>
+  </div>
+  <div class="col-md-3">
     <select name="source" class="form-select form-select-sm">
       <option value="">All sources</option>
       {% for val, label in source_types %}
@@ -113,7 +132,7 @@
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-3">
+  <div class="col-md-2">
     <select name="country" class="form-select form-select-sm">
       <option value="">All countries</option>
       {% for country in countries %}
@@ -466,6 +485,106 @@
         return;
       }
       scheduleLoadMarkers({ useViewport: true }, 320);
+    });
+
+    // Location search autocomplete
+    const locationSearchEl = document.getElementById("location-search");
+    const suggestionsEl = document.getElementById("location-suggestions");
+    const suggestionsUrl = "{% url 'cameras:map_locations_suggest' %}";
+    let currentLocationFetch = null;
+
+    locationSearchEl.addEventListener("input", async (event) => {
+      const query = event.target.value.trim();
+
+      if (query.length < 2) {
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+
+      if (currentLocationFetch) {
+        currentLocationFetch.abort();
+      }
+      currentLocationFetch = new AbortController();
+
+      try {
+        const response = await fetch(`${suggestionsUrl}?q=${encodeURIComponent(query)}&limit=10`, {
+          headers: { "Accept": "application/json" },
+          signal: currentLocationFetch.signal,
+        });
+        if (!response.ok) {
+          console.error("Failed to fetch location suggestions");
+          return;
+        }
+
+        const data = await response.json();
+        const suggestions = data.suggestions || [];
+
+        if (suggestions.length === 0) {
+          suggestionsEl.innerHTML = '<div class="text-muted small p-2">No locations found</div>';
+          suggestionsEl.style.display = "block";
+          return;
+        }
+
+        suggestionsEl.innerHTML = suggestions
+          .map((loc) => {
+            const label = esc(loc.label);
+            const count = loc.camera_count || 0;
+            return `
+              <div
+                class="suggestion-item p-2 border-bottom"
+                style="cursor: pointer; transition: background 0.15s;"
+                data-lat="${loc.latitude}"
+                data-lng="${loc.longitude}"
+                data-label="${esc(label)}"
+              >
+                <strong class="small">${label}</strong>
+                <span class="text-muted small ms-1">${count} camera${count === 1 ? '' : 's'}</span>
+              </div>
+            `;
+          })
+          .join("");
+
+        suggestionsEl.style.display = "block";
+
+        // Add click handlers to suggestions
+        suggestionsEl.querySelectorAll(".suggestion-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            const lat = parseFloat(item.dataset.lat);
+            const lng = parseFloat(item.dataset.lng);
+            const label = item.dataset.label;
+
+            locationSearchEl.value = label;
+            suggestionsEl.style.display = "none";
+
+            // Zoom to location
+            map.setView([lat, lng], 10);
+            isProgrammaticMapMove = true;
+            scheduleLoadMarkers({ useViewport: false }, 100);
+            window.setTimeout(() => {
+              isProgrammaticMapMove = false;
+            }, 120);
+          });
+        });
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Location suggestion error:", error);
+        }
+      }
+    });
+
+    // Hide suggestions on blur
+    locationSearchEl.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        suggestionsEl.style.display = "none";
+      }, 150);
+    });
+
+    // Show suggestions on focus if input has value
+    locationSearchEl.addEventListener("focus", () => {
+      if (locationSearchEl.value.trim().length >= 2) {
+        suggestionsEl.style.display = "block";
+      }
     });
 
     applyFiltersFromUrl();

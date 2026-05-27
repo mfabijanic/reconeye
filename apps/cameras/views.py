@@ -179,6 +179,18 @@ class HtmxCameraMapPanelView(LoginRequiredMixin, View):
         return HttpResponse(html)
 
 
+class CameraLocationSuggestionsView(LoginRequiredMixin, View):
+    """Return location suggestions (country/city) for map autocomplete."""
+
+    def get(self, request, *args, **kwargs):
+        from apps.cameras.services import get_location_suggestions
+
+        query = request.GET.get("q", "").strip()
+        limit = int(request.GET.get("limit", 20))
+        suggestions = get_location_suggestions(query, limit=limit)
+        return JsonResponse({"suggestions": suggestions})
+
+
 class HtmxCameraListView(LoginRequiredMixin, ListView):
     """Returns only the camera table partial for HTMX swaps."""
 
