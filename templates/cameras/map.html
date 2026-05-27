@@ -338,12 +338,10 @@
     }
 
     function scheduleLoadMarkers(opts = {}, delayMs = 250) {
-      console.log("scheduleLoadMarkers called with:", { opts, delayMs });
       if (moveDebounceHandle) {
         window.clearTimeout(moveDebounceHandle);
       }
       moveDebounceHandle = window.setTimeout(() => {
-        console.log("scheduleLoadMarkers timeout fired, calling loadMarkers");
         loadMarkers(opts).catch((error) => {
           if (error && error.name === "AbortError") {
             return;
@@ -354,7 +352,6 @@
     }
 
     async function loadMarkers({ useViewport = true } = {}) {
-      console.log("loadMarkers called with:", { useViewport });
       const params = new URLSearchParams(new FormData(formEl));
       params.set("limit", String(DEFAULT_MARKER_LIMIT));
       // Keep marker payload light; detailed preview comes from side panel endpoint.
@@ -374,7 +371,6 @@
       const fetchController = currentFetchController;
 
       setLoading(true);
-      console.log("loadMarkers: setLoading(true), fetching from:", `${dataUrl}?${params.toString()}`);
       try {
         const response = await fetch(`${dataUrl}?${params.toString()}`, {
           headers: { "Accept": "application/json" },
@@ -386,8 +382,6 @@
 
         const payload = await response.json();
         const markers = payload.markers || [];
-
-        console.log("loadMarkers: received payload with", markers.length, "markers, total:", payload.total);
 
         clusterLayer.clearLayers();
         countEl.textContent = String(payload.count || markers.length);
@@ -431,10 +425,8 @@
         }
 
         persistFiltersToUrl();
-        console.log("loadMarkers: completed successfully, markers added");
       } finally {
         if (currentFetchController === fetchController) {
-          console.log("loadMarkers: finally block, setting loading to false");
           setLoading(false);
         }
       }
@@ -489,12 +481,9 @@
     });
 
     map.on("moveend", () => {
-      console.log("moveend event fired, isProgrammaticMapMove:", isProgrammaticMapMove);
       if (isProgrammaticMapMove) {
-        console.log("moveend: skipping because isProgrammaticMapMove is true");
         return;
       }
-      console.log("moveend: calling scheduleLoadMarkers");
       scheduleLoadMarkers({ useViewport: true }, 320);
     });
 
@@ -504,13 +493,8 @@
     const suggestionsUrl = "{% url 'cameras:map_locations_suggest' %}";
     let currentLocationFetch = null;
 
-    console.log("Location search initialized:", { locationSearchEl, suggestionsEl, suggestionsUrl });
-    if (!locationSearchEl) console.error("ERROR: location-search element not found!");
-    if (!suggestionsEl) console.error("ERROR: location-suggestions element not found!");
-
     locationSearchEl.addEventListener("input", async (event) => {
       const query = event.target.value.trim();
-      console.log("Input event fired, query:", query);
 
       if (query.length < 2) {
         suggestionsEl.style.display = "none";
@@ -535,8 +519,6 @@
 
         const data = await response.json();
         const suggestions = data.suggestions || [];
-
-        console.log("API suggestions:", suggestions); // Debug log
 
         if (suggestions.length === 0) {
           suggestionsEl.innerHTML = '<div class="text-muted small p-2">No locations found</div>';
@@ -569,14 +551,9 @@
 
         suggestionsEl.style.display = "block";
 
-        console.log("Rendered suggestions in DOM, now attaching event listeners");
-        console.log("Found suggestion items:", suggestionsEl.querySelectorAll(".suggestion-item").length);
-
         // Add click handlers to suggestions
-        suggestionsEl.querySelectorAll(".suggestion-item").forEach((item, index) => {
-          console.log(`Attaching handler to suggestion ${index}:`, item.dataset.label);
+        suggestionsEl.querySelectorAll(".suggestion-item").forEach((item) => {
           item.addEventListener("mousedown", (e) => {
-            console.log("mousedown event fired on:", item.dataset.label);
             e.preventDefault(); // Prevent blur event from firing
             e.stopPropagation();
             
@@ -584,26 +561,18 @@
             const lng = parseFloat(item.dataset.lng);
             const label = item.dataset.label;
 
-            console.log("Location selected:", { lat, lng, label }); // Debug log
-            
             locationSearchEl.value = label;
             suggestionsEl.style.display = "none";
-            locationSearchEl.blur(); // Release focus from input
+            locationSearchEl.blur();
 
-            // Zoom to location
+            // Zoom to location - let moveend handle marker reloading naturally.
+            // Using useViewport:true in moveend means fitBounds won't be triggered
+            // (only called when isProgrammaticMapMove||isFirstFit||!useViewport).
             if (!isNaN(lat) && !isNaN(lng)) {
               console.log("Setting map view to:", [lat, lng]);
-              // Set flag BEFORE map.setView to prevent moveend from loading markers
-              isProgrammaticMapMove = true;
-              console.log("isProgrammaticMapMove set to true");
               map.setView([lat, lng], 10);
-              // Schedule markers load after zoom
-              scheduleLoadMarkers({ useViewport: false }, 100);
-              console.log("scheduleLoadMarkers called from location selection");
-              window.setTimeout(() => {
-                console.log("Resetting isProgrammaticMapMove to false");
-                isProgrammaticMapMove = false;
-              }, 120);
+              // moveend will fire and call scheduleLoadMarkers({ useViewport: true }, 320)
+              // which loads only nearby cameras and skips fitBounds.
             } else {
               console.error("Invalid coordinates:", { lat, lng });
             }
