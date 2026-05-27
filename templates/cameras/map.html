@@ -338,10 +338,12 @@
     }
 
     function scheduleLoadMarkers(opts = {}, delayMs = 250) {
+      console.log("scheduleLoadMarkers called with:", { opts, delayMs });
       if (moveDebounceHandle) {
         window.clearTimeout(moveDebounceHandle);
       }
       moveDebounceHandle = window.setTimeout(() => {
+        console.log("scheduleLoadMarkers timeout fired, calling loadMarkers");
         loadMarkers(opts).catch((error) => {
           if (error && error.name === "AbortError") {
             return;
@@ -352,6 +354,7 @@
     }
 
     async function loadMarkers({ useViewport = true } = {}) {
+      console.log("loadMarkers called with:", { useViewport });
       const params = new URLSearchParams(new FormData(formEl));
       params.set("limit", String(DEFAULT_MARKER_LIMIT));
       // Keep marker payload light; detailed preview comes from side panel endpoint.
@@ -371,6 +374,7 @@
       const fetchController = currentFetchController;
 
       setLoading(true);
+      console.log("loadMarkers: setLoading(true), fetching from:", `${dataUrl}?${params.toString()}`);
       try {
         const response = await fetch(`${dataUrl}?${params.toString()}`, {
           headers: { "Accept": "application/json" },
@@ -382,6 +386,8 @@
 
         const payload = await response.json();
         const markers = payload.markers || [];
+
+        console.log("loadMarkers: received payload with", markers.length, "markers, total:", payload.total);
 
         clusterLayer.clearLayers();
         countEl.textContent = String(payload.count || markers.length);
@@ -425,8 +431,10 @@
         }
 
         persistFiltersToUrl();
+        console.log("loadMarkers: completed successfully, markers added");
       } finally {
         if (currentFetchController === fetchController) {
+          console.log("loadMarkers: finally block, setting loading to false");
           setLoading(false);
         }
       }
