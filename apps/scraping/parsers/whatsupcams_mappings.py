@@ -194,6 +194,7 @@ WUC_STREAM_LOCATION_OVERRIDES = {
     "hr_samobor2": ["samobor main square", "Samobor - Main Square"],
     "hr_selce1": ["selce beach diving center", "Selce"],
     "hr_senj01": ["senj nehaj fortress kvarner", "Senj"],
+    "hr_senj02": ["senj harbor kvarner croatia", "Senj"],
     "hr_simuni": ["camping simuni pag", "Camping Simuni, Pag"],
     "hr_split04": ["split view of split riva", "Riva, Split"],
     "hr_splitbacvice01": ["bacvice beach split webcam", "Bacvice beach, Split"],
