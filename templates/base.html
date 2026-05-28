@@ -413,6 +413,19 @@
       });
     }
 
+    function focusPreview(img) {
+      if (!img) {
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        try {
+          img.focus({ preventScroll: true });
+        } catch (error) {
+          img.focus();
+        }
+      });
+    }
+
     function attemptAutoplay(video) {
       if (!video) {
         return;
@@ -477,6 +490,7 @@
         return;
       }
       img.dataset.previewKeyboardBound = "true";
+      focusPreview(img);
       img.addEventListener("keydown", (event) => {
         if (event.key && event.key.toLowerCase() === "f") {
           event.preventDefault();
