@@ -223,9 +223,9 @@
     const fitBtnEl = document.getElementById("fit-map");
     const locateBtnEl = document.getElementById("locate-me");
     let lastBounds = null;
-    let programmaticMoveDepth = 0;  // counter: > 0 means suppress moveend reload
     let currentFetchController = null;
     let moveDebounceHandle = null;
+    let suppressMoveEnd = false;
     const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
     const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
     const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
@@ -378,8 +378,21 @@
       }, delayMs);
     }
 
+    // fitBounds/setView wrapper that suppresses the resulting moveend event
+    function programmaticFit(bounds, opts) {
+      suppressMoveEnd = true;
+      map.fitBounds(bounds, opts);
+      // moveend fires synchronously at end of animation; use one-shot listener to clear flag
+      map.once("moveend", () => { suppressMoveEnd = false; });
+    }
+
+    function programmaticSetView(center, zoom) {
+      suppressMoveEnd = true;
+      map.setView(center, zoom);
+      map.once("moveend", () => { suppressMoveEnd = false; });
+    }
+
     async function loadMarkers({ useViewport = true } = {}) {
-      programmaticMoveDepth++;
       const params = new URLSearchParams(new FormData(formEl));
       params.set("limit", String(DEFAULT_MARKER_LIMIT));
       // Keep marker payload light; detailed preview comes from side panel endpoint.
@@ -447,22 +460,20 @@
           const isFirstFit = lastBounds === null;
           lastBounds = L.latLngBounds(bounds);
           if (isFirstFit || !useViewport) {
-            // fitBounds triggers moveend — keep guard up through the animation
-            map.fitBounds(bounds, { padding: [25, 25], maxZoom: 8, animate: true });
-            window.setTimeout(() => { programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1); }, 700);
-          } else {
-            programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
+            // Only re-fit the viewport on first load or explicit filter/reset actions.
+            // Never re-fit on pan/zoom-triggered reloads — that would reset user navigation.
+            programmaticFit(bounds, { padding: [25, 25], maxZoom: 8 });
           }
-        } else {
-          programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
-          map.setView([20, 0], 2);
+        } else if (!useViewport) {
+          // No results from a global (non-viewport) query → show world view
           lastBounds = null;
+          programmaticSetView([20, 0], 2);
           panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-muted small mb-0">No cameras found for current filters.</p>';
         }
+        // When useViewport=true returns 0 markers: user is looking at an empty area — do NOT reset map.
 
         persistFiltersToUrl();
       } catch (err) {
-        programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
         throw err;
       } finally {
         if (currentFetchController === fetchController) {
@@ -512,7 +523,7 @@
     });
 
     map.on("moveend", () => {
-      if (programmaticMoveDepth > 0) {
+      if (suppressMoveEnd) {
         return;
       }
       scheduleLoadMarkers({ useViewport: true }, 320);
