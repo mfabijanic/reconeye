@@ -267,17 +267,14 @@
 ></script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <script>
+  // Expose Django CSRF token to JavaScript (safe - not a secret, just anti-CSRF)
+  window._csrfToken = "{{ csrf_token }}";
   // Configure HTMX to send Django CSRF token on all mutating requests
-  document.addEventListener("DOMContentLoaded", () => {
-    document.body.addEventListener("htmx:configRequest", (event) => {
-      const method = (event.detail.verb || "").toUpperCase();
-      if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
-        const csrfMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-        if (csrfMatch) {
-          event.detail.headers["X-CSRFToken"] = csrfMatch[1];
-        }
-      }
-    });
+  document.addEventListener("htmx:configRequest", (event) => {
+    const method = (event.detail.verb || "").toUpperCase();
+    if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
+      event.detail.headers["X-CSRFToken"] = window._csrfToken;
+    }
   });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
@@ -593,11 +590,9 @@
       const badge = container.querySelector("#camera-status-badge") ||
                     document.getElementById("camera-status-badge");
       const checkUrl = "/htmx/cameras/" + cameraId + "/check-stream/";
-      const csrfMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-      const csrf = csrfMatch ? csrfMatch[1] : "";
       fetch(checkUrl, {
         method: "POST",
-        headers: { "X-CSRFToken": csrf },
+        headers: { "X-CSRFToken": window._csrfToken || "" },
         credentials: "same-origin",
       })
         .then((r) => r.text())
