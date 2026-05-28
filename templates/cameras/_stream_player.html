@@ -1,0 +1,28 @@
+{% if camera.stream_url and '.m3u8' in camera.stream_url|lower %}
+  <div class="stream-player mb-3">
+    <video
+      class="js-hls-player camera-frame w-100 rounded border border-secondary bg-black"
+      controls
+      playsinline
+      muted
+      autoplay
+      preload="metadata"
+      tabindex="0"
+      data-hls-src="{{ camera.stream_url }}"
+      {% if camera.preview_image %}poster="{{ camera.preview_image }}"{% endif %}
+    ></video>
+    <div class="form-text mt-1">HLS stream · press <kbd>f</kbd> for fullscreen</div>
+  </div>
+{% else %}
+  {% with preview=camera.preview_image|default:camera.stream_url %}
+    {% if preview %}
+      <img
+        class="preview camera-frame mb-3 w-100 rounded border border-secondary"
+        src="{{ preview }}"
+        alt="Camera preview"
+        loading="lazy"
+        onerror="this.onerror=null; this.style.display='none';"
+      />
+    {% endif %}
+  {% endwith %}
+{% endif %}

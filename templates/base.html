@@ -7,17 +7,25 @@
   <script>
     (function () {
       const THEME_KEY = "reconeye-theme";
+      const CAMERA_STYLE_KEY = "reconeye-camera-style";
       let theme = null;
+      let cameraStyle = null;
       try {
         theme = localStorage.getItem(THEME_KEY);
+        cameraStyle = localStorage.getItem(CAMERA_STYLE_KEY);
       } catch (e) {
         theme = null;
+        cameraStyle = null;
       }
       if (theme !== "light" && theme !== "dark") {
         theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       }
+      if (!["subtle", "neon", "max-cyber"].includes(cameraStyle)) {
+        cameraStyle = "subtle";
+      }
       document.documentElement.setAttribute("data-bs-theme", theme);
       document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.setAttribute("data-camera-style", cameraStyle);
     })();
   </script>
   <link
@@ -39,6 +47,8 @@
       --app-border: #30363d;
       --app-link: #58a6ff;
       --app-link-hover: #79c0ff;
+      --app-neon: #00ff9c;
+      --app-neon-soft: rgba(0, 255, 156, 0.35);
     }
     html[data-bs-theme="light"] {
       --app-bg: #f8fafc;
@@ -47,6 +57,41 @@
       --app-border: #d0d7de;
       --app-link: #0969da;
       --app-link-hover: #1f6feb;
+      --app-neon: #00b86b;
+      --app-neon-soft: rgba(0, 184, 107, 0.35);
+    }
+    html[data-camera-style="subtle"] {
+      --camera-frame-border-width: 1px;
+      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 58%, var(--app-border));
+      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 8%, transparent);
+      --camera-frame-glow: 0 0 8px -10px var(--app-neon-soft);
+      --camera-frame-focus-outline-width: 1px;
+      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 72%, white 28%);
+      --camera-frame-focus-glow: 0 0 10px -10px var(--app-neon-soft);
+      --camera-frame-fullscreen-border-width: 1px;
+      --camera-frame-fullscreen-glow: 0 0 22px -4px var(--app-neon-soft);
+    }
+    html[data-camera-style="neon"] {
+      --camera-frame-border-width: 1px;
+      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 74%, var(--app-border));
+      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 14%, transparent);
+      --camera-frame-glow: 0 0 14px -8px var(--app-neon-soft);
+      --camera-frame-focus-outline-width: 1px;
+      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 86%, white 14%);
+      --camera-frame-focus-glow: 0 0 16px -8px var(--app-neon-soft);
+      --camera-frame-fullscreen-border-width: 1px;
+      --camera-frame-fullscreen-glow: 0 0 28px -4px var(--app-neon-soft);
+    }
+    html[data-camera-style="max-cyber"] {
+      --camera-frame-border-width: 1px;
+      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 92%, var(--app-border));
+      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 22%, transparent);
+      --camera-frame-glow: 0 0 18px -6px var(--app-neon-soft);
+      --camera-frame-focus-outline-width: 1px;
+      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 95%, white 5%);
+      --camera-frame-focus-glow: 0 0 20px -7px var(--app-neon-soft);
+      --camera-frame-fullscreen-border-width: 2px;
+      --camera-frame-fullscreen-glow: 0 0 34px -3px var(--app-neon-soft);
     }
     body { background-color: var(--app-bg); color: var(--app-text); }
     .navbar-brand { font-weight: 700; letter-spacing: 1px; }
@@ -72,6 +117,31 @@
     @keyframes badge-pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: .55; }
+    }
+    .camera-style-select {
+      min-width: 9.5rem;
+    }
+    .camera-frame {
+      border: var(--camera-frame-border-width) solid var(--camera-frame-border-color) !important;
+      box-shadow: var(--camera-frame-inset), var(--camera-frame-glow);
+      transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .camera-frame:focus {
+      outline: none;
+      box-shadow: var(--camera-frame-inset), var(--camera-frame-glow);
+    }
+    .camera-frame:focus-visible {
+      outline: var(--camera-frame-focus-outline-width) solid var(--camera-frame-focus-outline-color);
+      outline-offset: 1px;
+      box-shadow: var(--camera-frame-inset), var(--camera-frame-focus-glow);
+    }
+    .camera-frame:fullscreen,
+    .camera-frame:-webkit-full-screen {
+      border: var(--camera-frame-fullscreen-border-width) solid var(--app-neon) !important;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-neon) 35%, transparent),
+                  var(--camera-frame-fullscreen-glow);
+      background: #000;
+      filter: saturate(1.05) contrast(1.03);
     }
   </style>
 </head>
@@ -131,6 +201,14 @@
             <i class="bi bi-moon-stars" id="theme-toggle-icon"></i>
           </button>
         </li>
+        <li class="nav-item me-2 d-flex align-items-center">
+          <i class="bi bi-radioactive text-success me-2" aria-hidden="true"></i>
+          <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="Camera frame profile" title="Camera frame profile">
+            <option value="subtle">Subtle</option>
+            <option value="neon">Neon</option>
+            <option value="max-cyber">Max Cyber</option>
+          </select>
+        </li>
         <li class="nav-item dropdown">
           <button
             class="nav-link dropdown-toggle btn btn-link p-0 border-0 text-decoration-none"
@@ -188,13 +266,17 @@
   crossorigin="anonymous"
 ></script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const THEME_KEY = "reconeye-theme";
+    const CAMERA_STYLE_KEY = "reconeye-camera-style";
     const root = document.documentElement;
     const themeToggleBtn = document.getElementById("theme-toggle");
     const themeToggleIcon = document.getElementById("theme-toggle-icon");
+    const cameraStyleSelect = document.getElementById("camera-style-select");
     const mainNavbar = document.getElementById("main-navbar");
+    const cameraStyleOrder = ["subtle", "neon", "max-cyber"];
 
     const applyTheme = (theme, { persist = true } = {}) => {
       if (theme !== "light" && theme !== "dark") {
@@ -230,10 +312,33 @@
     const currentTheme = root.getAttribute("data-bs-theme") || "dark";
     applyTheme(currentTheme, { persist: false });
 
+    const applyCameraStyle = (style, { persist = true } = {}) => {
+      const normalized = cameraStyleOrder.includes(style) ? style : "subtle";
+      root.setAttribute("data-camera-style", normalized);
+      if (persist) {
+        try {
+          localStorage.setItem(CAMERA_STYLE_KEY, normalized);
+        } catch (e) {
+          // Ignore storage errors.
+        }
+      }
+      if (cameraStyleSelect) {
+        cameraStyleSelect.value = normalized;
+      }
+    };
+
+    applyCameraStyle(root.getAttribute("data-camera-style") || "subtle", { persist: false });
+
     if (themeToggleBtn) {
       themeToggleBtn.addEventListener("click", () => {
         const nextTheme = (root.getAttribute("data-bs-theme") || "dark") === "dark" ? "light" : "dark";
         applyTheme(nextTheme);
+      });
+    }
+
+    if (cameraStyleSelect) {
+      cameraStyleSelect.addEventListener("change", (event) => {
+        applyCameraStyle(event.target.value || "subtle");
       });
     }
 
@@ -291,6 +396,156 @@
       }
     });
   });
+
+  (() => {
+    const HLS_INSTANCE_KEY = "__reconeyeHlsInstance";
+
+    function focusPlayer(video) {
+      if (!video) {
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        try {
+          video.focus({ preventScroll: true });
+        } catch (error) {
+          video.focus();
+        }
+      });
+    }
+
+    function attemptAutoplay(video) {
+      if (!video) {
+        return;
+      }
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+        });
+      }
+    }
+
+    function isFullscreenActiveFor(video) {
+      if (!video) {
+        return false;
+      }
+      return document.fullscreenElement === video || document.webkitFullscreenElement === video;
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+
+    function toggleFullscreen(video) {
+      if (!video) {
+        return;
+      }
+      if (isFullscreenActiveFor(video)) {
+        exitFullscreen();
+        return;
+      }
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      }
+    }
+
+    function bindPlayerKeyboard(video) {
+      if (!video || video.dataset.hlsKeyboardBound === "true") {
+        return;
+      }
+      video.dataset.hlsKeyboardBound = "true";
+      video.addEventListener("keydown", (event) => {
+        if (event.key && event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          toggleFullscreen(video);
+        }
+      });
+      video.addEventListener("dblclick", () => {
+        toggleFullscreen(video);
+      });
+    }
+
+    function destroyHls(video) {
+      const existing = video && video[HLS_INSTANCE_KEY];
+      if (existing && typeof existing.destroy === "function") {
+        existing.destroy();
+      }
+      if (video) {
+        video[HLS_INSTANCE_KEY] = null;
+      }
+    }
+
+    function initHlsPlayers(container = document) {
+      const scope = container instanceof Element || container instanceof Document ? container : document;
+      const players = scope.querySelectorAll("video.js-hls-player[data-hls-src]");
+      players.forEach((video) => {
+        const src = video.dataset.hlsSrc;
+        if (!src || video.dataset.hlsInitialized === "true") {
+          return;
+        }
+
+        destroyHls(video);
+
+        const canUseNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
+        if (canUseNativeHls) {
+          video.src = src;
+          video.dataset.hlsInitialized = "true";
+          bindPlayerKeyboard(video);
+          video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
+          attemptAutoplay(video);
+          focusPlayer(video);
+          return;
+        }
+
+        if (window.Hls && window.Hls.isSupported()) {
+          const hls = new window.Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+          });
+          hls.loadSource(src);
+          hls.attachMedia(video);
+          hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+            attemptAutoplay(video);
+            focusPlayer(video);
+          });
+          video[HLS_INSTANCE_KEY] = hls;
+          video.dataset.hlsInitialized = "true";
+          bindPlayerKeyboard(video);
+          return;
+        }
+
+        const fallback = document.createElement("div");
+        fallback.className = "alert alert-warning py-2 px-3 small mt-2";
+        fallback.textContent = "This browser cannot play HLS streams inline. Use the stream link instead.";
+        video.insertAdjacentElement("afterend", fallback);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => initHlsPlayers(document));
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+      initHlsPlayers(event.target);
+    });
+    document.body.addEventListener("htmx:beforeSwap", (event) => {
+      const scope = event.target instanceof Element ? event.target : null;
+      if (!scope) {
+        return;
+      }
+      scope.querySelectorAll("video.js-hls-player").forEach((video) => {
+        destroyHls(video);
+        video.dataset.hlsInitialized = "false";
+      });
+    });
+
+    window.ReconEye = window.ReconEye || {};
+    window.ReconEye.initHlsPlayers = initHlsPlayers;
+  })();
 </script>
 {% block extra_js %}{% endblock %}
 </body>

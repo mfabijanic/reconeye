@@ -12,17 +12,7 @@
   </div>
 </div>
 
-{% with preview=camera.preview_image|default:camera.stream_url %}
-  {% if preview %}
-    <img
-      class="preview mb-3"
-      src="{{ preview }}"
-      alt="Camera preview"
-      loading="lazy"
-      onerror="this.onerror=null; this.style.display='none';"
-    />
-  {% endif %}
-{% endwith %}
+{% include "cameras/_stream_player.html" with camera=camera %}
 
 <ul class="list-unstyled small mb-3">
   <li><strong>Source:</strong> {{ camera.get_source_type_display }}</li>
