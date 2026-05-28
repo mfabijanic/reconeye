@@ -649,6 +649,7 @@
             focusPlayer(video);
           });
           let networkErrorCount = 0;
+          let mediaErrorCount = 0;
           hls.on(window.Hls.Events.ERROR, (event, data) => {
             if (!data || !data.fatal) {
               return;
@@ -660,12 +661,19 @@
                 return;
               }
               // 3+ consecutive network failures — stream is likely truly offline
+              triggerStreamCheck(video);
             } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              hls.recoverMediaError();
-              return;
+              mediaErrorCount += 1;
+              if (mediaErrorCount <= 1) {
+                hls.recoverMediaError();
+                return;
+              }
+              // 2+ media errors — segments missing or corrupted
+              triggerStreamCheck(video);
+            } else {
+              // Other fatal errors
+              triggerStreamCheck(video);
             }
-            // Unrecoverable: trigger background check + re-init
-            triggerStreamCheck(video);
             destroyHls(video);
             video.dataset.hlsInitialized = "false";
             window.setTimeout(() => {

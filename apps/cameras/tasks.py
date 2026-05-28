@@ -52,7 +52,7 @@ def refresh_camera_status(self) -> dict:
 def check_single_camera_status(self, camera_id: int) -> dict:
     """
     Check stream_url availability for a single camera.
-    For HLS streams, attempts to fetch and validate the playlist.
+    For HLS streams, attempts to fetch, validate playlist, and verify segment URLs.
     Updates is_online flag and returns detailed result.
     """
     from apps.cameras.models import Camera
@@ -74,17 +74,45 @@ def check_single_camera_status(self, camera_id: int) -> dict:
         import httpx
 
         with httpx.Client(timeout=8, follow_redirects=True) as client:
-            # For HLS, attempt to fetch playlist and validate
+            # For HLS, attempt to fetch playlist and validate segments
             if ".m3u8" in camera.stream_url.lower():
                 try:
                     resp = client.get(camera.stream_url)
                     if resp.status_code == 200:
                         content = resp.text.strip()
                         # Basic HLS playlist validation
-                        if content.startswith("#EXTM3U"):
-                            online = True
-                        else:
+                        if not content.startswith("#EXTM3U"):
                             error_msg = "Invalid HLS playlist format"
+                        else:
+                            # Try to extract and validate a segment URL from playlist
+                            lines = content.split("\n")
+                            playlist_url_base = camera.stream_url.rsplit("/", 1)[0]
+                            segment_url = None
+                            
+                            for line in lines:
+                                line = line.strip()
+                                if line and not line.startswith("#"):
+                                    # This should be a segment file reference
+                                    if line.startswith("http"):
+                                        segment_url = line
+                                    else:
+                                        segment_url = f"{playlist_url_base}/{line}"
+                                    break
+                            
+                            if segment_url:
+                                # Try to fetch first segment to confirm stream is actually streaming
+                                try:
+                                    seg_resp = client.head(segment_url, timeout=5)
+                                    if seg_resp.status_code < 400:
+                                        online = True
+                                    else:
+                                        error_msg = f"Segment HTTP {seg_resp.status_code}"
+                                except Exception as seg_exc:
+                                    error_msg = f"Segment unreachable: {type(seg_exc).__name__}"
+                            else:
+                                # No segments found (might be live stream without segments in playlist)
+                                # Assume online if playlist is valid
+                                online = True
                     else:
                         error_msg = f"HTTP {resp.status_code}"
                 except httpx.ReadTimeout:
