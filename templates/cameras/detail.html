@@ -4,7 +4,7 @@
 {% block content %}
 <div class="row">
   <div class="col-md-12">
-    <h5><i class="bi bi-camera-video me-2 text-info"></i>{{ camera.title|default:"Camera #"|add:camera.pk|stringformat:"s" }}</h5>
+    <h5><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
     {% include "cameras/_stream_player.html" with camera=camera %}
     <table class="table table-sm table-bordered mt-3">
       <tr><th>Source</th><td>{{ camera.get_source_type_display }}</td></tr>

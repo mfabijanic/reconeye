@@ -86,6 +86,22 @@ class CameraDetailView(LoginRequiredMixin, DetailView):
     template_name = "cameras/detail.html"
     context_object_name = "camera"
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        camera = self.get_object()
+        
+        # If title looks like a stream ID (e.g., "hr_pag03"), use city as display title
+        title = camera.title or ""
+        if title and any(title.lower().startswith(f"{code.lower()}_") for code in ["BA", "DO", "ES", "GR", "HR", "IE", "IT", "MK", "NL", "SI"]):
+            if camera.city:
+                ctx["display_title"] = f"{camera.city}, {camera.country}" if camera.country else camera.city
+            else:
+                ctx["display_title"] = title
+        else:
+            ctx["display_title"] = title or f"Camera #{camera.pk}"
+        
+        return ctx
+
 
 class CameraMapView(LoginRequiredMixin, TemplateView):
     template_name = "cameras/map.html"
