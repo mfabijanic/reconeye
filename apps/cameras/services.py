@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+import re
 from typing import Any
 
 from django.db import models, transaction
@@ -34,10 +35,20 @@ def build_camera_display_title(
     raw_country = (country or "").strip()
 
     if source_type == SourceType.WHATSUPCAMS and is_whatsupcams_stream_id(raw_title):
+        stream_slug = raw_title.split("_", 1)[1] if "_" in raw_title else raw_title
+        stream_slug = re.sub(r"\d+", "", stream_slug).strip("_- ")
+        derived_place = re.sub(r"[_\-]+", " ", stream_slug).strip().title() if stream_slug else ""
+
         if raw_city and raw_country:
             return f"{raw_city}, {raw_country}"
         if raw_city:
             return raw_city
+        if derived_place and raw_country:
+            return f"{derived_place}, {raw_country}"
+        if derived_place:
+            return derived_place
+        if raw_country:
+            return raw_country
 
     if raw_title:
         return raw_title
