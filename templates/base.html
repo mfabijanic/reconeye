@@ -266,6 +266,20 @@
   crossorigin="anonymous"
 ></script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script>
+  // Configure HTMX to send Django CSRF token on all mutating requests
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.addEventListener("htmx:configRequest", (event) => {
+      const method = (event.detail.verb || "").toUpperCase();
+      if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
+        const csrfMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (csrfMatch) {
+          event.detail.headers["X-CSRFToken"] = csrfMatch[1];
+        }
+      }
+    });
+  });
+</script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
