@@ -90,15 +90,20 @@ class CameraDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         camera = self.get_object()
         
-        # If title looks like a stream ID (e.g., "hr_pag03"), use city as display title
-        title = camera.title or ""
-        if title and any(title.lower().startswith(f"{code.lower()}_") for code in ["BA", "DO", "ES", "GR", "HR", "IE", "IT", "MK", "NL", "SI"]):
-            if camera.city:
-                ctx["display_title"] = f"{camera.city}, {camera.country}" if camera.country else camera.city
+        # For WhatsUpCams: prefer city over title if title looks like stream ID
+        if camera.source_type == SourceType.WHATSUPCAMS:
+            title = camera.title or ""
+            # If title is a stream ID (e.g., "hr_pag03"), use city instead
+            if title and any(title.lower().startswith(f"{code.lower()}_") for code in ["BA", "DO", "ES", "GR", "HR", "IE", "IT", "MK", "NL", "SI"]):
+                ctx["display_title"] = f"{camera.city}, {camera.country}" if camera.city and camera.country else camera.city or title
+                ctx["stream_id"] = title
             else:
-                ctx["display_title"] = title
+                ctx["display_title"] = title or f"Camera #{camera.pk}"
+                ctx["stream_id"] = camera.source_payload.get("stream_id") if camera.source_payload else None
         else:
-            ctx["display_title"] = title or f"Camera #{camera.pk}"
+            # For other sources, use title as is
+            ctx["display_title"] = camera.title or f"Camera #{camera.pk}"
+            ctx["stream_id"] = None
         
         return ctx
 
