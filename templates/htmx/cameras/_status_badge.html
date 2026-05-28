@@ -1,0 +1,19 @@
+{% if checking %}
+<span id="camera-status-badge"
+  hx-get="{% url 'cameras_htmx:check_stream' camera.pk %}?check_started={{ check_started }}"
+  hx-trigger="every 3s"
+  hx-swap="outerHTML"
+>
+  <span class="badge text-bg-warning">
+    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Checking...
+  </span>
+</span>
+{% else %}
+<span id="camera-status-badge">
+  {% if camera.is_online %}
+    <span class="badge badge-online">Online</span>
+  {% else %}
+    <span class="badge badge-offline">Offline</span>
+  {% endif %}
+</span>
+{% endif %}

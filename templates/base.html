@@ -568,6 +568,38 @@
       }
     }
 
+    function triggerStreamCheck(video) {
+      const cameraId = video.dataset.cameraId;
+      if (!cameraId) {
+        return;
+      }
+      const checkUrl = "/htmx/cameras/" + cameraId + "/check-stream/";
+      const csrfMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      const csrf = csrfMatch ? csrfMatch[1] : "";
+      fetch(checkUrl, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrf },
+        credentials: "same-origin",
+      })
+        .then((r) => r.text())
+        .then((html) => {
+          const badge = document.getElementById("camera-status-badge");
+          if (!badge) {
+            return;
+          }
+          const tmp = document.createElement("span");
+          tmp.innerHTML = html.trim();
+          const newEl = tmp.firstElementChild;
+          if (newEl) {
+            badge.replaceWith(newEl);
+            if (window.htmx) {
+              window.htmx.process(newEl);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
     function destroyHls(video) {
       const existing = video && video[HLS_INSTANCE_KEY];
       if (existing && typeof existing.destroy === "function") {
@@ -612,18 +644,24 @@
             attemptAutoplay(video);
             focusPlayer(video);
           });
+          let networkErrorCount = 0;
           hls.on(window.Hls.Events.ERROR, (event, data) => {
             if (!data || !data.fatal) {
               return;
             }
             if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-              hls.startLoad();
-              return;
-            }
-            if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              networkErrorCount += 1;
+              if (networkErrorCount <= 2) {
+                hls.startLoad();
+                return;
+              }
+              // 3+ consecutive network failures — stream is likely truly offline
+            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
               hls.recoverMediaError();
               return;
             }
+            // Unrecoverable: trigger background check + re-init
+            triggerStreamCheck(video);
             destroyHls(video);
             video.dataset.hlsInitialized = "false";
             window.setTimeout(() => {

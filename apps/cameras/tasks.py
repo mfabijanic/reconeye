@@ -46,6 +46,44 @@ def refresh_camera_status(self) -> dict:
 
 @shared_task(
     bind=True,
+    name="reconeye.cameras.check_single_camera_status",
+    max_retries=0,
+)
+def check_single_camera_status(self, camera_id: int) -> dict:
+    """Check stream_url availability for a single camera and update is_online flag."""
+    from apps.cameras.models import Camera
+
+    try:
+        camera = Camera.objects.get(pk=camera_id, is_active=True)
+    except Camera.DoesNotExist:
+        logger.warning("check_single_camera_status: camera %d not found", camera_id)
+        return {"error": "not_found"}
+
+    if not camera.stream_url:
+        logger.info("check_single_camera_status: camera %d has no stream_url, skipping", camera_id)
+        return {"skipped": True, "reason": "no_stream_url"}
+
+    try:
+        import httpx
+
+        with httpx.Client(timeout=6, follow_redirects=True) as client:
+            resp = client.head(camera.stream_url)
+        online = resp.status_code < 400
+    except Exception as exc:
+        logger.info("check_single_camera_status: camera %d unreachable: %s", camera_id, exc)
+        online = False
+
+    if online:
+        camera.mark_online()
+    else:
+        camera.mark_offline()
+
+    logger.info("check_single_camera_status: camera %d is_online=%s", camera_id, online)
+    return {"camera_id": camera_id, "is_online": online}
+
+
+@shared_task(
+    bind=True,
     name="reconeye.cameras.cleanup_old_logs",
     max_retries=2,
 )

@@ -9,6 +9,7 @@
       preload="metadata"
       tabindex="0"
       data-hls-src="{{ camera.stream_url }}"
+      data-camera-id="{{ camera.pk }}"
       {% if camera.source_type == "WHATSUPCAMS" %}data-disable-pause="true"{% endif %}
       {% if camera.preview_image %}poster="{{ camera.preview_image }}"{% endif %}
     ></video>

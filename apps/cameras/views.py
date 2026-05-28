@@ -225,6 +225,49 @@ class CameraLocationSuggestionsView(LoginRequiredMixin, View):
         return JsonResponse({"suggestions": suggestions})
 
 
+class HtmxCameraCheckStreamView(LoginRequiredMixin, View):
+    """
+    POST: dispatch background stream check, return 'Checking...' badge with HTMX polling.
+    GET:  return current status badge; stops polling once last_checked >= check_started.
+    """
+
+    def post(self, request, pk: int, *args, **kwargs):
+        from apps.cameras.tasks import check_single_camera_status
+
+        camera = get_object_or_404(Camera, pk=pk, is_active=True)
+        check_started = int(timezone.now().timestamp())
+        check_single_camera_status.delay(pk)
+        logger.info("HtmxCameraCheckStreamView: dispatched check for camera %d", pk)
+        html = render_to_string(
+            "htmx/cameras/_status_badge.html",
+            {"camera": camera, "checking": True, "check_started": check_started},
+            request=request,
+        )
+        return HttpResponse(html)
+
+    def get(self, request, pk: int, *args, **kwargs):
+        camera = get_object_or_404(Camera, pk=pk, is_active=True)
+        check_started_str = request.GET.get("check_started", "")
+        checking = False
+        if check_started_str:
+            try:
+                check_started_ts = int(check_started_str)
+                if camera.last_checked is None or int(camera.last_checked.timestamp()) < check_started_ts:
+                    checking = True  # Task not finished yet — keep polling
+            except (ValueError, TypeError):
+                pass
+        html = render_to_string(
+            "htmx/cameras/_status_badge.html",
+            {"camera": camera, "checking": checking, "check_started": check_started_str},
+            request=request,
+        )
+        return HttpResponse(html)
+
+
+import logging as _log
+logger = _log.getLogger(__name__)
+
+
 class HtmxCameraListView(LoginRequiredMixin, ListView):
     """Returns only the camera table partial for HTMX swaps."""
 

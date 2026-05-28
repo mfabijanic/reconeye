@@ -2,7 +2,7 @@
 {% block title %}{{ camera }} — ReconEye{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row" data-camera-id="{{ camera.pk }}">
   <div class="col-md-12">
     <h5><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
     {% include "cameras/_stream_player.html" with camera=camera %}
@@ -12,8 +12,7 @@
       <tr><th>Country</th><td>{{ camera.country|default:"—" }}</td></tr>
       <tr><th>City</th><td>{{ camera.city|default:"—" }}</td></tr>
       <tr><th>Status</th><td>
-        {% if camera.is_online %}<span class="badge badge-online">Online</span>
-        {% else %}<span class="badge badge-offline">Offline</span>{% endif %}
+        {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
       </td></tr>
       <tr><th>Partial metadata</th><td>{{ camera.has_partial_metadata|yesno:"Yes,No" }}</td></tr>
       <tr><th>Stream URL</th><td>
