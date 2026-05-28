@@ -78,6 +78,16 @@ def _location_override_label(value: Any) -> str:
     return ""
 
 
+def _location_override_search_query(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (list, tuple)) and value:
+        first = value[0]
+        if isinstance(first, str):
+            return first.strip()
+    return ""
+
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=12))
 async def _fetch_json(client: httpx.AsyncClient, url: str) -> Any:
     async with STREAMS_LIMITER:
@@ -132,8 +142,17 @@ def _build_location_candidates(
     candidates: list[str] = []
     prefix_overrides, location_overrides = _get_effective_mappings()
 
-    exact_label = _location_override_label(location_overrides.get(stream_id))
-    if exact_label:
+    override_value = location_overrides.get(stream_id)
+    exact_search_query = _location_override_search_query(override_value)
+    exact_label = _location_override_label(override_value)
+
+    # Prefer search-oriented override (usually first tuple value) for geocoding precision.
+    if exact_search_query:
+        candidates.append(
+            f"{exact_search_query}, {country_name}" if country_name else exact_search_query
+        )
+    # Keep friendly label as secondary geocoding candidate.
+    if exact_label and exact_label.lower() != exact_search_query.lower():
         candidates.append(f"{exact_label}, {country_name}" if country_name else exact_label)
 
     slug_place = _slug_place_from_stream_id(stream_id, country_code)

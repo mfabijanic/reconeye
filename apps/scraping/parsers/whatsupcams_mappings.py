@@ -164,7 +164,7 @@ WUC_STREAM_LOCATION_OVERRIDES = {
     "hr_ogulin04": ["ogulin panorama", "Ogulin"],
     "hr_opatija01": ["opatija panorama from the hotel milenij", "Hotel Milenij, Opatija"],
     "hr_opuzen1": ["neretva kite center kiteboarding opuzen", "Neretva, Opuzen"],
-    "hr_pag01": ["pag katine bridge", "Pag"],
+    "hr_pag01": ["most katine pag", "Pag"],
     "hr_pag02": ["pag main square and church of st mary", "Pag"],
     "hr_pag03": ["pag town marina pag", "Luka Pag"],
     "hr_pag04": ["pag beach pag", "Pag"],
