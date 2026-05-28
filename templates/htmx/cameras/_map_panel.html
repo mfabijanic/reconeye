@@ -1,11 +1,7 @@
-<div class="d-flex justify-content-between align-items-start mb-2">
+<div class="d-flex justify-content-between align-items-start mb-2" data-camera-id="{{ camera.pk }}">
   <h6 class="mb-0">{{ display_title|default:camera.title|default:"Camera" }}</h6>
   <div class="d-flex flex-column align-items-end gap-1">
-    {% if camera.is_online %}
-      <span class="badge badge-online">Online</span>
-    {% else %}
-      <span class="badge badge-offline">Offline</span>
-    {% endif %}
+    {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
     {% if status_is_stale %}
       <span class="badge text-bg-warning">Stale status</span>
     {% endif %}

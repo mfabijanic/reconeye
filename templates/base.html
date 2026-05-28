@@ -573,6 +573,11 @@
       if (!cameraId) {
         return;
       }
+      // Find the status badge in the same data-camera-id container as the video,
+      // so this works on both the detail page and the map panel.
+      const container = video.closest("[data-camera-id]") || document;
+      const badge = container.querySelector("#camera-status-badge") ||
+                    document.getElementById("camera-status-badge");
       const checkUrl = "/htmx/cameras/" + cameraId + "/check-stream/";
       const csrfMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
       const csrf = csrfMatch ? csrfMatch[1] : "";
@@ -583,7 +588,6 @@
       })
         .then((r) => r.text())
         .then((html) => {
-          const badge = document.getElementById("camera-status-badge");
           if (!badge) {
             return;
           }
