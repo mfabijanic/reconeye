@@ -497,13 +497,42 @@
       }
       video.dataset.pauseGuardBound = "true";
 
-      video.addEventListener("pause", () => {
-        if (document.hidden || video.ended) {
+      let resumeTimer = null;
+      const resumeIfNeeded = () => {
+        if (document.hidden || video.ended || !video.paused) {
           return;
         }
+        attemptAutoplay(video);
+      };
+
+      // Intercept direct clicks on the video surface so they don't toggle pause.
+      video.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         window.requestAnimationFrame(() => {
-          attemptAutoplay(video);
+          resumeIfNeeded();
         });
+      }, true);
+
+      video.addEventListener("pause", () => {
+        if (resumeTimer) {
+          window.clearTimeout(resumeTimer);
+        }
+        resumeTimer = window.setTimeout(() => {
+          resumeIfNeeded();
+        }, 80);
+      });
+
+      video.addEventListener("stalled", () => {
+        window.setTimeout(() => {
+          resumeIfNeeded();
+        }, 120);
+      });
+
+      video.addEventListener("waiting", () => {
+        window.setTimeout(() => {
+          resumeIfNeeded();
+        }, 120);
       });
     }
 
@@ -582,6 +611,24 @@
           hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
             attemptAutoplay(video);
             focusPlayer(video);
+          });
+          hls.on(window.Hls.Events.ERROR, (event, data) => {
+            if (!data || !data.fatal) {
+              return;
+            }
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+              hls.startLoad();
+              return;
+            }
+            if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              hls.recoverMediaError();
+              return;
+            }
+            destroyHls(video);
+            video.dataset.hlsInitialized = "false";
+            window.setTimeout(() => {
+              initHlsPlayers(video.parentElement || document);
+            }, 250);
           });
           video[HLS_INSTANCE_KEY] = hls;
           video.dataset.hlsInitialized = "true";
