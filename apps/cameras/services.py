@@ -13,6 +13,45 @@ from apps.cameras.models import Camera, CameraCheckLog, SourceType
 logger = logging.getLogger(__name__)
 
 CAMERA_LOG_RETENTION_DAYS = 30
+WUC_STREAM_ID_PREFIXES = ("ba_", "do_", "es_", "gr_", "hr_", "ie_", "it_", "mk_", "nl_", "si_")
+
+
+def is_whatsupcams_stream_id(value: str | None) -> bool:
+    text = (value or "").strip().lower()
+    return bool(text) and text.startswith(WUC_STREAM_ID_PREFIXES)
+
+
+def build_camera_display_title(
+    *,
+    source_type: str,
+    title: str | None,
+    city: str | None,
+    country: str | None,
+    camera_id: int | None = None,
+) -> str:
+    raw_title = (title or "").strip()
+    raw_city = (city or "").strip()
+    raw_country = (country or "").strip()
+
+    if source_type == SourceType.WHATSUPCAMS and is_whatsupcams_stream_id(raw_title):
+        if raw_city and raw_country:
+            return f"{raw_city}, {raw_country}"
+        if raw_city:
+            return raw_city
+
+    if raw_title:
+        return raw_title
+
+    if camera_id is not None:
+        return f"Camera #{camera_id}"
+    return "Camera"
+
+
+def extract_camera_stream_id(*, source_type: str, title: str | None) -> str | None:
+    raw_title = (title or "").strip()
+    if source_type == SourceType.WHATSUPCAMS and is_whatsupcams_stream_id(raw_title):
+        return raw_title
+    return None
 
 
 def get_location_suggestions(query: str, limit: int = 20) -> list[dict[str, Any]]:
@@ -160,7 +199,7 @@ def get_camera_map_markers(
         "map:"
         f"src={source_type}:country={country}:online={is_online}:"
         f"min_lat={min_lat}:max_lat={max_lat}:min_lng={min_lng}:max_lng={max_lng}:"
-        f"limit={limit}:preview={include_preview}",
+        f"limit={limit}:preview={include_preview}:display=v2",
     )
     cached = cache.get(cache_key)
     if cached is not None:
@@ -211,6 +250,18 @@ def get_camera_map_markers(
         fields.append("preview_image")
 
     markers = list(qs.values(*fields)[:limit])
+    for marker in markers:
+        marker["display_title"] = build_camera_display_title(
+            source_type=str(marker.get("source_type") or ""),
+            title=str(marker.get("title") or ""),
+            city=str(marker.get("city") or ""),
+            country=str(marker.get("country") or ""),
+            camera_id=marker.get("id"),
+        )
+        marker["stream_id"] = extract_camera_stream_id(
+            source_type=str(marker.get("source_type") or ""),
+            title=str(marker.get("title") or ""),
+        )
     payload = {
         "markers": markers,
         "count": len(markers),

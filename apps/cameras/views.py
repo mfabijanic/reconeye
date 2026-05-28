@@ -12,7 +12,12 @@ from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
 from apps.cameras.models import Camera, MapUISettings, SourceType
-from apps.cameras.services import get_camera_map_markers, get_country_choices
+from apps.cameras.services import (
+    build_camera_display_title,
+    extract_camera_stream_id,
+    get_camera_map_markers,
+    get_country_choices,
+)
 from apps.users.models import UserMapSettings
 
 
@@ -89,22 +94,19 @@ class CameraDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         camera = self.get_object()
-        
-        # For WhatsUpCams: prefer city over title if title looks like stream ID
-        if camera.source_type == SourceType.WHATSUPCAMS:
-            title = camera.title or ""
-            # If title is a stream ID (e.g., "hr_pag03"), use city instead
-            if title and any(title.lower().startswith(f"{code.lower()}_") for code in ["BA", "DO", "ES", "GR", "HR", "IE", "IT", "MK", "NL", "SI"]):
-                ctx["display_title"] = f"{camera.city}, {camera.country}" if camera.city and camera.country else camera.city or title
-                ctx["stream_id"] = title
-            else:
-                ctx["display_title"] = title or f"Camera #{camera.pk}"
-                ctx["stream_id"] = camera.source_payload.get("stream_id") if camera.source_payload else None
-        else:
-            # For other sources, use title as is
-            ctx["display_title"] = camera.title or f"Camera #{camera.pk}"
-            ctx["stream_id"] = None
-        
+
+        ctx["display_title"] = build_camera_display_title(
+            source_type=camera.source_type,
+            title=camera.title,
+            city=camera.city,
+            country=camera.country,
+            camera_id=camera.pk,
+        )
+        ctx["stream_id"] = extract_camera_stream_id(
+            source_type=camera.source_type,
+            title=camera.title,
+        )
+
         return ctx
 
 
@@ -192,6 +194,17 @@ class HtmxCameraMapPanelView(LoginRequiredMixin, View):
             "htmx/cameras/_map_panel.html",
             {
                 "camera": camera,
+                "display_title": build_camera_display_title(
+                    source_type=camera.source_type,
+                    title=camera.title,
+                    city=camera.city,
+                    country=camera.country,
+                    camera_id=camera.pk,
+                ),
+                "stream_id": extract_camera_stream_id(
+                    source_type=camera.source_type,
+                    title=camera.title,
+                ),
                 "status_is_stale": status_is_stale,
                 "status_stale_minutes": map_settings["status_stale_minutes"],
             },

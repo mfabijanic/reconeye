@@ -324,7 +324,7 @@
     }
 
     function popupContent(camera) {
-      const title = esc(camera.title || `Camera #${camera.id}`);
+      const title = esc(camera.display_title || camera.title || `Camera #${camera.id}`);
       const country = esc(camera.country || "Unknown");
       const city = esc(camera.city || "-");
       const preview = esc(camera.preview_image || "");
