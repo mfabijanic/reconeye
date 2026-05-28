@@ -254,13 +254,27 @@ class HtmxCameraCheckStreamView(LoginRequiredMixin, View):
         camera = get_object_or_404(Camera, pk=pk, is_active=True)
         check_started_str = request.GET.get("check_started", "")
         checking = False
+        MAX_POLL_SECONDS = 30  # stop polling after 30 s regardless of task state
         if check_started_str:
             try:
                 check_started_ts = int(check_started_str)
-                if camera.last_checked is None or int(camera.last_checked.timestamp()) < check_started_ts:
+                now_ts = int(timezone.now().timestamp())
+                elapsed = now_ts - check_started_ts
+                if elapsed <= MAX_POLL_SECONDS and (
+                    camera.last_checked is None
+                    or int(camera.last_checked.timestamp()) < check_started_ts
+                ):
                     checking = True  # Task not finished yet — keep polling
+                elif elapsed > MAX_POLL_SECONDS:
+                    logger.warning(
+                        "HtmxCameraCheckStreamView: polling timed out for camera %d after %ds",
+                        pk,
+                        elapsed,
+                    )
             except (ValueError, TypeError):
                 pass
+        # Re-fetch from DB to get fresh is_online / last_checked after task completes
+        camera.refresh_from_db()
         html = render_to_string(
             "htmx/cameras/_status_badge.html",
             {"camera": camera, "checking": checking, "check_started": check_started_str},
