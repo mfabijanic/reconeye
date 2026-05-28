@@ -212,6 +212,24 @@
     });
     map.addLayer(clusterLayer);
 
+    const dataUrl = "{% url 'cameras:map_data' %}";
+    const panelUrlTemplate = "{% url 'cameras_htmx:map_panel' 0 %}";
+    const panelEl = document.getElementById("camera-panel");
+    const countEl = document.getElementById("map-count");
+    const noticeEl = document.getElementById("map-notice");
+    const loadingEl = document.getElementById("map-loading");
+    const formEl = document.getElementById("map-filters");
+    const resetEl = document.getElementById("reset-map-filters");
+    const fitBtnEl = document.getElementById("fit-map");
+    const locateBtnEl = document.getElementById("locate-me");
+    let lastBounds = null;
+    let isProgrammaticMapMove = false;
+    let currentFetchController = null;
+    let moveDebounceHandle = null;
+    const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
+    const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
+    const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
+
     // Handle cluster hover to open/close popups
     clusterLayer.on('clustermouseover', (e) => {
       const cluster = e.layer;
@@ -238,24 +256,6 @@
         cluster.closePopup();
       });
     }
-
-    const dataUrl = "{% url 'cameras:map_data' %}";
-    const panelUrlTemplate = "{% url 'cameras_htmx:map_panel' 0 %}";
-    const panelEl = document.getElementById("camera-panel");
-    const countEl = document.getElementById("map-count");
-    const noticeEl = document.getElementById("map-notice");
-    const loadingEl = document.getElementById("map-loading");
-    const formEl = document.getElementById("map-filters");
-    const resetEl = document.getElementById("reset-map-filters");
-    const fitBtnEl = document.getElementById("fit-map");
-    const locateBtnEl = document.getElementById("locate-me");
-    let lastBounds = null;
-    let isProgrammaticMapMove = false;
-    let currentFetchController = null;
-    let moveDebounceHandle = null;
-    const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
-    const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
-    const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
 
     function getPanelUrl(cameraId) {
       return panelUrlTemplate.replace("/0/", `/${cameraId}/`);
