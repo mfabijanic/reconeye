@@ -105,3 +105,52 @@ class ScrapeJob(models.Model):
         self.save(
             update_fields=["total_found", "total_processed", "total_new", "total_updated"]
         )
+
+
+class GeoLocationProvider(models.TextChoices):
+    NOMINATIM = "NOMINATIM", "OpenStreetMap Nominatim"
+
+
+class GeoLocationCache(models.Model):
+    provider = models.CharField(
+        max_length=32,
+        choices=GeoLocationProvider.choices,
+        default=GeoLocationProvider.NOMINATIM,
+        db_index=True,
+    )
+    query = models.CharField(max_length=255)
+    normalized_query = models.CharField(max_length=255)
+    country_code = models.CharField(max_length=2, blank=True, db_index=True)
+
+    is_hit = models.BooleanField(default=False)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    display_name = models.CharField(max_length=512, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    region = models.CharField(max_length=120, blank=True)
+    zip_code = models.CharField(max_length=20, blank=True)
+
+    raw_payload = models.JSONField(default=dict)
+    hits = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Geo Location Cache"
+        verbose_name_plural = "Geo Location Cache"
+        ordering = ["-last_used_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider", "normalized_query", "country_code"],
+                name="uniq_geo_cache_provider_query_country",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["provider", "normalized_query", "country_code"]),
+            models.Index(fields=["last_used_at"]),
+        ]
+
+    def __str__(self) -> str:
+        suffix = f" [{self.country_code}]" if self.country_code else ""
+        return f"{self.provider}: {self.query}{suffix}"

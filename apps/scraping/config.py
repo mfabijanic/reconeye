@@ -71,6 +71,20 @@ DEFAULT_INSECAM_COUNTRY_CODES: tuple[str, ...] = (
     "-",   # Unknown / unresolved geolocation (7)
 )
 
+# WhatsUpCams countries enabled in original OpenEyes wuc branch.
+DEFAULT_WHATSUPCAMS_COUNTRY_CODES: tuple[str, ...] = (
+    "BA",
+    "DO",
+    "ES",
+    "GR",
+    "HR",
+    "IE",
+    "IT",
+    "MK",
+    "NL",
+    "SI",
+)
+
 
 def get_insecam_country_codes() -> list[str]:
     configured = getattr(settings, "INSECAM_COUNTRY_CODES", DEFAULT_INSECAM_COUNTRY_CODES)
@@ -103,6 +117,29 @@ _COUNTRY_NAMES: dict[str, str] = {
     "PA": "Panama", "BD": "Bangladesh", "AM": "Armenia", "SG": "Singapore",
     "NI": "Nicaragua", "CO": "Colombia", "-": "Unknown",
 }
+
+
+def get_whatsupcams_country_codes() -> list[str]:
+    configured = getattr(settings, "WHATSUPCAMS_COUNTRY_CODES", DEFAULT_WHATSUPCAMS_COUNTRY_CODES)
+    seen: set[str] = set()
+    result: list[str] = []
+    for code in configured:
+        normalized = str(code).strip().upper()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(normalized)
+    return result
+
+
+def get_whatsupcams_countries_with_labels() -> list[tuple[str, str]]:
+    return [
+        (code, _COUNTRY_NAMES.get(code, code))
+        for code in get_whatsupcams_country_codes()
+    ]
+
+
+def is_allowed_whatsupcams_country(code: str) -> bool:
+    return code.strip().upper() in set(get_whatsupcams_country_codes())
 
 
 def get_insecam_countries_with_labels() -> list[tuple[str, str]]:

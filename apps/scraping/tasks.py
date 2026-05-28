@@ -81,10 +81,14 @@ def scrape_insecam_job(self, job_id: int) -> dict:
     max_retries=2,
     default_retry_delay=300,
 )
-def scrape_whatsupcams(self) -> dict:
+def scrape_whatsupcams(self, country_code: str = "") -> dict:
     from apps.cameras.models import SourceType
 
-    return _create_and_run(SourceType.WHATSUPCAMS, self)
+    return _create_and_run(
+        SourceType.WHATSUPCAMS,
+        self,
+        target_country_code=country_code.strip().upper(),
+    )
 
 
 @shared_task(

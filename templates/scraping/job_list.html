@@ -2,20 +2,26 @@
 {% block title %}Scrape Jobs — ReconEye{% endblock %}
 
 {% block content %}
+
+{# Hidden JSON data for JS country switcher #}
+<script id="insecam-countries-data" type="application/json">
+  [{"value": "", "label": "Choose country…", "required": true}{% for code, label in insecam_countries %}, {"value": "{{ code }}", "label": "{{ label }} ({{ code }})"}{% endfor %}]
+</script>
+<script id="wuc-countries-data" type="application/json">
+  [{"value": "", "label": "All countries (optional)…", "required": false}{% for code, label in whatsupcams_countries %}, {"value": "{{ code }}", "label": "{{ label }} ({{ code }})"}{% endfor %}]
+</script>
+
 <div class="row mb-3 align-items-center">
   <div class="col"><h4><i class="bi bi-arrow-repeat me-2 text-info"></i>Scrape Jobs</h4></div>
   <div class="col-auto">
-    <form class="d-flex gap-2 align-items-center" method="post" action="{% url 'scraping:trigger' %}">
+    <form class="d-flex gap-2 align-items-center" method="post" action="{% url 'scraping:trigger' %}" id="trigger-scrape-form">
       {% csrf_token %}
-      <select name="source_type" class="form-select form-select-sm">
+      <select name="source_type" id="trigger-source-type" class="form-select form-select-sm">
         <option value="INSECAM">Insecam</option>
         <option value="WHATSUPCAMS">WhatsUpCams</option>
       </select>
-      <select name="insecam_country_code" class="form-select form-select-sm">
-        <option value="">Insecam country…</option>
-        {% for code, label in insecam_countries %}
-          <option value="{{ code }}">{{ label }} ({{ code }})</option>
-        {% endfor %}
+      <select name="country_code" id="trigger-country-code" class="form-select form-select-sm" style="min-width:200px">
+        {# Options populated by JS on load and on source_type change #}
       </select>
       <button type="submit" class="btn btn-sm btn-success">
         <i class="bi bi-play-fill me-1"></i>Trigger scrape
@@ -29,15 +35,15 @@
   <div class="col-auto">
     <select name="source" class="form-select form-select-sm">
       <option value="">All sources</option>
-      <option value="INSECAM">Insecam</option>
-      <option value="WHATSUPCAMS">WhatsUpCams</option>
+      <option value="INSECAM"{% if request.GET.source == 'INSECAM' %} selected{% endif %}>Insecam</option>
+      <option value="WHATSUPCAMS"{% if request.GET.source == 'WHATSUPCAMS' %} selected{% endif %}>WhatsUpCams</option>
     </select>
   </div>
   <div class="col-auto">
     <select name="status" class="form-select form-select-sm">
       <option value="">All statuses</option>
       {% for val, label in status_choices %}
-        <option value="{{ val }}">{{ label }}</option>
+        <option value="{{ val }}"{% if request.GET.status == val %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
@@ -46,10 +52,50 @@
   </div>
 </form>
 
-{# Job table — auto-refresh every 5s for running jobs #}
+{% block extra_js %}
+<script>
+(function () {
+  const LS_KEY = 'reconeye_trigger_source';
+  const sourceSelect  = document.getElementById('trigger-source-type');
+  const countrySelect = document.getElementById('trigger-country-code');
+
+  const insecamData = JSON.parse(document.getElementById('insecam-countries-data').textContent);
+  const wucData     = JSON.parse(document.getElementById('wuc-countries-data').textContent);
+
+  function populateCountries(source) {
+    const data = source === 'WHATSUPCAMS' ? wucData : insecamData;
+    countrySelect.innerHTML = '';
+    data.forEach(function(item) {
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.label;
+      countrySelect.appendChild(opt);
+    });
+    countrySelect.required = (source !== 'WHATSUPCAMS');
+  }
+
+  // Restore persisted source type
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved && (saved === 'INSECAM' || saved === 'WHATSUPCAMS')) {
+    sourceSelect.value = saved;
+  }
+
+  // Initial population
+  populateCountries(sourceSelect.value);
+
+  // On change: swap countries + persist
+  sourceSelect.addEventListener('change', function () {
+    localStorage.setItem(LS_KEY, this.value);
+    populateCountries(this.value);
+  });
+})();
+</script>
+{% endblock %}
+
+{# Job table — auto-refresh every 2s, preserving active filters #}
 <div
   id="job-table"
-  hx-get="{% url 'scraping_htmx:htmx_jobs' %}"
+  hx-get="{% url 'scraping_htmx:htmx_jobs' %}{% if request.GET.source or request.GET.status %}?{% if request.GET.source %}source={{ request.GET.source }}{% endif %}{% if request.GET.source and request.GET.status %}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}{% endif %}{% endif %}"
   hx-trigger="every 2s"
   hx-swap="innerHTML"
 >

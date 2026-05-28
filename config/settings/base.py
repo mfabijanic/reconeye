@@ -1,6 +1,7 @@
 """
 Django settings — base configuration shared across all environments.
 """
+import json
 from pathlib import Path
 
 import environ
@@ -171,6 +172,27 @@ INSECAM_COUNTRY_CODES = env.list(
         "NI", "CO", "-",
     ],
 )
+WHATSUPCAMS_COUNTRY_CODES = env.list(
+    "WHATSUPCAMS_COUNTRY_CODES",
+    default=["BA", "DO", "ES", "GR", "HR", "IE", "IT", "MK", "NL", "SI"],
+)
+ENABLE_PERIODIC_SCRAPING = env.bool("ENABLE_PERIODIC_SCRAPING", default=False)
+ENABLE_PERIODIC_WUC_BY_COUNTRY = env.bool("ENABLE_PERIODIC_WUC_BY_COUNTRY", default=False)
+PERIODIC_WUC_BASE_HOUR = env.int("PERIODIC_WUC_BASE_HOUR", default=4)
+PERIODIC_WUC_MINUTE_STEP = env.int("PERIODIC_WUC_MINUTE_STEP", default=5)
+_WUC_COUNTRY_CRON_OVERRIDES_RAW = env("PERIODIC_WUC_COUNTRY_CRON_OVERRIDES", default="")
+try:
+    PERIODIC_WUC_COUNTRY_CRON_OVERRIDES: dict[str, str | list[int] | tuple[int, int]] = (
+        json.loads(_WUC_COUNTRY_CRON_OVERRIDES_RAW) if _WUC_COUNTRY_CRON_OVERRIDES_RAW else {}
+    )
+except (TypeError, ValueError):
+    PERIODIC_WUC_COUNTRY_CRON_OVERRIDES = {}
+NOMINATIM_USER_AGENT = env(
+    "NOMINATIM_USER_AGENT",
+    default="reconeye/1.0 (contact: admin@localhost)",
+)
+WUC_STREAM_PREFIX_OVERRIDES: dict[str, str] = {}
+WUC_STREAM_LOCATION_OVERRIDES: dict[str, str] = {}
 
 # Logging
 LOGGING = {

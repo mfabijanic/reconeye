@@ -82,7 +82,9 @@ async def _run_scrape(job: ScrapeJob, *, resolve_streams: bool = True) -> None:
 
             batch: list[dict[str, Any]] = []
             discovered = 0
-            async for camera_data in scrape_all():
+            async for camera_data in scrape_all(
+                target_country_code=(job.target_country_code or None),
+            ):
                 discovered += 1
                 batch.append(camera_data)
                 if len(batch) >= BATCH_SIZE:

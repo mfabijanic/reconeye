@@ -6,7 +6,7 @@ from typing import Any
 from django.contrib import admin, messages
 
 from apps.common.cache import invalidate_scrape_jobs
-from apps.scraping.models import ScrapeJob, ScrapeJobStatus
+from apps.scraping.models import GeoLocationCache, ScrapeJob, ScrapeJobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +88,41 @@ class ScrapeJobAdmin(admin.ModelAdmin):
         return f"{mins}m {s}s" if mins else f"{s}s"
 
     duration_display.short_description = "Duration"
+
+
+@admin.register(GeoLocationCache)
+class GeoLocationCacheAdmin(admin.ModelAdmin):
+    list_display = (
+        "provider",
+        "query",
+        "country_code",
+        "is_hit",
+        "hits",
+        "city",
+        "region",
+        "last_used_at",
+    )
+    list_filter = ("provider", "is_hit", "country_code")
+    search_fields = ("query", "display_name", "city", "region")
+    readonly_fields = (
+        "provider",
+        "query",
+        "normalized_query",
+        "country_code",
+        "is_hit",
+        "latitude",
+        "longitude",
+        "display_name",
+        "city",
+        "region",
+        "zip_code",
+        "raw_payload",
+        "hits",
+        "created_at",
+        "updated_at",
+        "last_used_at",
+    )
+    list_per_page = 100
+
+    def has_add_permission(self, request) -> bool:
+        return False
