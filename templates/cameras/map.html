@@ -212,6 +212,33 @@
     });
     map.addLayer(clusterLayer);
 
+    // Handle cluster hover to open/close popups
+    clusterLayer.on('clustermouseover', (e) => {
+      const cluster = e.layer;
+      // Create popup content for cluster showing count and online status
+      const markers = cluster.getAllChildMarkers();
+      const onlineCount = markers.filter((m) => m.options.cameraOnline === true).length;
+      const total = markers.length;
+      const offlineCount = total - onlineCount;
+      const popupHtml = `
+        <div style="text-align:center;">
+          <strong>Cluster</strong><br>
+          Total: ${total} cameras<br>
+          <span class="badge badge-online">Online: ${onlineCount}</span><br>
+          <span class="badge badge-offline">Offline: ${offlineCount}</span>
+        </div>
+      `;
+      cluster.bindPopup(popupHtml, { autoPan: false });
+      cluster.openPopup();
+    });
+    
+    if (CLOSE_POPUP_ON_MOUSEOUT) {
+      clusterLayer.on('clustermouseout', (e) => {
+        const cluster = e.layer;
+        cluster.closePopup();
+      });
+    }
+
     const dataUrl = "{% url 'cameras:map_data' %}";
     const panelUrlTemplate = "{% url 'cameras_htmx:map_panel' 0 %}";
     const panelEl = document.getElementById("camera-panel");
@@ -399,6 +426,9 @@
           });
           marker.bindPopup(popupContent(camera), {
             autoPan: false,
+          });
+          marker.on("mouseover", () => {
+            marker.openPopup();
           });
           marker.on("click", () => {
             htmx.ajax("GET", getPanelUrl(camera.id), { target: "#camera-panel", swap: "innerHTML" });
