@@ -475,6 +475,12 @@
       }
       video.dataset.hlsKeyboardBound = "true";
       video.addEventListener("keydown", (event) => {
+        const key = (event.key || "").toLowerCase();
+        if (video.dataset.disablePause === "true" && (key === " " || key === "spacebar" || key === "k")) {
+          event.preventDefault();
+          attemptAutoplay(video);
+          return;
+        }
         if (event.key && event.key.toLowerCase() === "f") {
           event.preventDefault();
           toggleFullscreen(video);
@@ -482,6 +488,22 @@
       });
       video.addEventListener("dblclick", () => {
         toggleFullscreen(video);
+      });
+    }
+
+    function bindPauseGuard(video) {
+      if (!video || video.dataset.pauseGuardBound === "true" || video.dataset.disablePause !== "true") {
+        return;
+      }
+      video.dataset.pauseGuardBound = "true";
+
+      video.addEventListener("pause", () => {
+        if (document.hidden || video.ended) {
+          return;
+        }
+        window.requestAnimationFrame(() => {
+          attemptAutoplay(video);
+        });
       });
     }
 
@@ -543,6 +565,7 @@
           video.src = src;
           video.dataset.hlsInitialized = "true";
           bindPlayerKeyboard(video);
+          bindPauseGuard(video);
           video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
           attemptAutoplay(video);
           focusPlayer(video);
@@ -563,6 +586,7 @@
           video[HLS_INSTANCE_KEY] = hls;
           video.dataset.hlsInitialized = "true";
           bindPlayerKeyboard(video);
+          bindPauseGuard(video);
           return;
         }
 

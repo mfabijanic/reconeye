@@ -9,6 +9,7 @@
       preload="metadata"
       tabindex="0"
       data-hls-src="{{ camera.stream_url }}"
+      {% if camera.source_type == "WHATSUPCAMS" %}data-disable-pause="true"{% endif %}
       {% if camera.preview_image %}poster="{{ camera.preview_image }}"{% endif %}
     ></video>
     <div class="form-text mt-1">HLS stream · press <kbd>f</kbd> for fullscreen</div>
