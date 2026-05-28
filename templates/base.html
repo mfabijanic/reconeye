@@ -472,6 +472,37 @@
       });
     }
 
+    function bindPreviewImageKeyboard(img) {
+      if (!img || img.dataset.previewKeyboardBound === "true") {
+        return;
+      }
+      img.dataset.previewKeyboardBound = "true";
+      img.addEventListener("keydown", (event) => {
+        if (event.key && event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          toggleFullscreenImage(img);
+        }
+      });
+      img.addEventListener("dblclick", () => {
+        toggleFullscreenImage(img);
+      });
+    }
+
+    function toggleFullscreenImage(img) {
+      if (!img) {
+        return;
+      }
+      if (isFullscreenActiveFor(img)) {
+        exitFullscreen();
+        return;
+      }
+      if (img.requestFullscreen) {
+        img.requestFullscreen({ navigationUI: "hide" });
+      } else if (img.webkitRequestFullscreen) {
+        img.webkitRequestFullscreen();
+      }
+    }
+
     function destroyHls(video) {
       const existing = video && video[HLS_INSTANCE_KEY];
       if (existing && typeof existing.destroy === "function") {
@@ -525,6 +556,12 @@
         fallback.className = "alert alert-warning py-2 px-3 small mt-2";
         fallback.textContent = "This browser cannot play HLS streams inline. Use the stream link instead.";
         video.insertAdjacentElement("afterend", fallback);
+      });
+
+      // Initialize fullscreen keyboard for preview images
+      const previewImages = scope.querySelectorAll("img.preview[src]");
+      previewImages.forEach((img) => {
+        bindPreviewImageKeyboard(img);
       });
     }
 

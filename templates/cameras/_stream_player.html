@@ -16,13 +16,17 @@
 {% else %}
   {% with preview=camera.preview_image|default:camera.stream_url %}
     {% if preview %}
-      <img
-        class="preview camera-frame mb-3 w-100 rounded border border-secondary"
-        src="{{ preview }}"
-        alt="Camera preview"
-        loading="lazy"
-        onerror="this.onerror=null; this.style.display='none';"
-      />
+      <div class="stream-player mb-3">
+        <img
+          class="preview camera-frame w-100 rounded border border-secondary"
+          src="{{ preview }}"
+          alt="Camera preview"
+          loading="lazy"
+          tabindex="0"
+          onerror="this.onerror=null; this.style.display='none';"
+        />
+        <div class="form-text mt-1">Preview image · press <kbd>f</kbd> for fullscreen</div>
+      </div>
     {% endif %}
   {% endwith %}
 {% endif %}
