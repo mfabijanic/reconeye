@@ -223,7 +223,7 @@
     const fitBtnEl = document.getElementById("fit-map");
     const locateBtnEl = document.getElementById("locate-me");
     let lastBounds = null;
-    let isProgrammaticMapMove = false;
+    let programmaticMoveDepth = 0;  // counter: > 0 means suppress moveend reload
     let currentFetchController = null;
     let moveDebounceHandle = null;
     const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
@@ -379,6 +379,7 @@
     }
 
     async function loadMarkers({ useViewport = true } = {}) {
+      programmaticMoveDepth++;
       const params = new URLSearchParams(new FormData(formEl));
       params.set("limit", String(DEFAULT_MARKER_LIMIT));
       // Keep marker payload light; detailed preview comes from side panel endpoint.
@@ -445,16 +446,24 @@
         if (bounds.length > 0) {
           const isFirstFit = lastBounds === null;
           lastBounds = L.latLngBounds(bounds);
-          if (isProgrammaticMapMove || isFirstFit || !useViewport) {
-            map.fitBounds(bounds, { padding: [25, 25], maxZoom: 8 });
+          if (isFirstFit || !useViewport) {
+            // fitBounds triggers moveend — keep guard up through the animation
+            map.fitBounds(bounds, { padding: [25, 25], maxZoom: 8, animate: true });
+            window.setTimeout(() => { programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1); }, 700);
+          } else {
+            programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
           }
         } else {
+          programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
           map.setView([20, 0], 2);
           lastBounds = null;
           panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-muted small mb-0">No cameras found for current filters.</p>';
         }
 
         persistFiltersToUrl();
+      } catch (err) {
+        programmaticMoveDepth = Math.max(0, programmaticMoveDepth - 1);
+        throw err;
       } finally {
         if (currentFetchController === fetchController) {
           setLoading(false);
@@ -463,20 +472,12 @@
     }
 
     formEl.addEventListener("change", () => {
-      isProgrammaticMapMove = true;
-      scheduleLoadMarkers({}, 100);
-      window.setTimeout(() => {
-        isProgrammaticMapMove = false;
-      }, 120);
+      scheduleLoadMarkers({ useViewport: false }, 100);
     });
 
     resetEl.addEventListener("click", () => {
       formEl.reset();
-      isProgrammaticMapMove = true;
-      scheduleLoadMarkers({}, 100);
-      window.setTimeout(() => {
-        isProgrammaticMapMove = false;
-      }, 120);
+      scheduleLoadMarkers({ useViewport: false }, 100);
     });
 
     fitBtnEl.addEventListener("click", () => {
@@ -511,7 +512,7 @@
     });
 
     map.on("moveend", () => {
-      if (isProgrammaticMapMove) {
+      if (programmaticMoveDepth > 0) {
         return;
       }
       scheduleLoadMarkers({ useViewport: true }, 320);
