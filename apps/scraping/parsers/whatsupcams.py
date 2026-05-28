@@ -223,6 +223,31 @@ def _resolve_camera_title(
     return stream_id
 
 
+def _city_from_label(label: str) -> str:
+    text = (label or "").strip()
+    if not text:
+        return ""
+    # Keep left-most place-like token for labels such as:
+    # - "Samobor - Main Square"
+    # - "Rijeka, Korzo"
+    text = text.split(" - ", 1)[0].strip()
+    text = text.split(",", 1)[0].strip()
+    return text
+
+
+def _resolve_city_fallback(stream_id: str, *, country_code: str) -> str:
+    _, location_overrides = _get_effective_mappings()
+    label = _location_override_label(location_overrides.get(stream_id))
+    mapped_city = _city_from_label(label)
+    if mapped_city:
+        return mapped_city
+
+    slug_place = _slug_place_from_stream_id(stream_id, country_code)
+    if slug_place:
+        return _humanize_slug(slug_place)
+    return ""
+
+
 def _stream_ids_from_payload(data: Any) -> list[str]:
     if isinstance(data, list):
         return sorted({str(item).strip().lower() for item in data if str(item).strip()})
@@ -263,7 +288,9 @@ async def _build_camera_from_stream(client: httpx.AsyncClient, stream_id: str) -
 
     latitude = geocoded.get("latitude")
     longitude = geocoded.get("longitude")
-    city = geocoded.get("city", "")
+    city = str(geocoded.get("city") or "").strip()
+    if not city:
+        city = _resolve_city_fallback(stream_id, country_code=country_code)
     title = _resolve_camera_title(
         stream_id,
         payload,
