@@ -50,7 +50,11 @@ def refresh_camera_status(self) -> dict:
     max_retries=0,
 )
 def check_single_camera_status(self, camera_id: int) -> dict:
-    """Check stream_url availability for a single camera and update is_online flag."""
+    """
+    Check stream_url availability for a single camera.
+    For HLS streams, attempts to fetch and validate the playlist.
+    Updates is_online flag and returns detailed result.
+    """
     from apps.cameras.models import Camera
 
     try:
@@ -63,23 +67,53 @@ def check_single_camera_status(self, camera_id: int) -> dict:
         logger.info("check_single_camera_status: camera %d has no stream_url, skipping", camera_id)
         return {"skipped": True, "reason": "no_stream_url"}
 
+    online = False
+    error_msg = ""
+
     try:
         import httpx
 
-        with httpx.Client(timeout=6, follow_redirects=True) as client:
-            resp = client.head(camera.stream_url)
-        online = resp.status_code < 400
+        with httpx.Client(timeout=8, follow_redirects=True) as client:
+            # For HLS, attempt to fetch playlist and validate
+            if ".m3u8" in camera.stream_url.lower():
+                try:
+                    resp = client.get(camera.stream_url)
+                    if resp.status_code == 200:
+                        content = resp.text.strip()
+                        # Basic HLS playlist validation
+                        if content.startswith("#EXTM3U"):
+                            online = True
+                        else:
+                            error_msg = "Invalid HLS playlist format"
+                    else:
+                        error_msg = f"HTTP {resp.status_code}"
+                except httpx.ReadTimeout:
+                    error_msg = "Playlist read timeout"
+            else:
+                # Non-HLS stream: HEAD request
+                resp = client.head(camera.stream_url)
+                online = resp.status_code < 400
+                if not online:
+                    error_msg = f"HTTP {resp.status_code}"
+    except httpx.ConnectError:
+        error_msg = "Connection refused"
+    except httpx.TimeoutException:
+        error_msg = "Request timeout"
     except Exception as exc:
-        logger.info("check_single_camera_status: camera %d unreachable: %s", camera_id, exc)
-        online = False
+        error_msg = f"{type(exc).__name__}: {str(exc)[:50]}"
 
     if online:
         camera.mark_online()
     else:
         camera.mark_offline()
 
-    logger.info("check_single_camera_status: camera %d is_online=%s", camera_id, online)
-    return {"camera_id": camera_id, "is_online": online}
+    logger.info(
+        "check_single_camera_status: camera %d is_online=%s error=%s",
+        camera_id,
+        online,
+        error_msg,
+    )
+    return {"camera_id": camera_id, "is_online": online, "error": error_msg}
 
 
 @shared_task(
