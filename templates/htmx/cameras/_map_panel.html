@@ -30,6 +30,15 @@
 
 <div class="d-flex flex-wrap gap-2">
   <a class="btn btn-sm btn-outline-info" href="{% url 'cameras:detail' camera.pk %}">Open details</a>
+  <button type="button"
+    class="btn btn-sm btn-outline-warning"
+    hx-post="{% url 'cameras_htmx:check_stream' camera.pk %}"
+    hx-target="#camera-status-badge"
+    hx-swap="outerHTML"
+    title="Check stream availability"
+  >
+    <i class="bi bi-arrow-clockwise me-1"></i>Check stream
+  </button>
   {% if camera.stream_url %}
     <a class="btn btn-sm btn-outline-secondary" href="{{ camera.stream_url }}" target="_blank" rel="noopener">Open stream</a>
   {% endif %}

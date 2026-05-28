@@ -12,7 +12,18 @@
       <tr><th>Country</th><td>{{ camera.country|default:"—" }}</td></tr>
       <tr><th>City</th><td>{{ camera.city|default:"—" }}</td></tr>
       <tr><th>Status</th><td>
-        {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
+        <div class="d-flex align-items-center gap-2">
+          {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
+          <button type="button"
+            class="btn btn-xs btn-outline-info btn-sm py-0 px-2"
+            hx-post="{% url 'cameras_htmx:check_stream' camera.pk %}"
+            hx-target="#camera-status-badge"
+            hx-swap="outerHTML"
+            title="Check stream availability"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
       </td></tr>
       <tr><th>Partial metadata</th><td>{{ camera.has_partial_metadata|yesno:"Yes,No" }}</td></tr>
       <tr><th>Stream URL</th><td>
