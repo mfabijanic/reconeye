@@ -7,6 +7,7 @@
   <span class="badge text-bg-warning">
     <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Checking...
   </span>
+  {% if task_id %}<small class="text-muted ms-2" title="Task ID: {{ task_id }}">Task: {{ task_id|truncatechars:8 }}</small>{% endif %}
 </span>
 {% else %}
 <span id="camera-status-badge">

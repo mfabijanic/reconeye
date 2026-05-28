@@ -236,11 +236,16 @@ class HtmxCameraCheckStreamView(LoginRequiredMixin, View):
 
         camera = get_object_or_404(Camera, pk=pk, is_active=True)
         check_started = int(timezone.now().timestamp())
-        check_single_camera_status.delay(pk)
-        logger.info("HtmxCameraCheckStreamView: dispatched check for camera %d", pk)
+        task = check_single_camera_status.delay(pk)
+        logger.info("HtmxCameraCheckStreamView: dispatched check for camera %d task=%s", pk, task.id)
         html = render_to_string(
             "htmx/cameras/_status_badge.html",
-            {"camera": camera, "checking": True, "check_started": check_started},
+            {
+                "camera": camera,
+                "checking": True,
+                "check_started": check_started,
+                "task_id": task.id,
+            },
             request=request,
         )
         return HttpResponse(html)
