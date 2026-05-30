@@ -193,6 +193,7 @@ NOMINATIM_USER_AGENT = env(
 )
 WUC_STREAM_PREFIX_OVERRIDES: dict[str, str] = {}
 WUC_STREAM_LOCATION_OVERRIDES: dict[str, str] = {}
+GO2RTC_BASE_URL = env("GO2RTC_BASE_URL", default="http://127.0.0.1:1984")
 
 # Logging
 LOGGING = {

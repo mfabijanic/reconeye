@@ -254,10 +254,17 @@
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.app_name == 'cameras' %}active{% endif %}"
+          <a class="nav-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}"
              href="{% url 'cameras:list' %}"
              title="Cameras">
             <i class="bi bi-camera-video me-1"></i><span class="nav-text">Cameras</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}"
+             href="{% url 'cameras:surveillance' %}"
+             title="Surveillance">
+            <i class="bi bi-shield-video me-1"></i><span class="nav-text">Surveillance</span>
           </a>
         </li>
         <li class="nav-item">

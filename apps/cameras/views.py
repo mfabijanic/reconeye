@@ -2,21 +2,27 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
+from apps.cameras.forms import Go2RTCCameraForm
 from apps.cameras.models import Camera, MapUISettings, SourceType
 from apps.cameras.services import (
     build_camera_display_title,
     extract_camera_stream_id,
+    fetch_go2rtc_streams,
     get_camera_map_markers,
     get_country_choices,
+    normalize_go2rtc_base_url,
+    upsert_go2rtc_camera,
 )
 from apps.users.models import UserMapSettings
 
@@ -108,6 +114,51 @@ class CameraDetailView(LoginRequiredMixin, DetailView):
         )
 
         return ctx
+
+
+class Go2RTCCameraGridView(LoginRequiredMixin, TemplateView):
+    template_name = "cameras/surveillance.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        base_url = normalize_go2rtc_base_url()
+        streams, source_error = fetch_go2rtc_streams(base_url=base_url)
+        selected_cameras = (
+            Camera.objects.filter(source_type=SourceType.GO2RTC, is_active=True)
+            .order_by("title", "id")
+        )
+        ctx["go2rtc_base_url"] = base_url
+        ctx["go2rtc_streams"] = streams
+        ctx["go2rtc_source_error"] = source_error
+        ctx["selected_cameras"] = selected_cameras
+        ctx["go2rtc_form"] = Go2RTCCameraForm()
+        return ctx
+
+
+class AddGo2RTCCameraView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        form = Go2RTCCameraForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Neispravan unos za go2rtc kameru.")
+            return redirect("cameras:surveillance")
+
+        stream_name = form.cleaned_data["stream_name"].strip()
+        title = form.cleaned_data["title"].strip()
+        camera, created = upsert_go2rtc_camera(stream_name=stream_name, title=title)
+        if created:
+            messages.success(request, f"Dodana kamera: {camera.title}")
+        else:
+            messages.info(request, f"Ažurirana kamera: {camera.title}")
+        return redirect("cameras:surveillance")
+
+
+class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
+    def post(self, request, pk: int, *args, **kwargs):
+        camera = get_object_or_404(Camera, pk=pk, source_type=SourceType.GO2RTC)
+        camera.is_active = False
+        camera.save(update_fields=["is_active", "updated_at"])
+        messages.success(request, f"Uklonjena kamera: {camera.title or camera.pk}")
+        return redirect("cameras:surveillance")
 
 
 class CameraMapView(LoginRequiredMixin, TemplateView):

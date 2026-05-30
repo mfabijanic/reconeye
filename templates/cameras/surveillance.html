@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Surveillance — ReconEye{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h4 class="mb-0"><i class="bi bi-shield-video me-2 text-info"></i>Surveillance (go2rtc)</h4>
+    <div class="text-muted small">Izvor: {{ go2rtc_base_url }}</div>
+  </div>
+  <div class="col-auto text-muted small">{{ selected_cameras|length }} u gridu</div>
+</div>
+
+{% if go2rtc_source_error %}
+  <div class="alert alert-warning py-2">
+    {{ go2rtc_source_error }}
+    <div class="small mt-1">Provjeri da je go2rtc API dostupan na <code>{{ go2rtc_base_url }}/api/streams</code>.</div>
+  </div>
+{% endif %}
+
+<div class="card border-secondary mb-3">
+  <div class="card-header py-2">Dodaj kameru po stream nazivu</div>
+  <div class="card-body py-3">
+    <form method="post" action="{% url 'cameras:surveillance_add' %}" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <div class="col-md-4">
+        <label class="form-label small mb-1" for="id_stream_name">Stream name</label>
+        {{ go2rtc_form.stream_name }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small mb-1" for="id_title">Naziv (opcionalno)</label>
+        {{ go2rtc_form.title }}
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-success">
+          <i class="bi bi-plus-lg me-1"></i>Dodaj u grid
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-secondary mb-4">
+  <div class="card-header py-2">Dostupni streamovi sa izvora</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th class="px-3">Stream</th>
+            <th>Producers</th>
+            <th>Consumers</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stream in go2rtc_streams %}
+            <tr>
+              <td class="px-3"><code>{{ stream.name }}</code></td>
+              <td>{{ stream.producers }}</td>
+              <td>{{ stream.consumers }}</td>
+              <td class="text-end pe-3">
+                <form method="post" action="{% url 'cameras:surveillance_add' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="stream_name" value="{{ stream.name }}">
+                  <input type="hidden" name="title" value="{{ stream.name }}">
+                  <button type="submit" class="btn btn-sm btn-outline-info">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>Dodaj
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">Nema pronađenih streamova.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for camera in selected_cameras %}
+    <div class="col-12 col-md-6 col-xl-4" data-camera-id="{{ camera.pk }}">
+      <div class="card h-100 border-secondary">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <a class="text-decoration-none" href="{% url 'cameras:detail' camera.pk %}">{{ camera.title|default:"(no title)" }}</a>
+          <form method="post" action="{% url 'cameras:surveillance_remove' camera.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ukloni iz grida">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </form>
+        </div>
+        <div class="card-body">
+          {% include "cameras/_stream_player.html" with camera=camera %}
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="col-12">
+      <div class="alert alert-secondary mb-0">Još nema dodanih go2rtc kamera u grid.</div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

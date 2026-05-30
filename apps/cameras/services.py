@@ -3,8 +3,11 @@ from __future__ import annotations
 import logging
 import time
 import re
+from urllib.parse import quote
 from typing import Any
 
+import httpx
+from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -329,3 +332,92 @@ def upsert_camera(data: dict[str, Any]) -> tuple[Camera, bool]:
             camera.is_online = bool(data.get("stream_url", "").strip())
             camera.save(update_fields=["is_online"])
     return camera, created
+
+
+def normalize_go2rtc_base_url(raw_url: str | None = None) -> str:
+    base_url = (raw_url or settings.GO2RTC_BASE_URL or "").strip()
+    return base_url.rstrip("/")
+
+
+def build_go2rtc_hls_url(base_url: str, stream_name: str) -> str:
+    encoded = quote(stream_name.strip(), safe="")
+    return f"{base_url}/api/stream.m3u8?src={encoded}"
+
+
+def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch available stream names from go2rtc API.
+
+    Returns (streams, error_message). Stream items include keys:
+    - name: stream identifier
+    - producers: int
+    - consumers: int
+    """
+    normalized_base = normalize_go2rtc_base_url(base_url)
+    if not normalized_base:
+        return [], "GO2RTC_BASE_URL is not configured."
+
+    api_url = f"{normalized_base}/api/streams"
+    try:
+        with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+            response = client.get(api_url)
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:
+        logger.warning("go2rtc stream discovery failed url=%s error=%s", api_url, exc)
+        return [], f"Ne mogu dohvatiti popis streamova sa: {api_url}"
+
+    streams_obj: dict[str, Any]
+    if isinstance(payload, dict) and isinstance(payload.get("streams"), dict):
+        streams_obj = payload["streams"]
+    elif isinstance(payload, dict):
+        streams_obj = payload
+    else:
+        streams_obj = {}
+
+    items: list[dict[str, Any]] = []
+    for stream_name, stream_data in streams_obj.items():
+        if not isinstance(stream_name, str) or not stream_name.strip():
+            continue
+        stream_info = stream_data if isinstance(stream_data, dict) else {}
+        producers = len(stream_info.get("producers") or [])
+        consumers = len(stream_info.get("consumers") or [])
+        items.append(
+            {
+                "name": stream_name.strip(),
+                "producers": producers,
+                "consumers": consumers,
+            }
+        )
+
+    items.sort(key=lambda row: row["name"].lower())
+    return items, None
+
+
+def upsert_go2rtc_camera(*, stream_name: str, title: str = "", base_url: str | None = None) -> tuple[Camera, bool]:
+    normalized_base = normalize_go2rtc_base_url(base_url)
+    clean_stream_name = stream_name.strip()
+    clean_title = title.strip() or clean_stream_name
+    stream_url = build_go2rtc_hls_url(normalized_base, clean_stream_name)
+
+    data: dict[str, Any] = {
+        "source_type": SourceType.GO2RTC,
+        "title": clean_title,
+        "country": "",
+        "country_code": "",
+        "city": "",
+        "region": "",
+        "zip_code": "",
+        "timezone": "",
+        "manufacturer": "",
+        "stream_url": stream_url,
+        "preview_image": "",
+        "page_url": stream_url,
+        "is_active": True,
+        "has_partial_metadata": False,
+        "source_payload": {
+            "provider": "go2rtc",
+            "base_url": normalized_base,
+            "stream_name": clean_stream_name,
+        },
+    }
+    return upsert_camera(data)

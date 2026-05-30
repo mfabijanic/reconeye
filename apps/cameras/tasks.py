@@ -168,7 +168,7 @@ def warm_cache(self) -> dict:
     from apps.cameras.models import SourceType
 
     get_country_choices()
-    for src in [None, SourceType.INSECAM, SourceType.WHATSUPCAMS]:
+    for src in [None, SourceType.INSECAM, SourceType.WHATSUPCAMS, SourceType.GO2RTC]:
         get_camera_list(source_type=src, page=1)
 
     # Warm dashboard stats

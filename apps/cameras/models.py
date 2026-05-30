@@ -8,6 +8,7 @@ from django.utils import timezone
 class SourceType(models.TextChoices):
     INSECAM = "INSECAM", "Insecam"
     WHATSUPCAMS = "WHATSUPCAMS", "WhatsUpCams"
+    GO2RTC = "GO2RTC", "go2rtc"
 
 
 class Camera(models.Model):
