@@ -179,7 +179,27 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
   (() => {
-    const map = L.map("camera-map", { zoomControl: true }).setView([20, 0], 2);
+    const MAP_POS_KEY = "reconeye_map_pos";
+    function savedMapView() {
+      try {
+        const v = JSON.parse(localStorage.getItem(MAP_POS_KEY));
+        if (v && typeof v.lat === "number" && typeof v.lng === "number" && typeof v.zoom === "number") {
+          return v;
+        }
+      } catch (_) {}
+      return null;
+    }
+    function persistMapView() {
+      try {
+        const c = map.getCenter();
+        localStorage.setItem(MAP_POS_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+      } catch (_) {}
+    }
+    const _saved = savedMapView();
+    const map = L.map("camera-map", { zoomControl: true }).setView(
+      _saved ? [_saved.lat, _saved.lng] : [20, 0],
+      _saved ? _saved.zoom : 2
+    );
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -523,6 +543,7 @@
     });
 
     map.on("moveend", () => {
+      persistMapView();
       if (suppressMoveEnd) {
         return;
       }
@@ -642,9 +663,9 @@
     });
 
     applyFiltersFromUrl();
-    // First load globally (without bbox) so users always see initial markers,
-    // then viewport-based updates take over on pan/zoom/filter changes.
-    loadMarkers({ useViewport: false }).catch((error) => {
+    // If the user had a saved map position, load only markers in that viewport;
+    // otherwise do a global load and fit all markers.
+    loadMarkers({ useViewport: _saved !== null }).catch((error) => {
       console.error(error);
       setLoading(false);
       panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-danger small mb-0">Failed to load map data.</p>';
