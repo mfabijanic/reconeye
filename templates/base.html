@@ -191,7 +191,8 @@
       .navbar-nav-utils .camera-style-select {
         width: 7.75rem;
       }
-      /* Icon-only mode for navbar utilities */
+      /* Icon-only mode for entire navbar */
+      html[data-navbar-text-mode="icons-only"] .navbar-nav .nav-text,
       html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #camera-style-label,
       html[data-navbar-text-mode="icons-only"] .navbar-nav-utils .nav-link > .icon-text {
         display: none;
@@ -206,6 +207,10 @@
       html[data-navbar-text-mode="icons-text"] .navbar-nav-utils #text-mode-toggle {
         opacity: 0.55;
         font-weight: 400;
+      }
+      /* Ensure badge stays visible in icons-only mode */
+      html[data-navbar-text-mode="icons-only"] .nav-job-badge {
+        display: inline-block;
       }
     }
     /* Collapsed navbar: divider + row layout for utility controls */
@@ -243,26 +248,30 @@
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}"
-             href="{% url 'dashboard:index' %}">
-            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+             href="{% url 'dashboard:index' %}"
+             title="Dashboard">
+            <i class="bi bi-speedometer2 me-1"></i><span class="nav-text">Dashboard</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'cameras' %}active{% endif %}"
-             href="{% url 'cameras:list' %}">
-            <i class="bi bi-camera-video me-1"></i>Cameras
+             href="{% url 'cameras:list' %}"
+             title="Cameras">
+            <i class="bi bi-camera-video me-1"></i><span class="nav-text">Cameras</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}"
-             href="{% url 'cameras:map' %}">
-            <i class="bi bi-geo-alt me-1"></i>Map
+             href="{% url 'cameras:map' %}"
+             title="Map">
+            <i class="bi bi-geo-alt me-1"></i><span class="nav-text">Map</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
-             href="{% url 'scraping:job_list' %}">
-            <i class="bi bi-arrow-repeat me-1"></i>Scrape Jobs<span
+             href="{% url 'scraping:job_list' %}"
+             title="Scrape Jobs">
+            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">Scrape Jobs</span><span
               id="nav-job-status"
               hx-get="{% url 'scraping_htmx:nav_job_status' %}"
               hx-trigger="load, every 8s"
@@ -272,8 +281,9 @@
         </li>
         {% if user.is_staff %}
         <li class="nav-item">
-          <a class="nav-link" href="{% url 'admin:index' %}">
-            <i class="bi bi-gear me-1"></i>Admin
+          <a class="nav-link" href="{% url 'admin:index' %}"
+             title="Admin">
+            <i class="bi bi-gear me-1"></i><span class="nav-text">Admin</span>
           </a>
         </li>
         {% endif %}
