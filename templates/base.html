@@ -879,6 +879,53 @@
         video.insertAdjacentElement("afterend", fallback);
       });
 
+      // Initialize go2rtc MSE players
+      const go2rtcPlayers = scope.querySelectorAll("video.js-go2rtc-player[data-mse-src]");
+      go2rtcPlayers.forEach((video) => {
+        const mseUrl = video.dataset.mseSrc;
+        if (!mseUrl || video.dataset.go2rtcInitialized === "true") {
+          return;
+        }
+        video.dataset.go2rtcInitialized = "true";
+
+        if (window.MediaSource) {
+          const mediaSource = new MediaSource();
+          video.src = URL.createObjectURL(mediaSource);
+          
+          mediaSource.addEventListener("sourceopen", async () => {
+            try {
+              const response = await fetch(mseUrl);
+              const buffer = await response.arrayBuffer();
+              const sourceBuffer = mediaSource.addSourceBuffer("video/mp4; codecs=\"avc1.4d401f\"");
+              sourceBuffer.appendBuffer(buffer);
+              if (!mediaSource.sourceBuffers.length) {
+                mediaSource.endOfStream();
+              }
+            } catch (err) {
+              console.error("MSE player error:", err);
+            }
+          }, { once: true });
+        } else {
+          // Fallback to HLS if MSE not available
+          const hlsUrl = mseUrl.replace("/stream.mse", "/stream.m3u8");
+          if (window.Hls && window.Hls.isSupported()) {
+            const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
+            hls.loadSource(hlsUrl);
+            hls.attachMedia(video);
+            video[HLS_INSTANCE_KEY] = hls;
+          } else {
+            video.src = hlsUrl;
+          }
+        }
+
+        bindPlayerKeyboard(video);
+        bindPauseGuard(video);
+        if (video.dataset.disablePause === "true") bindLiveControls(video);
+        video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
+        attemptAutoplay(video);
+        focusPlayer(video);
+      });
+
       // Initialize fullscreen keyboard for preview images
       const previewImages = scope.querySelectorAll("img.preview[src]");
       previewImages.forEach((img) => {

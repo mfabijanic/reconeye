@@ -339,9 +339,19 @@ def normalize_go2rtc_base_url(raw_url: str | None = None) -> str:
     return base_url.rstrip("/")
 
 
-def build_go2rtc_hls_url(base_url: str, stream_name: str) -> str:
+def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:
+    """Build all available go2rtc streaming URLs for a stream.
+    
+    Supports WebRTC, MSE, HLS, MJPEG in order of preference for web/mobile.
+    """
     encoded = quote(stream_name.strip(), safe="")
-    return f"{base_url}/api/stream.m3u8?src={encoded}"
+    return {
+        "webrtc": f"{base_url}/api/stream.webrtc?src={encoded}",
+        "mse": f"{base_url}/api/stream.mse?src={encoded}",
+        "hls": f"{base_url}/api/stream.m3u8?src={encoded}",
+        "mjpeg": f"{base_url}/api/stream.mjpeg?src={encoded}",
+        "mp4": f"{base_url}/api/stream.mp4?src={encoded}",
+    }
 
 
 def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0) -> tuple[list[dict[str, Any]], str | None]:
@@ -397,7 +407,10 @@ def upsert_go2rtc_camera(*, stream_name: str, title: str = "", base_url: str | N
     normalized_base = normalize_go2rtc_base_url(base_url)
     clean_stream_name = stream_name.strip()
     clean_title = title.strip() or clean_stream_name
-    stream_url = build_go2rtc_hls_url(normalized_base, clean_stream_name)
+    
+    # Build all streaming URLs; use MSE as primary (works on all platforms)
+    urls = build_go2rtc_stream_urls(normalized_base, clean_stream_name)
+    stream_url = urls["mse"]  # Primary playback URL (MSE)
 
     data: dict[str, Any] = {
         "source_type": SourceType.GO2RTC,
@@ -418,6 +431,7 @@ def upsert_go2rtc_camera(*, stream_name: str, title: str = "", base_url: str | N
             "provider": "go2rtc",
             "base_url": normalized_base,
             "stream_name": clean_stream_name,
+            "stream_urls": urls,
         },
     }
     return upsert_camera(data)

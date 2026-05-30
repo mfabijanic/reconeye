@@ -1,4 +1,28 @@
-{% if camera.stream_url and '.m3u8' in camera.stream_url|lower %}
+{% if camera.source_type == "GO2RTC" %}
+  {# go2rtc stream: MSE with WebRTC fallback — no native controls #}
+  <div class="stream-player mb-3 position-relative">
+    <video
+      class="js-go2rtc-player camera-frame w-100 rounded border border-secondary bg-black d-block"
+      playsinline
+      muted
+      autoplay
+      preload="metadata"
+      tabindex="0"
+      data-mse-src="{{ camera.stream_url }}"
+      data-camera-id="{{ camera.pk }}"
+      data-disable-pause="true"
+    ></video>
+    <div class="live-controls d-flex align-items-center gap-2 px-2 py-1 rounded-bottom">
+      <span class="badge text-bg-danger live-badge ms-1">&#9679; LIVE</span>
+      <button type="button" class="btn btn-sm live-ctrl-btn js-mute-toggle ms-auto" title="Toggle mute" aria-label="Toggle mute">
+        <i class="bi bi-volume-mute-fill"></i>
+      </button>
+      <button type="button" class="btn btn-sm live-ctrl-btn js-fullscreen-btn" title="Fullscreen" aria-label="Fullscreen">
+        <i class="bi bi-fullscreen"></i>
+      </button>
+    </div>
+  </div>
+{% elif camera.stream_url and '.m3u8' in camera.stream_url|lower %}
   {% if camera.source_type == "WHATSUPCAMS" %}
   {# Live stream: no native controls — custom mute + fullscreen bar only #}
   <div class="stream-player mb-3 position-relative">
@@ -23,7 +47,6 @@
         <i class="bi bi-fullscreen"></i>
       </button>
     </div>
-    <div class="form-text mt-1">HLS stream · press <kbd>f</kbd> for fullscreen</div>
   </div>
   {% else %}
   {# Regular HLS stream: native browser controls #}
@@ -40,7 +63,6 @@
       data-camera-id="{{ camera.pk }}"
       {% if camera.preview_image %}poster="{{ camera.preview_image }}"{% endif %}
     ></video>
-    <div class="form-text mt-1">HLS stream · press <kbd>f</kbd> for fullscreen</div>
   </div>
   {% endif %}
 {% else %}
@@ -55,7 +77,6 @@
           tabindex="0"
           onerror="this.onerror=null; this.style.display='none';"
         />
-        <div class="form-text mt-1">Preview image · press <kbd>f</kbd> for fullscreen</div>
       </div>
     {% endif %}
   {% endwith %}
