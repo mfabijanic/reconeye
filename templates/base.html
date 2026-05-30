@@ -166,6 +166,14 @@
       border-color: var(--app-link);
       color: var(--app-link);
     }
+    @media (min-width: 992px) {
+      .navbar-nav-utils {
+        border-left: 1px solid var(--app-border);
+        margin-left: 1rem;
+        padding-left: 1rem;
+        gap: .75rem;
+      }
+    }
     /* Collapsed navbar: divider + row layout for utility controls */
     @media (max-width: 991.98px) {
       .navbar-nav-utils {
@@ -236,7 +244,6 @@
         </li>
         {% endif %}
       </ul>
-      <ul class="navbar-nav ms-auto">
       <ul class="navbar-nav navbar-nav-utils ms-lg-auto">
         <li class="nav-item d-flex align-items-center">
           <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle theme">
