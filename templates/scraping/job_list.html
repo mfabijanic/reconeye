@@ -14,21 +14,6 @@
 <div class="row mb-3 align-items-center g-2">
   <div class="col-auto me-auto"><h4 class="mb-0"><i class="bi bi-arrow-repeat me-2 text-info"></i>Scrape Jobs</h4></div>
   <div class="col-auto">
-    <form class="d-flex gap-2 align-items-center mb-0" method="post" action="{% url 'scraping:trigger' %}" id="trigger-scrape-form">
-      {% csrf_token %}
-      <select name="source_type" id="trigger-source-type" class="form-select form-select-sm">
-        <option value="INSECAM">Insecam</option>
-        <option value="WHATSUPCAMS">WhatsUpCams</option>
-      </select>
-      <select name="country_code" id="trigger-country-code" class="form-select form-select-sm" style="min-width:200px">
-        {# Options populated by JS on load and on source_type change #}
-      </select>
-      <button type="submit" class="btn btn-sm btn-success d-inline-flex align-items-center text-nowrap">
-        <i class="bi bi-play-fill me-1"></i>Trigger scrape
-      </button>
-    </form>
-  </div>
-  <div class="col-auto">
     <form class="d-flex gap-2 align-items-center mb-0" method="get">
       <select name="source" class="form-select form-select-sm">
         <option value="">All sources</option>
@@ -42,6 +27,21 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-sm btn-outline-info">Filter</button>
+    </form>
+  </div>
+  <div class="col-auto ms-auto">
+    <form class="d-flex gap-2 align-items-center mb-0" method="post" action="{% url 'scraping:trigger' %}" id="trigger-scrape-form">
+      {% csrf_token %}
+      <select name="source_type" id="trigger-source-type" class="form-select form-select-sm">
+        <option value="INSECAM">Insecam</option>
+        <option value="WHATSUPCAMS">WhatsUpCams</option>
+      </select>
+      <select name="country_code" id="trigger-country-code" class="form-select form-select-sm" style="min-width:200px">
+        {# Options populated by JS on load and on source_type change #}
+      </select>
+      <button type="submit" class="btn btn-sm btn-success d-inline-flex align-items-center text-nowrap">
+        <i class="bi bi-play-fill me-1"></i>Trigger scrape
+      </button>
     </form>
   </div>
 </div>
