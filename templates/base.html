@@ -166,6 +166,24 @@
       border-color: var(--app-link);
       color: var(--app-link);
     }
+    /* Collapsed navbar: divider + row layout for utility controls */
+    @media (max-width: 991.98px) {
+      .navbar-nav-utils {
+        border-top: 1px solid var(--app-border);
+        margin-top: .5rem;
+        padding-top: .5rem;
+        flex-direction: row !important;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .5rem;
+      }
+      .navbar-nav-utils .nav-item {
+        margin: 0 !important;
+      }
+      .camera-style-select {
+        max-width: 130px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -219,20 +237,21 @@
         {% endif %}
       </ul>
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item me-2 d-flex align-items-center">
+      <ul class="navbar-nav navbar-nav-utils ms-lg-auto">
+        <li class="nav-item d-flex align-items-center">
           <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle theme">
             <i class="bi bi-moon-stars" id="theme-toggle-icon"></i>
           </button>
         </li>
-        <li class="nav-item me-2 d-flex align-items-center">
-          <i class="bi bi-radioactive text-success me-2" aria-hidden="true"></i>
+        <li class="nav-item d-flex align-items-center">
+          <i class="bi bi-radioactive text-success me-1" aria-hidden="true"></i>
           <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="Camera frame profile" title="Camera frame profile">
             <option value="subtle">Subtle</option>
             <option value="neon">Neon</option>
             <option value="max-cyber">Max Cyber</option>
           </select>
         </li>
-        <li class="nav-item dropdown">
+        <li class="nav-item dropdown d-flex align-items-center">
           <button
             class="nav-link dropdown-toggle btn btn-link p-0 border-0 text-decoration-none"
             type="button"
