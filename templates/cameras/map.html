@@ -246,6 +246,9 @@
     let currentFetchController = null;
     let moveDebounceHandle = null;
     let suppressMoveEnd = false;
+    // If we restored a saved position, mark lastBounds as already known
+    // so the first viewport load does NOT call fitBounds (which would override the restored zoom).
+    if (_saved) lastBounds = true;  // truthy sentinel; replaced with real L.latLngBounds on first load
     const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
     const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
     const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
