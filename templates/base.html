@@ -191,6 +191,22 @@
       .navbar-nav-utils .camera-style-select {
         width: 7.75rem;
       }
+      /* Icon-only mode for navbar utilities */
+      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #camera-style-label,
+      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils .nav-link > .icon-text {
+        display: none;
+      }
+      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #camera-style-select {
+        width: auto;
+      }
+      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #text-mode-toggle {
+        opacity: 1;
+        font-weight: 500;
+      }
+      html[data-navbar-text-mode="icons-text"] .navbar-nav-utils #text-mode-toggle {
+        opacity: 0.55;
+        font-weight: 400;
+      }
     }
     /* Collapsed navbar: divider + row layout for utility controls */
     @media (max-width: 991.98px) {
@@ -270,11 +286,17 @@
         </li>
         <li class="nav-item d-flex align-items-center">
           <i class="bi bi-radioactive text-success me-1 small" aria-hidden="true"></i>
+          <label id="camera-style-label" class="form-label small me-1 mb-0">Style:</label>
           <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="Camera frame profile" title="Camera frame profile">
             <option value="subtle">Subtle</option>
             <option value="neon">Neon</option>
             <option value="max-cyber">Max Cyber</option>
           </select>
+        </li>
+        <li class="nav-item d-flex align-items-center">
+          <button class="btn btn-sm btn-outline-secondary" id="text-mode-toggle" type="button" aria-label="Toggle text mode in navbar" title="Toggle icons/text mode">
+            <i class="bi bi-type"></i>
+          </button>
         </li>
         <li class="nav-item dropdown d-flex align-items-center">
           <button
@@ -285,7 +307,7 @@
             data-bs-display="static"
             aria-expanded="false"
           >
-            <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+            <i class="bi bi-person-circle me-1"></i><span class="icon-text">{{ user.username }}</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userMenuToggle">
             <li>
@@ -344,15 +366,17 @@
     }
   });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const THEME_KEY = "reconeye-theme";
     const CAMERA_STYLE_KEY = "reconeye-camera-style";
+    const NAVBAR_TEXT_MODE_KEY = "reconeye-navbar-text-mode";
     const root = document.documentElement;
     const themeToggleBtn = document.getElementById("theme-toggle");
     const themeToggleIcon = document.getElementById("theme-toggle-icon");
     const cameraStyleSelect = document.getElementById("camera-style-select");
+    const textModeToggleBtn = document.getElementById("text-mode-toggle");
     const mainNavbar = document.getElementById("main-navbar");
     const cameraStyleOrder = ["subtle", "neon", "max-cyber"];
 
@@ -405,7 +429,31 @@
       }
     };
 
+    const applyNavbarTextMode = (mode, { persist = true } = {}) => {
+      const normalized = mode === "icons-only" ? "icons-only" : "icons-text";
+      root.setAttribute("data-navbar-text-mode", normalized);
+      if (persist) {
+        try {
+          localStorage.setItem(NAVBAR_TEXT_MODE_KEY, normalized);
+        } catch (e) {
+          // Ignore storage errors.
+        }
+      }
+    };
+
     applyCameraStyle(root.getAttribute("data-camera-style") || "subtle", { persist: false });
+
+    // Initialize navbar text mode from localStorage
+    try {
+      const savedMode = localStorage.getItem(NAVBAR_TEXT_MODE_KEY);
+      if (savedMode === "icons-only" || savedMode === "icons-text") {
+        applyNavbarTextMode(savedMode, { persist: false });
+      } else {
+        applyNavbarTextMode("icons-text", { persist: false });
+      }
+    } catch (e) {
+      applyNavbarTextMode("icons-text", { persist: false });
+    }
 
     if (themeToggleBtn) {
       themeToggleBtn.addEventListener("click", () => {
@@ -417,6 +465,14 @@
     if (cameraStyleSelect) {
       cameraStyleSelect.addEventListener("change", (event) => {
         applyCameraStyle(event.target.value || "subtle");
+      });
+    }
+
+    if (textModeToggleBtn) {
+      textModeToggleBtn.addEventListener("click", () => {
+        const currentMode = root.getAttribute("data-navbar-text-mode") || "icons-text";
+        const nextMode = currentMode === "icons-text" ? "icons-only" : "icons-text";
+        applyNavbarTextMode(nextMode);
       });
     }
 
