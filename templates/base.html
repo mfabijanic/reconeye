@@ -143,6 +143,14 @@
       background: #000;
       filter: saturate(1.05) contrast(1.03);
     }
+    /* Live stream UX: hide pause/play controls for cameras flagged with data-disable-pause */
+    video[data-disable-pause="true"]::-webkit-media-controls-play-button,
+    video[data-disable-pause="true"]::-webkit-media-controls-overlay-play-button,
+    video[data-disable-pause="true"]::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      -webkit-appearance: none;
+      appearance: none;
+    }
   </style>
 </head>
 <body>
