@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
+from django.utils.translation import gettext_lazy as _
 
-from .models import UserMapSettings
+from .models import User, UserMapSettings
 
 
 class LoginForm(AuthenticationForm):
@@ -19,26 +20,14 @@ class LoginForm(AuthenticationForm):
     )
 
 
-def _coerce_nullable_bool(value: str) -> bool | None:
-    normalized = str(value).strip().lower()
-    if normalized in {"", "none", "null"}:
-        return None
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    return None
-
-
 class UserMapSettingsForm(forms.ModelForm):
-    popup_close_on_mouseout = forms.TypedChoiceField(
-        label="Popup close on mouse out",
+    popup_close_on_mouseout = forms.ChoiceField(
+        label=_("Popup close on mouse out"),
         required=False,
-        coerce=_coerce_nullable_bool,
         choices=(
-            ("", "Use global default"),
-            ("true", "Enabled"),
-            ("false", "Disabled"),
+            ("", _("Use global default")),
+            ("true", _("Enabled")),
+            ("false", _("Disabled")),
         ),
         widget=forms.Select(attrs={"class": "form-select"}),
     )
@@ -61,12 +50,38 @@ class UserMapSettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         current = getattr(self.instance, "popup_close_on_mouseout", None)
         if current is True:
-            self.initial["popup_close_on_mouseout"] = "true"
+            self.fields["popup_close_on_mouseout"].initial = "true"
         elif current is False:
-            self.initial["popup_close_on_mouseout"] = "false"
+            self.fields["popup_close_on_mouseout"].initial = "false"
         else:
-            self.initial["popup_close_on_mouseout"] = ""
+            self.fields["popup_close_on_mouseout"].initial = ""
         self.fields["disable_clustering_at_zoom"].required = False
         self.fields["marker_limit"].required = False
         self.fields["status_stale_minutes"].required = False
+
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Convert string choice to boolean value
+        value = self.cleaned_data.get("popup_close_on_mouseout")
+        if value == "true":
+            instance.popup_close_on_mouseout = True
+        elif value == "false":
+            instance.popup_close_on_mouseout = False
+        else:
+            instance.popup_close_on_mouseout = None
+        if commit:
+            instance.save()
+        return instance
+
+class UserPreferencesForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("preferred_language",)
+        widgets = {
+            "preferred_language": forms.Select(attrs={"class": "form-select"}),
+        }
+        labels = {
+            "preferred_language": _("Interface language"),
+        }
 

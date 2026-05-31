@@ -1,45 +1,46 @@
+{% load i18n %}
 <div class="d-flex justify-content-between align-items-start mb-2" data-camera-id="{{ camera.pk }}">
-  <h6 class="mb-0">{{ display_title|default:camera.title|default:"Camera" }}</h6>
+  <h6 class="mb-0">{{ display_title|default:camera.title|default:_('Camera') }}</h6>
   <div class="d-flex flex-column align-items-end gap-1">
     {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
     {% if status_is_stale %}
-      <span class="badge text-bg-warning">Stale status</span>
+      <span class="badge text-bg-warning">{% trans "Stale status" %}</span>
     {% endif %}
   </div>
 </div>
 
 {% include "cameras/_stream_player.html" with camera=camera %}
 {% if stream_id %}
-  <p class="text-muted small mt-2">Stream ID: <code>{{ stream_id }}</code></p>
+  <p class="text-muted small mt-2">{% trans "Stream ID" %}: <code>{{ stream_id }}</code></p>
 {% endif %}
 
 <ul class="list-unstyled small mb-3">
-  <li><strong>Source:</strong> {{ camera.get_source_type_display }}</li>
-  <li><strong>Country:</strong> {{ camera.country|default:"Unknown" }}</li>
-  <li><strong>City:</strong> {{ camera.city|default:"-" }}</li>
-  <li><strong>Coordinates:</strong> {{ camera.latitude }}, {{ camera.longitude }}</li>
+  <li><strong>{% trans "Source" %}:</strong> {{ camera.get_source_type_display }}</li>
+  <li><strong>{% trans "Country" %}:</strong> {{ camera.country|default:_('Unknown') }}</li>
+  <li><strong>{% trans "City" %}:</strong> {{ camera.city|default:"-" }}</li>
+  <li><strong>{% trans "Coordinates" %}:</strong> {{ camera.latitude }}, {{ camera.longitude }}</li>
   <li>
-    <strong>Last checked:</strong>
+    <strong>{% trans "Last checked" %}:</strong>
     {% if camera.last_checked %}
       {{ camera.last_checked|date:"Y-m-d H:i:s" }} UTC
     {% else %}
-      Never
+      {% trans "Never" %}
     {% endif %}
   </li>
 </ul>
 
 <div class="d-flex flex-wrap gap-2">
-  <a class="btn btn-sm btn-outline-info" href="{% url 'cameras:detail' camera.pk %}">Open details</a>
+  <a class="btn btn-sm btn-outline-info" href="{% url 'cameras:detail' camera.pk %}">{% trans "Open details" %}</a>
   <button type="button"
     class="btn btn-sm btn-outline-warning"
     hx-post="{% url 'cameras_htmx:check_stream' camera.pk %}"
     hx-target="#camera-status-badge"
     hx-swap="outerHTML"
-    title="Check stream availability"
+    title="{% trans 'Check stream availability' %}"
   >
-    <i class="bi bi-arrow-clockwise me-1"></i>Check stream
+    <i class="bi bi-arrow-clockwise me-1"></i>{% trans "Check stream" %}
   </button>
   {% if camera.stream_url %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ camera.stream_url }}" target="_blank" rel="noopener">Open stream</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ camera.stream_url }}" target="_blank" rel="noopener">{% trans "Open stream" %}</a>
   {% endif %}
 </div>

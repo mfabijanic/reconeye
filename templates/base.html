@@ -1,3 +1,4 @@
+{% load i18n %}
 <!doctype html>
 <html lang="en" data-bs-theme="dark">
 <head>
@@ -105,6 +106,51 @@
     .app-navbar {
       background: var(--app-surface) !important;
       border-color: var(--app-border) !important;
+      transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+    }
+    body {
+      --app-navbar-height: 4.25rem;
+      --app-chrome-reveal-zone: 24px;
+    }
+    .app-page-chrome {
+      transition: transform .12s ease, opacity .12s ease;
+    }
+    body.chrome-autohide-enabled {
+      --app-navbar-height: 0rem;
+    }
+    body.chrome-autohide-enabled .app-navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1040;
+      margin-bottom: 0 !important;
+    }
+    body.chrome-autohide-enabled main.container-fluid {
+      margin-top: 0 !important;
+    }
+    body.chrome-autohide-enabled.chrome-hidden .app-navbar {
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: none !important;
+    }
+    body.chrome-autohide-enabled.chrome-hidden .app-page-chrome[data-autohide="true"] {
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    body.chrome-autohide-enabled::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--app-chrome-reveal-zone);
+      z-index: 1045;
+      background: transparent;
+      pointer-events: auto;
+      cursor: default;
     }
     .nav-job-badge {
       background-color: #9a6700;
@@ -149,6 +195,10 @@
       backdrop-filter: blur(4px);
       border-top: 1px solid var(--app-border);
     }
+    html[data-bs-theme="light"] .live-controls {
+      background: rgba(248, 250, 252, 0.88);
+      border-top-color: var(--app-border);
+    }
     .live-badge {
       font-size: .65rem;
       letter-spacing: .04em;
@@ -163,6 +213,14 @@
     }
     .live-ctrl-btn:hover {
       background: var(--app-surface);
+      border-color: var(--app-link);
+      color: var(--app-link);
+    }
+    html[data-bs-theme="light"] .live-ctrl-btn {
+      border-color: var(--app-border);
+    }
+    html[data-bs-theme="light"] .live-ctrl-btn:hover {
+      background: #e8eef7;
       border-color: var(--app-link);
       color: var(--app-link);
     }
@@ -230,6 +288,12 @@
       .camera-style-select {
         max-width: 130px;
       }
+      body.chrome-autohide-enabled.chrome-hidden .app-navbar {
+        transform: translateY(-100%);
+      }
+      body.chrome-autohide-enabled.chrome-hidden .app-page-chrome[data-autohide="true"] {
+        transform: translateY(-100%);
+      }
     }
   </style>
 </head>
@@ -249,36 +313,36 @@
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}"
              href="{% url 'dashboard:index' %}"
-             title="Dashboard">
-            <i class="bi bi-speedometer2 me-1"></i><span class="nav-text">Dashboard</span>
+             title="{% trans 'Dashboard' %}">
+            <i class="bi bi-speedometer2 me-1"></i><span class="nav-text">{% trans "Dashboard" %}</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}"
              href="{% url 'cameras:list' %}"
-             title="Cameras">
-            <i class="bi bi-camera-video me-1"></i><span class="nav-text">Cameras</span>
+             title="{% trans 'Cameras' %}">
+            <i class="bi bi-camera-video me-1"></i><span class="nav-text">{% trans "Cameras" %}</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}"
              href="{% url 'cameras:surveillance' %}"
-             title="Surveillance">
-            <i class="bi bi-shield-video me-1"></i><span class="nav-text">Surveillance</span>
+             title="{% trans 'Surveillance' %}">
+            <i class="bi bi-display me-1"></i><span class="nav-text">{% trans "Surveillance" %}</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}"
              href="{% url 'cameras:map' %}"
-             title="Map">
-            <i class="bi bi-geo-alt me-1"></i><span class="nav-text">Map</span>
+             title="{% trans 'Map' %}">
+            <i class="bi bi-geo-alt me-1"></i><span class="nav-text">{% trans "Map" %}</span>
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
              href="{% url 'scraping:job_list' %}"
-             title="Scrape Jobs">
-            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">Scrape Jobs</span><span
+             title="{% trans 'Scrape Jobs' %}">
+            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span><span
               id="nav-job-status"
               hx-get="{% url 'scraping_htmx:nav_job_status' %}"
               hx-trigger="load, every 8s"
@@ -289,8 +353,8 @@
         {% if user.is_staff %}
         <li class="nav-item">
           <a class="nav-link" href="{% url 'admin:index' %}"
-             title="Admin">
-            <i class="bi bi-gear me-1"></i><span class="nav-text">Admin</span>
+             title="{% trans 'Admin' %}">
+            <i class="bi bi-gear me-1"></i><span class="nav-text">{% trans "Admin" %}</span>
           </a>
         </li>
         {% endif %}
@@ -303,16 +367,21 @@
         </li>
         <li class="nav-item d-flex align-items-center">
           <i class="bi bi-radioactive text-success me-1 small" aria-hidden="true"></i>
-          <label id="camera-style-label" class="form-label small me-1 mb-0">Style:</label>
-          <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="Camera frame profile" title="Camera frame profile">
-            <option value="subtle">Subtle</option>
+          <label id="camera-style-label" class="form-label small me-1 mb-0">{% trans "Style" %}:</label>
+          <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="{% trans 'Camera frame profile' %}" title="{% trans 'Camera frame profile' %}">
+            <option value="subtle">{% trans "Subtle" %}</option>
             <option value="neon">Neon</option>
-            <option value="max-cyber">Max Cyber</option>
+            <option value="max-cyber">{% trans "Max Cyber" %}</option>
           </select>
         </li>
         <li class="nav-item d-flex align-items-center">
           <button class="btn btn-sm btn-outline-secondary" id="text-mode-toggle" type="button" aria-label="Toggle text mode in navbar" title="Toggle icons/text mode">
             <i class="bi bi-type"></i>
+          </button>
+        </li>
+        <li class="nav-item d-flex align-items-center">
+          <button class="btn btn-sm btn-outline-secondary" id="chrome-autohide-toggle" type="button" aria-label="Toggle auto-hide mode" title="Toggle auto-hide mode">
+            <i class="bi bi-arrows-collapse" id="chrome-autohide-icon"></i>
           </button>
         </li>
         <li class="nav-item dropdown d-flex align-items-center">
@@ -329,7 +398,7 @@
           <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userMenuToggle">
             <li>
               <a class="dropdown-item" href="{% url 'users:settings' %}">
-                <i class="bi bi-sliders me-1"></i>Settings
+                <i class="bi bi-sliders me-1"></i>{% trans "Settings" %}
               </a>
             </li>
             <li><hr class="dropdown-divider"></li>
@@ -337,7 +406,7 @@
               <form method="post" action="{% url 'users:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="dropdown-item">
-                  <i class="bi bi-box-arrow-right me-1"></i>Logout
+                  <i class="bi bi-box-arrow-right me-1"></i>{% trans "Logout" %}
                 </button>
               </form>
             </li>
@@ -389,13 +458,75 @@
     const THEME_KEY = "reconeye-theme";
     const CAMERA_STYLE_KEY = "reconeye-camera-style";
     const NAVBAR_TEXT_MODE_KEY = "reconeye-navbar-text-mode";
+    const CHROME_AUTOHIDE_KEY = "reconeye-chrome-autohide";
     const root = document.documentElement;
     const themeToggleBtn = document.getElementById("theme-toggle");
     const themeToggleIcon = document.getElementById("theme-toggle-icon");
     const cameraStyleSelect = document.getElementById("camera-style-select");
     const textModeToggleBtn = document.getElementById("text-mode-toggle");
+    const chromeAutohideToggleBtn = document.getElementById("chrome-autohide-toggle");
+    const chromeAutohideIcon = document.getElementById("chrome-autohide-icon");
     const mainNavbar = document.getElementById("main-navbar");
     const cameraStyleOrder = ["subtle", "neon", "max-cyber"];
+    let chromeAutohideEnabled = false;
+    let chromeHideTimeout = null;
+
+    const clearChromeHideTimeout = () => {
+      if (chromeHideTimeout) {
+        window.clearTimeout(chromeHideTimeout);
+        chromeHideTimeout = null;
+      }
+    };
+
+    const setChromeVisibility = (visible) => {
+      document.body.classList.toggle("chrome-hidden", !visible);
+    };
+
+    const scheduleChromeHide = (delay = 900) => {
+      clearChromeHideTimeout();
+      if (!chromeAutohideEnabled || document.body.classList.contains("surveillance-edit-mode")) {
+        setChromeVisibility(true);
+        return;
+      }
+      chromeHideTimeout = window.setTimeout(() => {
+        if (window.scrollY <= 8) {
+          setChromeVisibility(false);
+        }
+      }, delay);
+    };
+
+    const updateChromeAutohideButton = (enabled) => {
+      if (!chromeAutohideToggleBtn) {
+        return;
+      }
+      chromeAutohideToggleBtn.classList.toggle("btn-outline-secondary", !enabled);
+      chromeAutohideToggleBtn.classList.toggle("btn-outline-info", enabled);
+      chromeAutohideToggleBtn.classList.toggle("active", enabled);
+      chromeAutohideToggleBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
+      chromeAutohideToggleBtn.setAttribute("title", enabled ? "Disable auto-hide mode" : "Enable auto-hide mode");
+      if (chromeAutohideIcon) {
+        chromeAutohideIcon.className = enabled ? "bi bi-arrows-expand" : "bi bi-arrows-collapse";
+      }
+    };
+
+    const applyChromeAutohide = (enabled, { persist = true } = {}) => {
+      chromeAutohideEnabled = Boolean(enabled);
+      document.body.classList.toggle("chrome-autohide-enabled", chromeAutohideEnabled);
+      document.body.dataset.chromeAutohide = chromeAutohideEnabled ? "1" : "0";
+      updateChromeAutohideButton(chromeAutohideEnabled);
+      if (persist) {
+        try {
+          localStorage.setItem(CHROME_AUTOHIDE_KEY, chromeAutohideEnabled ? "1" : "0");
+        } catch (e) {
+          // Ignore storage errors.
+        }
+      }
+      setChromeVisibility(true);
+      scheduleChromeHide(chromeAutohideEnabled ? 800 : 0);
+      document.dispatchEvent(new CustomEvent("reconeye:chrome-autohide-change", {
+        detail: { enabled: chromeAutohideEnabled }
+      }));
+    };
 
     const applyTheme = (theme, { persist = true } = {}) => {
       if (theme !== "light" && theme !== "dark") {
@@ -472,6 +603,12 @@
       applyNavbarTextMode("icons-text", { persist: false });
     }
 
+    try {
+      applyChromeAutohide(localStorage.getItem(CHROME_AUTOHIDE_KEY) === "1", { persist: false });
+    } catch (e) {
+      applyChromeAutohide(false, { persist: false });
+    }
+
     if (themeToggleBtn) {
       themeToggleBtn.addEventListener("click", () => {
         const nextTheme = (root.getAttribute("data-bs-theme") || "dark") === "dark" ? "light" : "dark";
@@ -492,6 +629,49 @@
         applyNavbarTextMode(nextMode);
       });
     }
+
+    if (chromeAutohideToggleBtn) {
+      chromeAutohideToggleBtn.addEventListener("click", () => {
+        applyChromeAutohide(!chromeAutohideEnabled);
+      });
+    }
+
+    document.addEventListener("reconeye:set-chrome-autohide", (event) => {
+      const enabled = Boolean(event.detail && event.detail.enabled);
+      const persist = !(event.detail && event.detail.persist === false);
+      applyChromeAutohide(enabled, { persist });
+    });
+
+    document.addEventListener("mousemove", (event) => {
+      if (!chromeAutohideEnabled) {
+        return;
+      }
+      // Show chrome when mouse is at the very top (24px reveal zone)
+      if (event.clientY <= 24) {
+        setChromeVisibility(true);
+        scheduleChromeHide(1200);
+      }
+    });
+
+    document.addEventListener("focusin", () => {
+      if (!chromeAutohideEnabled) {
+        return;
+      }
+      setChromeVisibility(true);
+      scheduleChromeHide(1400);
+    });
+
+    window.addEventListener("scroll", () => {
+      if (!chromeAutohideEnabled) {
+        return;
+      }
+      if (window.scrollY > 8) {
+        clearChromeHideTimeout();
+        setChromeVisibility(true);
+      } else {
+        scheduleChromeHide(900);
+      }
+    }, { passive: true });
 
     // Fallback for navbar collapse when Bootstrap JS is unavailable.
     if (!(window.bootstrap && window.bootstrap.Collapse)) {
@@ -550,6 +730,7 @@
 
   (() => {
     const HLS_INSTANCE_KEY = "__reconeyeHlsInstance";
+    const HLS_WATCHDOG_KEY = "__reconeyeHlsWatchdog";
 
     function focusPlayer(video) {
       if (!video) {
@@ -754,13 +935,122 @@
     }
 
     function destroyHls(video) {
+      const watchdog = video && video[HLS_WATCHDOG_KEY];
+      if (watchdog) {
+        if (watchdog.intervalId) {
+          window.clearInterval(watchdog.intervalId);
+        }
+        if (Array.isArray(watchdog.cleanups)) {
+          watchdog.cleanups.forEach((fn) => {
+            try { fn(); } catch (_) {}
+          });
+        }
+      }
       const existing = video && video[HLS_INSTANCE_KEY];
       if (existing && typeof existing.destroy === "function") {
         existing.destroy();
       }
       if (video) {
         video[HLS_INSTANCE_KEY] = null;
+        video[HLS_WATCHDOG_KEY] = null;
       }
+    }
+
+    function setupHlsWatchdog(video, restartPlayback) {
+      if (!video || typeof restartPlayback !== "function") {
+        return;
+      }
+      const existing = video[HLS_WATCHDOG_KEY];
+      if (existing && existing.intervalId) {
+        window.clearInterval(existing.intervalId);
+      }
+      if (existing && Array.isArray(existing.cleanups)) {
+        existing.cleanups.forEach((fn) => {
+          try { fn(); } catch (_) {}
+        });
+      }
+
+      const state = {
+        lastProgressAt: Date.now(),
+        lastCurrentTime: Number(video.currentTime || 0),
+        restartCount: 0,
+        lastRestartAt: 0,
+        intervalId: null,
+        cleanups: [],
+      };
+
+      const markProgress = () => {
+        const now = Date.now();
+        const t = Number(video.currentTime || 0);
+        if (Math.abs(t - state.lastCurrentTime) > 0.05) {
+          state.lastCurrentTime = t;
+          state.lastProgressAt = now;
+          state.restartCount = 0;
+        } else if (!video.paused) {
+          state.lastProgressAt = now;
+        }
+      };
+
+      const markAttempting = () => {
+        if (!video.paused) {
+          state.lastProgressAt = Date.now();
+        }
+      };
+
+      const onTimeupdate = () => markProgress();
+      const onPlaying = () => markProgress();
+      const onLoadedData = () => markProgress();
+      const onWaiting = () => markAttempting();
+      const onStalled = () => markAttempting();
+
+      video.addEventListener("timeupdate", onTimeupdate);
+      video.addEventListener("playing", onPlaying);
+      video.addEventListener("loadeddata", onLoadedData);
+      video.addEventListener("waiting", onWaiting);
+      video.addEventListener("stalled", onStalled);
+
+      state.cleanups.push(() => video.removeEventListener("timeupdate", onTimeupdate));
+      state.cleanups.push(() => video.removeEventListener("playing", onPlaying));
+      state.cleanups.push(() => video.removeEventListener("loadeddata", onLoadedData));
+      state.cleanups.push(() => video.removeEventListener("waiting", onWaiting));
+      state.cleanups.push(() => video.removeEventListener("stalled", onStalled));
+
+      const STUCK_AFTER_MS = 25000;
+      const CHECK_EVERY_MS = 5000;
+      const RESTART_COOLDOWN_MS = 8000;
+      const MAX_RESTARTS = 3;
+
+      state.intervalId = window.setInterval(() => {
+        if (document.hidden) {
+          return;
+        }
+        if (!video.isConnected) {
+          return;
+        }
+        if (video.ended) {
+          return;
+        }
+        if (video.paused) {
+          return;
+        }
+        const now = Date.now();
+        if (now - state.lastProgressAt < STUCK_AFTER_MS) {
+          return;
+        }
+        if (now - state.lastRestartAt < RESTART_COOLDOWN_MS) {
+          return;
+        }
+        if (state.restartCount >= MAX_RESTARTS) {
+          triggerStreamCheck(video);
+          return;
+        }
+
+        state.restartCount += 1;
+        state.lastRestartAt = now;
+        restartPlayback();
+      }, CHECK_EVERY_MS);
+
+      video[HLS_WATCHDOG_KEY] = state;
     }
 
     function bindLiveControls(video) {
@@ -823,6 +1113,13 @@
         }
 
         if (window.Hls && window.Hls.isSupported()) {
+          const restartPlayback = () => {
+            destroyHls(video);
+            video.dataset.hlsInitialized = "false";
+            window.setTimeout(() => {
+              initHlsPlayers(video.parentElement || document);
+            }, 250);
+          };
           const hls = new window.Hls({
             enableWorker: true,
             lowLatencyMode: false,
@@ -859,17 +1156,14 @@
               // Other fatal errors
               triggerStreamCheck(video);
             }
-            destroyHls(video);
-            video.dataset.hlsInitialized = "false";
-            window.setTimeout(() => {
-              initHlsPlayers(video.parentElement || document);
-            }, 250);
+            restartPlayback();
           });
           video[HLS_INSTANCE_KEY] = hls;
           video.dataset.hlsInitialized = "true";
           bindPlayerKeyboard(video);
           bindPauseGuard(video);
           if (video.dataset.disablePause === "true") bindLiveControls(video);
+          setupHlsWatchdog(video, restartPlayback);
           return;
         }
 

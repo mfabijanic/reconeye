@@ -9,6 +9,18 @@ from django.db import models
 class User(AbstractUser):
     """Custom user model — allows future extension without migrations hassle."""
 
+    class UiLanguage(models.TextChoices):
+        ENGLISH = "en", "English"
+        CROATIAN = "hr", "Hrvatski"
+
+    preferred_language = models.CharField(
+        max_length=5,
+        choices=UiLanguage.choices,
+        default=UiLanguage.ENGLISH,
+        db_index=True,
+        help_text="Preferred interface language.",
+    )
+
     class Meta:
         verbose_name = "User"
         verbose_name_plural = "Users"

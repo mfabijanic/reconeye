@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ camera }} — ReconEye{% endblock %}
 
 {% block content %}
@@ -6,12 +7,12 @@
   <div class="col-md-12">
     <h5><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
     {% include "cameras/_stream_player.html" with camera=camera %}
-    {% if stream_id %}<p class="text-muted small mt-2">Stream ID: <code>{{ stream_id }}</code></p>{% endif %}
+    {% if stream_id %}<p class="text-muted small mt-2">{% trans "Stream ID" %}: <code>{{ stream_id }}</code></p>{% endif %}
     <table class="table table-sm table-bordered mt-3">
-      <tr><th>Source</th><td>{{ camera.get_source_type_display }}</td></tr>
-      <tr><th>Country</th><td>{{ camera.country|default:"—" }}</td></tr>
-      <tr><th>City</th><td>{{ camera.city|default:"—" }}</td></tr>
-      <tr><th>Status</th><td>
+      <tr><th>{% trans "Source" %}</th><td>{{ camera.get_source_type_display }}</td></tr>
+      <tr><th>{% trans "Country" %}</th><td>{{ camera.country|default:"—" }}</td></tr>
+      <tr><th>{% trans "City" %}</th><td>{{ camera.city|default:"—" }}</td></tr>
+      <tr><th>{% trans "Status" %}</th><td>
         <div class="d-flex align-items-center gap-2">
           {% include "htmx/cameras/_status_badge.html" with camera=camera checking=False %}
           <button type="button"
@@ -19,26 +20,26 @@
             hx-post="{% url 'cameras_htmx:check_stream' camera.pk %}"
             hx-target="#camera-status-badge"
             hx-swap="outerHTML"
-            title="Check stream availability"
+            title="{% trans 'Check stream availability' %}"
           >
             <i class="bi bi-arrow-clockwise"></i>
           </button>
         </div>
       </td></tr>
-      <tr><th>Partial metadata</th><td>{{ camera.has_partial_metadata|yesno:"Yes,No" }}</td></tr>
-      <tr><th>Stream URL</th><td>
+      <tr><th>{% trans "Partial metadata" %}</th><td>{{ camera.has_partial_metadata|yesno:_('Yes,No') }}</td></tr>
+      <tr><th>{% trans "Stream URL" %}</th><td>
         {% if camera.stream_url %}<a href="{{ camera.stream_url }}" target="_blank">{{ camera.stream_url|truncatechars:80 }}</a>
         {% else %}—{% endif %}
       </td></tr>
-      <tr><th>Page URL</th><td>
+      <tr><th>{% trans "Page URL" %}</th><td>
         {% if camera.page_url %}<a href="{{ camera.page_url }}" target="_blank">{{ camera.page_url|truncatechars:80 }}</a>
         {% else %}—{% endif %}
       </td></tr>
-      <tr><th>Last checked</th><td>{{ camera.last_checked|date:"d.m.Y H:i:s"|default:"—" }}</td></tr>
-      <tr><th>Created</th><td>{{ camera.created_at|date:"d.m.Y H:i" }}</td></tr>
+      <tr><th>{% trans "Last checked" %}</th><td>{{ camera.last_checked|date:"d.m.Y H:i:s"|default:"—" }}</td></tr>
+      <tr><th>{% trans "Created" %}</th><td>{{ camera.created_at|date:"d.m.Y H:i" }}</td></tr>
     </table>
     <a href="{% url 'cameras:list' %}" class="btn btn-sm btn-outline-secondary mt-2">
-      <i class="bi bi-arrow-left me-1"></i>Back
+      <i class="bi bi-arrow-left me-1"></i>{% trans "Back" %}
     </a>
   </div>
 </div>

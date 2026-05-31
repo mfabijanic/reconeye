@@ -98,25 +98,18 @@ def get_insecam_country_codes() -> list[str]:
     return result  # preserves order (popularity-sorted by default)
 
 
-# Human-readable names for display in the UI
-_COUNTRY_NAMES: dict[str, str] = {
-    "US": "United States", "JP": "Japan", "IT": "Italy", "DE": "Germany",
-    "RU": "Russia", "AT": "Austria", "CZ": "Czech Republic", "FR": "France",
-    "KR": "South Korea", "CH": "Switzerland", "NO": "Norway", "RO": "Romania",
-    "TW": "Taiwan", "CA": "Canada", "ES": "Spain", "SE": "Sweden",
-    "NL": "Netherlands", "PL": "Poland", "GB": "United Kingdom", "UA": "Ukraine",
-    "RS": "Serbia", "BG": "Bulgaria", "DK": "Denmark", "IN": "India",
-    "SK": "Slovakia", "FI": "Finland", "BE": "Belgium", "HU": "Hungary",
-    "ZA": "South Africa", "TR": "Turkey", "GR": "Greece", "BA": "Bosnia",
-    "TH": "Thailand", "BR": "Brazil", "EG": "Egypt", "NZ": "New Zealand",
-    "IE": "Ireland", "AU": "Australia", "ID": "Indonesia", "CL": "Chile",
-    "AR": "Argentina", "CN": "China", "LT": "Lithuania", "SI": "Slovenia",
-    "MX": "Mexico", "KZ": "Kazakhstan", "MD": "Moldova", "EE": "Estonia",
-    "VN": "Vietnam", "FO": "Faroe Islands", "HN": "Honduras", "HK": "Hong Kong",
-    "IL": "Israel", "BY": "Belarus", "PE": "Peru", "GU": "Guam",
-    "PA": "Panama", "BD": "Bangladesh", "AM": "Armenia", "SG": "Singapore",
-    "NI": "Nicaragua", "CO": "Colombia", "-": "Unknown",
-}
+def _get_country_name(code: str) -> str:
+    """Get country name from pycountry or fallback to code."""
+    if code == "-":
+        return "Unknown"
+    try:
+        import pycountry
+        country = pycountry.countries.get(alpha_2=code)
+        if country:
+            return country.name
+    except (ImportError, AttributeError):
+        pass
+    return code
 
 
 def get_whatsupcams_country_codes() -> list[str]:
@@ -133,7 +126,7 @@ def get_whatsupcams_country_codes() -> list[str]:
 
 def get_whatsupcams_countries_with_labels() -> list[tuple[str, str]]:
     return [
-        (code, _COUNTRY_NAMES.get(code, code))
+        (code, _get_country_name(code))
         for code in get_whatsupcams_country_codes()
     ]
 
@@ -145,7 +138,7 @@ def is_allowed_whatsupcams_country(code: str) -> bool:
 def get_insecam_countries_with_labels() -> list[tuple[str, str]]:
     """Return list of (code, label) tuples for dropdown display."""
     return [
-        (code, _COUNTRY_NAMES.get(code, code))
+        (code, _get_country_name(code))
         for code in get_insecam_country_codes()
     ]
 

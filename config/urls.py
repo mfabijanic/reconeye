@@ -9,6 +9,7 @@ from apps.common.views import HealthView, ReadinessView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("i18n/", include("django.conf.urls.i18n")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False)),
     path("users/", include("apps.users.urls", namespace="users")),
     path("cameras/", include("apps.cameras.urls", namespace="cameras")),

@@ -1,0 +1,534 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: reconeye 0.1.0\n"
+"POT-Creation-Date: 2026-05-31 00:00+0000\n"
+"PO-Revision-Date: 2026-05-31 00:00+0000\n"
+"Last-Translator: ReconEye Team\n"
+"Language-Team: Croatian\n"
+"Language: hr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Dashboard"
+msgstr "Nadzorna ploča"
+
+msgid "Cameras"
+msgstr "Kamere"
+
+msgid "Surveillance"
+msgstr "Nadzor"
+
+msgid "Map"
+msgstr "Karta"
+
+msgid "Scrape Jobs"
+msgstr "Poslovi prikupljanja"
+
+msgid "Admin"
+msgstr "Administracija"
+
+msgid "Style"
+msgstr "Stil"
+
+msgid "Camera frame profile"
+msgstr "Profil okvira kamere"
+
+msgid "Subtle"
+msgstr "Suptilno"
+
+msgid "Max Cyber"
+msgstr "Maksimalni cyber"
+
+msgid "Settings"
+msgstr "Postavke"
+
+msgid "Logout"
+msgstr "Odjava"
+
+msgid "Login"
+msgstr "Prijava"
+
+msgid "Sign in to continue"
+msgstr "Prijavite se za nastavak"
+
+msgid "Sign in"
+msgstr "Prijavi se"
+
+msgid "Map settings"
+msgstr "Postavke karte"
+
+msgid "Interface language"
+msgstr "Jezik sučelja"
+
+msgid "Disable clustering at zoom"
+msgstr "Isključi grupiranje na razini uvećanja"
+
+msgid "Marker limit"
+msgstr "Ograničenje markera"
+
+msgid "Status stale minutes"
+msgstr "Minute do zastarjelog statusa"
+
+msgid "Popup close on mouse out"
+msgstr "Zatvori skočni prozor pri izlasku miša"
+
+msgid "Use global default"
+msgstr "Koristi globalnu zadanu vrijednost"
+
+msgid "Enabled"
+msgstr "Omogućeno"
+
+msgid "Disabled"
+msgstr "Onemogućeno"
+
+msgid "Empty = use global default."
+msgstr "Prazno = koristi globalnu zadanu vrijednost."
+
+msgid "Save settings"
+msgstr "Spremi postavke"
+
+msgid "Back to map"
+msgstr "Natrag na kartu"
+
+msgid "Settings saved."
+msgstr "Postavke su spremljene."
+
+msgid "Open map"
+msgstr "Otvori kartu"
+
+msgid "total"
+msgstr "ukupno"
+
+msgid "Search title…"
+msgstr "Pretraži naslov…"
+
+msgid "All countries"
+msgstr "Sve države"
+
+msgid "All sources"
+msgstr "Svi izvori"
+
+msgid "All statuses"
+msgstr "Svi statusi"
+
+msgid "Online"
+msgstr "Online"
+
+msgid "Offline"
+msgstr "Offline"
+
+msgid "Geo fallback (country)"
+msgstr "Geo fallback (država)"
+
+msgid "Reset"
+msgstr "Resetiraj"
+
+msgid "Stream ID"
+msgstr "ID streama"
+
+msgid "Source"
+msgstr "Izvor"
+
+msgid "Country"
+msgstr "Država"
+
+msgid "City"
+msgstr "Grad"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Check stream availability"
+msgstr "Provjeri dostupnost streama"
+
+msgid "Partial metadata"
+msgstr "Djelomični metapodaci"
+
+msgid "Yes"
+msgstr "Da"
+
+msgid "No"
+msgstr "Ne"
+
+msgid "Stream URL"
+msgstr "URL streama"
+
+msgid "Page URL"
+msgstr "URL stranice"
+
+msgid "Last checked"
+msgstr "Zadnja provjera"
+
+msgid "Created"
+msgstr "Kreirano"
+
+msgid "Back"
+msgstr "Natrag"
+
+msgid "Active Scrape Jobs"
+msgstr "Aktivni poslovi prikupljanja"
+
+msgid "View all"
+msgstr "Prikaži sve"
+
+msgid "Loading…"
+msgstr "Učitavanje…"
+
+msgid "Choose country…"
+msgstr "Odaberite državu…"
+
+msgid "All countries (optional)…"
+msgstr "Sve države (opcionalno)…"
+
+msgid "Filter"
+msgstr "Filtriraj"
+
+msgid "Trigger scrape"
+msgstr "Pokreni prikupljanje"
+
+msgid "Progress"
+msgstr "Napredak"
+
+msgid "Found"
+msgstr "Pronađeno"
+
+msgid "New"
+msgstr "Novo"
+
+msgid "Updated"
+msgstr "Ažurirano"
+
+msgid "Started"
+msgstr "Pokrenuto"
+
+msgid "Duration"
+msgstr "Trajanje"
+
+msgid "Action"
+msgstr "Akcija"
+
+msgid "Running"
+msgstr "Pokrenuto"
+
+msgid "Success"
+msgstr "Uspješno"
+
+msgid "Failed"
+msgstr "Neuspješno"
+
+msgid "Cancelled"
+msgstr "Otkazano"
+
+msgid "Pending"
+msgstr "Na čekanju"
+
+msgid "Discovering cameras…"
+msgstr "Otkrivanje kamera…"
+
+msgid "Cancel"
+msgstr "Otkaži"
+
+msgid "No jobs yet."
+msgstr "Još nema poslova."
+
+msgid "Total cameras"
+msgstr "Ukupno kamera"
+
+msgid "Active jobs"
+msgstr "Aktivni poslovi"
+
+msgid "Top Countries"
+msgstr "Najzastupljenije države"
+
+msgid "By Source"
+msgstr "Po izvoru"
+
+msgid "Stale status"
+msgstr "Zastarjeli status"
+
+msgid "Coordinates"
+msgstr "Koordinate"
+
+msgid "Unknown"
+msgstr "Nepoznato"
+
+msgid "Never"
+msgstr "Nikad"
+
+msgid "Open details"
+msgstr "Otvori detalje"
+
+msgid "Check stream"
+msgstr "Provjeri stream"
+
+msgid "Open stream"
+msgstr "Otvori stream"
+
+msgid "Title"
+msgstr "Naslov"
+
+msgid "Partial"
+msgstr "Djelomično"
+
+msgid "No cameras found."
+msgstr "Nijedna kamera nije pronađena."
+
+msgid "Camera pagination"
+msgstr "Straničenje kamera"
+
+msgid "Checking..."
+msgstr "Provjera..."
+
+msgid "Task ID"
+msgstr "ID zadatka"
+
+msgid "Task"
+msgstr "Zadatak"
+
+msgid "%(elapsed)s ago"
+msgstr "prije %(elapsed)s"
+
+msgid "Camera"
+msgstr "Kamera"
+
+msgid "LIVE"
+msgstr "UŽIVO"
+
+msgid "Toggle mute"
+msgstr "Uključi ili isključi zvuk"
+
+msgid "Fullscreen"
+msgstr "Cijeli zaslon"
+
+msgid "Camera preview"
+msgstr "Pregled kamere"
+
+msgid "Camera Map"
+msgstr "Karta kamera"
+
+msgid "Fit markers"
+msgstr "Prilagodi markere"
+
+msgid "Locate me"
+msgstr "Lociraj me"
+
+msgid "cameras on map"
+msgstr "kamera na karti"
+
+msgid "Search location…"
+msgstr "Pretraži lokaciju…"
+
+msgid "Loading"
+msgstr "Učitavanje"
+
+msgid "Camera details"
+msgstr "Detalji kamere"
+
+msgid "Click a marker to preview the camera and view metadata."
+msgstr "Kliknite marker za pregled kamere i prikaz metapodataka."
+
+msgid "Cluster"
+msgstr "Grupa"
+
+msgid "Total"
+msgstr "Ukupno"
+
+msgid "cameras"
+msgstr "kamera"
+
+msgid "Stale"
+msgstr "Zastarjelo"
+
+msgid "No cameras found for current filters."
+msgstr "Nema kamera za trenutačne filtre."
+
+msgid "Failed to load map data."
+msgstr "Učitavanje podataka karte nije uspjelo."
+
+msgid "Showing"
+msgstr "Prikazano"
+
+msgid "of"
+msgstr "od"
+
+msgid "markers in this area. Zoom in or filter to narrow results."
+msgstr "markera na ovom području. Uvećajte ili filtrirajte za sužavanje rezultata."
+
+msgid "You are here"
+msgstr "Vi ste ovdje"
+
+msgid "No locations found"
+msgstr "Lokacije nisu pronađene"
+
+msgid "Columns"
+msgstr "Stupci"
+
+msgid "Force the number of columns (disable for automatic)"
+msgstr "Nametni broj stupaca (isključite za automatski način)"
+
+msgid "Lock the number of columns (automatic or manual selection)"
+msgstr "Zaključaj broj stupaca (automatski ili ručni odabir)"
+
+msgid "Auto"
+msgstr "Automatski"
+
+msgid "Show or hide camera labels"
+msgstr "Prikaži ili sakrij oznake kamera"
+
+msgid "Labels"
+msgstr "Oznake"
+
+msgid "Edit grid (add or remove cameras)"
+msgstr "Uredi mrežu (dodaj ili ukloni kamere)"
+
+msgid "Edit"
+msgstr "Uredi"
+
+msgid "Make sure the go2rtc API is available at"
+msgstr "Provjerite je li go2rtc API dostupan na"
+
+msgid "Add a camera by stream name"
+msgstr "Dodaj kameru po nazivu streama"
+
+msgid "Edit mode"
+msgstr "Način uređivanja"
+
+msgid "Stream name"
+msgstr "Naziv streama"
+
+msgid "Display title (optional)"
+msgstr "Prikazni naslov (opcionalno)"
+
+msgid "Add to grid"
+msgstr "Dodaj u mrežu"
+
+msgid "Available streams from source"
+msgstr "Dostupni streamovi iz izvora"
+
+msgid "Stream"
+msgstr "Stream"
+
+msgid "Producers"
+msgstr "Producenti"
+
+msgid "Consumers"
+msgstr "Konzumenti"
+
+msgid "Add"
+msgstr "Dodaj"
+
+msgid "No streams found."
+msgstr "Nema pronađenih streamova."
+
+msgid "(no title)"
+msgstr "(bez naslova)"
+
+msgid "Remove from grid"
+msgstr "Ukloni iz mreže"
+
+msgid "No go2rtc cameras have been added to the grid yet."
+msgstr "Još nijedna go2rtc kamera nije dodana u mrežu."
+
+msgid "Fixed"
+msgstr "Fiksno"
+
+msgid "Done"
+msgstr "Gotovo"
+
+msgid "Choose a valid scrape source."
+msgstr "Odaberite valjani izvor prikupljanja."
+
+msgid "Choose a country for Insecam scrape."
+msgstr "Odaberite državu za Insecam prikupljanje."
+
+msgid "Country '%(country)s' is not enabled in INSECAM_COUNTRY_CODES config."
+msgstr "Država '%(country)s' nije omogućena u konfiguraciji INSECAM_COUNTRY_CODES."
+
+msgid "Country '%(country)s' is not enabled in WHATSUPCAMS_COUNTRY_CODES config."
+msgstr "Država '%(country)s' nije omogućena u konfiguraciji WHATSUPCAMS_COUNTRY_CODES."
+
+msgid "%(source)s%(suffix)s already has an active job (#%(job_id)s, %(status)s)."
+msgstr "%(source)s%(suffix)s već ima aktivan posao (#%(job_id)s, %(status)s)."
+
+msgid "No Celery workers are online. Start a worker and try again."
+msgstr "Nema aktivnih Celery workera. Pokrenite worker i pokušajte ponovno."
+
+msgid "Failed to enqueue Insecam scrape. Check broker/worker status."
+msgstr "Red čekanja za Insecam prikupljanje nije uspio. Provjerite broker/worker status."
+
+msgid "Insecam [%(country)s] scrape queued (job #%(job_id)s): %(task_id)s"
+msgstr "Insecam [%(country)s] prikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
+
+msgid "Failed to enqueue WhatsUpCams scrape. Check broker/worker status."
+msgstr "Red čekanja za WhatsUpCams prikupljanje nije uspio. Provjerite broker/worker status."
+
+msgid "WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s"
+msgstr "WhatsUpCams %(scope)sprikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
+
+msgid "Job #%(job_id)s is already %(status)s."
+msgstr "Posao #%(job_id)s je već %(status)s."
+
+msgid "Cancelled scrape job #%(job_id)s."
+msgstr "Posao prikupljanja #%(job_id)s je otkazan."
+
+msgid "Invalidate scrape jobs cache"
+msgstr "Poništi cache poslova prikupljanja"
+
+msgid "Scrape jobs cache invalidated."
+msgstr "Cache poslova prikupljanja je poništen."
+
+msgid "Trigger Insecam scrape now"
+msgstr "Pokreni Insecam prikupljanje odmah"
+
+msgid "Insecam scrape task queued: %(task_id)s"
+msgstr "Insecam zadatak prikupljanja stavljen u red: %(task_id)s"
+
+msgid "Trigger WhatsUpCams scrape now"
+msgstr "Pokreni WhatsUpCams prikupljanje odmah"
+
+msgid "WhatsUpCams scrape task queued: %(task_id)s"
+msgstr "WhatsUpCams zadatak prikupljanja stavljen u red: %(task_id)s"
+
+msgid "Invalidate cameras cache"
+msgstr "Poništi cache kamera"
+
+msgid "Cameras cache invalidated."
+msgstr "Cache kamera je poništen."
+
+msgid "Invalidate dashboard cache"
+msgstr "Poništi cache nadzorne ploče"
+
+msgid "Dashboard cache invalidated."
+msgstr "Cache nadzorne ploče je poništen."
+
+msgid "Invalidate ALL cache"
+msgstr "Poništi cijeli cache"
+
+msgid "All cache invalidated."
+msgstr "Cijeli cache je poništen."
+
+msgid "Refresh Nominatim geocache for selected cameras"
+msgstr "Osvježi Nominatim geocache za odabrane kamere"
+
+msgid "No cameras selected."
+msgstr "Nijedna kamera nije odabrana."
+
+msgid "Queued geolocation refresh for %(count)s camera(s). Task: %(task_id)s"
+msgstr "Osvježavanje geolokacije stavljeno u red za %(count)s kamera. Zadatak: %(task_id)s"
+
+msgid "Location"
+msgstr "Lokacija"
+
+msgid "URLs"
+msgstr "URL-ovi"
+
+msgid "Payload"
+msgstr "Payload"
+
+msgid "Timestamps"
+msgstr "Vremenske oznake"
+
+msgid "stream"
+msgstr "stream"

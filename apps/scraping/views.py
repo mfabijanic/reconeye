@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import DetailView, ListView
 
@@ -71,19 +72,27 @@ class TriggerScrapeView(LoginRequiredMixin, View):
 
         if source not in {"INSECAM", "WHATSUPCAMS"}:
             logger.warning("Invalid scrape source submitted by user=%s: %s", request.user, source)
-            messages.error(request, "Choose a valid scrape source.")
+            messages.error(request, _("Choose a valid scrape source."))
             return redirect("scraping:job_list")
 
         if source == "INSECAM" and not target_country_code:
-            messages.error(request, "Choose a country for Insecam scrape.")
+            messages.error(request, _("Choose a country for Insecam scrape."))
             return redirect("scraping:job_list")
 
         if source == "INSECAM" and not is_allowed_insecam_country(target_country_code):
-            messages.error(request, f"Country '{target_country_code}' is not enabled in INSECAM_COUNTRY_CODES config.")
+            messages.error(
+                request,
+                _("Country '%(country)s' is not enabled in INSECAM_COUNTRY_CODES config.")
+                % {"country": target_country_code},
+            )
             return redirect("scraping:job_list")
 
         if source == "WHATSUPCAMS" and target_country_code and not is_allowed_whatsupcams_country(target_country_code):
-            messages.error(request, f"Country '{target_country_code}' is not enabled in WHATSUPCAMS_COUNTRY_CODES config.")
+            messages.error(
+                request,
+                _("Country '%(country)s' is not enabled in WHATSUPCAMS_COUNTRY_CODES config.")
+                % {"country": target_country_code},
+            )
             return redirect("scraping:job_list")
 
         active_filters = {
@@ -97,7 +106,13 @@ class TriggerScrapeView(LoginRequiredMixin, View):
             target_suffix = f" ({active_job.target_country_code})" if active_job.target_country_code else ""
             messages.warning(
                 request,
-                f"{source}{target_suffix} already has an active job (#{active_job.pk}, {active_job.status}).",
+                _("%(source)s%(suffix)s already has an active job (#%(job_id)s, %(status)s).")
+                % {
+                    "source": source,
+                    "suffix": target_suffix,
+                    "job_id": active_job.pk,
+                    "status": active_job.status,
+                },
             )
             return redirect("scraping:job_list")
 
@@ -105,7 +120,7 @@ class TriggerScrapeView(LoginRequiredMixin, View):
         # Keep active job protection above to avoid duplicate concurrent runs.
 
         if not self._has_online_workers():
-            messages.error(request, "No Celery workers are online. Start a worker and try again.")
+            messages.error(request, _("No Celery workers are online. Start a worker and try again."))
             return redirect("scraping:job_list")
 
         if source == "INSECAM":
@@ -120,7 +135,7 @@ class TriggerScrapeView(LoginRequiredMixin, View):
             except Exception as exc:
                 job.mark_failed(error=f"Queue enqueue failed: {exc}")
                 logger.exception("Failed to enqueue Insecam scrape job #%s: %s", job.pk, exc)
-                messages.error(request, "Failed to enqueue Insecam scrape. Check broker/worker status.")
+                messages.error(request, _("Failed to enqueue Insecam scrape. Check broker/worker status."))
                 return redirect("scraping:job_list")
 
             job.celery_task_id = task.id
@@ -132,7 +147,11 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                 job.pk,
                 request.user,
             )
-            messages.success(request, f"Insecam [{target_country_code}] scrape queued (job #{job.pk}): {task.id}")
+            messages.success(
+                request,
+                _("Insecam [%(country)s] scrape queued (job #%(job_id)s): %(task_id)s")
+                % {"country": target_country_code, "job_id": job.pk, "task_id": task.id},
+            )
         elif source == "WHATSUPCAMS":
             from apps.scraping.tasks import scrape_whatsupcams_job
 
@@ -142,7 +161,7 @@ class TriggerScrapeView(LoginRequiredMixin, View):
             except Exception as exc:
                 job.mark_failed(error=f"Queue enqueue failed: {exc}")
                 logger.exception("Failed to enqueue WhatsUpCams scrape job #%s: %s", job.pk, exc)
-                messages.error(request, "Failed to enqueue WhatsUpCams scrape. Check broker/worker status.")
+                messages.error(request, _("Failed to enqueue WhatsUpCams scrape. Check broker/worker status."))
                 return redirect("scraping:job_list")
 
             job.celery_task_id = task.id
@@ -155,7 +174,11 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                 request.user,
             )
             scope = f"[{target_country_code}] " if target_country_code else ""
-            messages.success(request, f"WhatsUpCams {scope}scrape queued (job #{job.pk}): {task.id}")
+            messages.success(
+                request,
+                _("WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s")
+                % {"scope": scope, "job_id": job.pk, "task_id": task.id},
+            )
         return redirect("scraping:job_list")
 
 
@@ -164,7 +187,10 @@ class CancelScrapeView(LoginRequiredMixin, View):
         job = get_object_or_404(ScrapeJob, pk=pk)
 
         if job.is_terminal:
-            messages.info(request, f"Job #{job.pk} is already {job.status}.")
+            messages.info(
+                request,
+                _("Job #%(job_id)s is already %(status)s.") % {"job_id": job.pk, "status": job.status},
+            )
             return redirect("scraping:job_list")
 
         if job.celery_task_id:
@@ -174,7 +200,7 @@ class CancelScrapeView(LoginRequiredMixin, View):
 
         job.mark_cancelled(reason=f"Cancelled by {request.user}")
         logger.info("Cancelled scrape job #%s by user=%s", job.pk, request.user)
-        messages.success(request, f"Cancelled scrape job #{job.pk}.")
+        messages.success(request, _("Cancelled scrape job #%(job_id)s.") % {"job_id": job.pk})
         return redirect("scraping:job_list")
 
 

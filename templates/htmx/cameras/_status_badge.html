@@ -1,3 +1,4 @@
+{% load i18n %}
 {% if checking %}
 <span id="camera-status-badge"
   hx-get="{% url 'cameras_htmx:check_stream' camera.pk %}?check_started={{ check_started }}"
@@ -5,19 +6,19 @@
   hx-swap="outerHTML"
 >
   <span class="badge text-bg-warning">
-    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Checking...
+    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>{% trans "Checking..." %}
   </span>
-  {% if task_id %}<small class="text-muted ms-2" title="Task ID: {{ task_id }}">Task: {{ task_id|truncatechars:8 }}</small>{% endif %}
+  {% if task_id %}<small class="text-muted ms-2" title="{% trans 'Task ID' %}: {{ task_id }}">{% trans "Task" %}: {{ task_id|truncatechars:8 }}</small>{% endif %}
 </span>
 {% else %}
 <span id="camera-status-badge">
   {% if camera.is_online %}
-    <span class="badge badge-online">Online</span>
+    <span class="badge badge-online">{% trans "Online" %}</span>
   {% else %}
-    <span class="badge badge-offline">Offline</span>
+    <span class="badge badge-offline">{% trans "Offline" %}</span>
   {% endif %}
   {% if camera.last_checked %}
-    <small class="text-muted ms-2">{{ camera.last_checked|timesince }} ago</small>
+    <small class="text-muted ms-2">{% blocktrans with elapsed=camera.last_checked|timesince %}{{ elapsed }} ago{% endblocktrans %}</small>
   {% endif %}
 </span>
 {% endif %}

@@ -13,6 +13,7 @@ tenacity>=8.3
 beautifulsoup4>=4.12
 lxml>=5.2
 Pillow>=10.3
+pycountry>=24.1
 
 # Production
 gunicorn>=22.0

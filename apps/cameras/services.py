@@ -322,15 +322,43 @@ def upsert_camera(data: dict[str, Any]) -> tuple[Camera, bool]:
     }
 
     with transaction.atomic():
-        camera, created = Camera.objects.update_or_create(
-            source_type=source_type,
-            page_url=page_url,
-            defaults=defaults,
+        queryset = (
+            Camera.objects.select_for_update()
+            .filter(source_type=source_type, page_url=page_url)
+            .order_by("-updated_at", "-id")
         )
+
+        camera = queryset.first()
+        created = camera is None
+
         if created:
+            camera = Camera.objects.create(
+                source_type=source_type,
+                page_url=page_url,
+                **defaults,
+            )
             # Presume online when we have a direct stream URL.
             camera.is_online = bool(data.get("stream_url", "").strip())
-            camera.save(update_fields=["is_online"])
+            camera.save(update_fields=["is_online", "updated_at"])
+        else:
+            updated_fields: list[str] = []
+            for key, value in defaults.items():
+                if getattr(camera, key) != value:
+                    setattr(camera, key, value)
+                    updated_fields.append(key)
+            if updated_fields:
+                updated_fields.append("updated_at")
+                camera.save(update_fields=updated_fields)
+
+            duplicate_ids = list(queryset.values_list("id", flat=True)[1:])
+            if duplicate_ids:
+                logger.warning(
+                    "Found duplicate cameras for source_type=%s page_url=%s duplicates=%s; deactivating duplicates",
+                    source_type,
+                    page_url,
+                    duplicate_ids,
+                )
+                Camera.objects.filter(id__in=duplicate_ids).update(is_active=False)
     return camera, created
 
 
@@ -346,12 +374,60 @@ def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:
     """
     encoded = quote(stream_name.strip(), safe="")
     return {
+        "viewer": f"{base_url}/stream.html?src={encoded}&mode=webrtc&background=false&width=100%25&height=100%25",
+        "webrtc_embed": f"{base_url}/webrtc.html?src={encoded}",
         "webrtc": f"{base_url}/api/stream.webrtc?src={encoded}",
         "mse": f"{base_url}/api/stream.mse?src={encoded}",
         "hls": f"{base_url}/api/stream.m3u8?src={encoded}",
         "mjpeg": f"{base_url}/api/stream.mjpeg?src={encoded}",
         "mp4": f"{base_url}/api/stream.mp4?src={encoded}",
     }
+
+
+def ensure_go2rtc_camera_stream_urls(camera: Camera) -> Camera:
+    """Ensure persisted GO2RTC cameras have full URL set and WebRTC player URL as primary."""
+    if camera.source_type != SourceType.GO2RTC:
+        return camera
+
+    payload = dict(camera.source_payload or {})
+    base_url = normalize_go2rtc_base_url(payload.get("base_url") or None)
+    stream_name = str(payload.get("stream_name") or "").strip()
+
+    if not stream_name:
+        title = (camera.title or "").strip()
+        if title:
+            stream_name = title
+
+    if not base_url or not stream_name:
+        return camera
+
+    urls = build_go2rtc_stream_urls(base_url, stream_name)
+    stream_urls = payload.get("stream_urls") if isinstance(payload.get("stream_urls"), dict) else {}
+    merged_urls = {**stream_urls, **urls}
+    desired_stream_url = urls["webrtc_embed"]
+
+    changed_fields: list[str] = []
+    if payload.get("stream_urls") != merged_urls:
+        payload["stream_urls"] = merged_urls
+        payload.setdefault("provider", "go2rtc")
+        payload["base_url"] = base_url
+        payload["stream_name"] = stream_name
+        camera.source_payload = payload
+        changed_fields.append("source_payload")
+
+    if (camera.stream_url or "") != desired_stream_url:
+        camera.stream_url = desired_stream_url
+        changed_fields.append("stream_url")
+
+    if (camera.page_url or "") != desired_stream_url:
+        camera.page_url = desired_stream_url
+        changed_fields.append("page_url")
+
+    if changed_fields:
+        changed_fields.append("updated_at")
+        camera.save(update_fields=changed_fields)
+
+    return camera
 
 
 def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0) -> tuple[list[dict[str, Any]], str | None]:
@@ -374,7 +450,7 @@ def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float 
             payload = response.json()
     except Exception as exc:
         logger.warning("go2rtc stream discovery failed url=%s error=%s", api_url, exc)
-        return [], f"Ne mogu dohvatiti popis streamova sa: {api_url}"
+        return [], f"Unable to fetch the stream list from: {api_url}"
 
     streams_obj: dict[str, Any]
     if isinstance(payload, dict) and isinstance(payload.get("streams"), dict):
@@ -408,9 +484,9 @@ def upsert_go2rtc_camera(*, stream_name: str, title: str = "", base_url: str | N
     clean_stream_name = stream_name.strip()
     clean_title = title.strip() or clean_stream_name
     
-    # Build all streaming URLs; use MSE as primary (works on all platforms)
+    # Build all streaming URLs; use go2rtc WebRTC player page as primary playback URL
     urls = build_go2rtc_stream_urls(normalized_base, clean_stream_name)
-    stream_url = urls["mse"]  # Primary playback URL (MSE)
+    stream_url = urls["webrtc_embed"]
 
     data: dict[str, Any] = {
         "source_type": SourceType.GO2RTC,

@@ -4,6 +4,8 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import CharField, F, Q
+from django.db.models.functions import Cast, Lower, Trim
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -17,6 +19,7 @@ from apps.cameras.forms import Go2RTCCameraForm
 from apps.cameras.models import Camera, MapUISettings, SourceType
 from apps.cameras.services import (
     build_camera_display_title,
+    ensure_go2rtc_camera_stream_urls,
     extract_camera_stream_id,
     fetch_go2rtc_streams,
     get_camera_map_markers,
@@ -25,6 +28,43 @@ from apps.cameras.services import (
     upsert_go2rtc_camera,
 )
 from apps.users.models import UserMapSettings
+
+
+def _to_bool_flag(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _apply_camera_list_filters(qs, request):
+    if q := request.GET.get("q"):
+        qs = qs.filter(title__icontains=q)
+    if country := request.GET.get("country"):
+        qs = qs.filter(country__iexact=country)
+    if source := request.GET.get("source"):
+        qs = qs.filter(source_type=source)
+    if online := request.GET.get("online"):
+        qs = qs.filter(is_online=online == "1")
+
+    # Geolocation fallback filter:
+    # show cameras where successful geocoding used a country-only query
+    # (e.g., "Croatia", "Italy", "HR"), which usually means imprecise placement.
+    if _to_bool_flag(request.GET.get("geo_fallback_country")):
+        qs = qs.annotate(
+            geocode_query_norm=Lower(
+                Trim(Cast(F("source_payload__geocoded__query"), output_field=CharField()))
+            ),
+            country_norm=Lower(Trim(F("country"))),
+            country_code_norm=Lower(Trim(F("country_code"))),
+        ).filter(
+            Q(source_payload__geocoded__found=True)
+            & Q(geocode_query_norm__isnull=False)
+            & ~Q(geocode_query_norm="")
+            & (
+                Q(geocode_query_norm=F("country_norm"))
+                | Q(geocode_query_norm=F("country_code_norm"))
+            )
+        )
+
+    return qs
 
 
 def _effective_map_settings_for_user(user) -> dict[str, int | bool]:
@@ -71,15 +111,7 @@ class CameraListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = Camera.objects.filter(is_active=True).order_by("-created_at")
-        if q := self.request.GET.get("q"):
-            qs = qs.filter(title__icontains=q)
-        if country := self.request.GET.get("country"):
-            qs = qs.filter(country__iexact=country)
-        if source := self.request.GET.get("source"):
-            qs = qs.filter(source_type=source)
-        if online := self.request.GET.get("online"):
-            qs = qs.filter(is_online=online == "1")
-        return qs
+        return _apply_camera_list_filters(qs, self.request)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -89,6 +121,9 @@ class CameraListView(LoginRequiredMixin, ListView):
         ctx["selected_country"] = self.request.GET.get("country", "")
         ctx["selected_source"] = self.request.GET.get("source", "")
         ctx["selected_online"] = self.request.GET.get("online", "")
+        ctx["selected_geo_fallback_country"] = _to_bool_flag(
+            self.request.GET.get("geo_fallback_country")
+        )
         return ctx
 
 
@@ -127,6 +162,7 @@ class Go2RTCCameraGridView(LoginRequiredMixin, TemplateView):
             Camera.objects.filter(source_type=SourceType.GO2RTC, is_active=True)
             .order_by("title", "id")
         )
+        selected_cameras = [ensure_go2rtc_camera_stream_urls(camera) for camera in selected_cameras]
         ctx["go2rtc_base_url"] = base_url
         ctx["go2rtc_streams"] = streams
         ctx["go2rtc_source_error"] = source_error
@@ -139,17 +175,26 @@ class AddGo2RTCCameraView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         form = Go2RTCCameraForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Neispravan unos za go2rtc kameru.")
-            return redirect("cameras:surveillance")
+            error_html = '<div class="alert alert-danger alert-dismissible fade show" role="alert">'
+            error_html += "Invalid input for the go2rtc camera."
+            error_html += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>'
+            return HttpResponse(error_html)
 
         stream_name = form.cleaned_data["stream_name"].strip()
         title = form.cleaned_data["title"].strip()
         camera, created = upsert_go2rtc_camera(stream_name=stream_name, title=title)
+        
         if created:
-            messages.success(request, f"Dodana kamera: {camera.title}")
+            message = f"Added camera: {camera.title}"
+            alert_class = "alert-success"
         else:
-            messages.info(request, f"Ažurirana kamera: {camera.title}")
-        return redirect("cameras:surveillance")
+            message = f"Updated camera: {camera.title}"
+            alert_class = "alert-info"
+        
+        success_html = f'<div class="alert {alert_class} alert-dismissible fade show" role="alert">'
+        success_html += message
+        success_html += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>'
+        return HttpResponse(success_html)
 
 
 class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
@@ -157,7 +202,7 @@ class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
         camera = get_object_or_404(Camera, pk=pk, source_type=SourceType.GO2RTC)
         camera.is_active = False
         camera.save(update_fields=["is_active", "updated_at"])
-        messages.success(request, f"Uklonjena kamera: {camera.title or camera.pk}")
+        messages.success(request, f"Removed camera: {camera.title or camera.pk}")
         return redirect("cameras:surveillance")
 
 
@@ -348,12 +393,4 @@ class HtmxCameraListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = Camera.objects.filter(is_active=True).order_by("-created_at")
-        if q := self.request.GET.get("q"):
-            qs = qs.filter(title__icontains=q)
-        if country := self.request.GET.get("country"):
-            qs = qs.filter(country__iexact=country)
-        if source := self.request.GET.get("source"):
-            qs = qs.filter(source_type=source)
-        if online := self.request.GET.get("online"):
-            qs = qs.filter(is_online=online == "1")
-        return qs
+        return _apply_camera_list_filters(qs, self.request)

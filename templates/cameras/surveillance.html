@@ -1,107 +1,750 @@
 {% extends "base.html" %}
-{% block title %}Surveillance — ReconEye{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Surveillance" %} — ReconEye{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Fullscreen layout ──────────────────────────────────────────── */
+  body.surveillance-page {
+    overflow: hidden;
+  }
+  body.surveillance-page main.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    /* Match the layout height */
+    height: calc(100vh - var(--app-navbar-height, 5rem));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: height .12s ease;
+  }
+  .surveillance-page-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .surveillance-chrome {
+    flex-shrink: 0;
+    overflow: hidden;
+    min-height: 0;
+    max-height: 50vh;
+    transition: max-height .12s ease, opacity .12s ease, margin .12s ease;
+  }
+  /* When autohide is enabled, chrome floats above grid */
+  body.chrome-autohide-enabled .surveillance-chrome {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: none;
+    background: linear-gradient(to bottom, rgba(13,17,23,0.92) 0%, rgba(13,17,23,0.75) 80%, transparent 100%);
+    padding-bottom: .5rem;
+  }
+  /* ── Toolbar ────────────────────────────────────────────────────── */
+  .surveillance-toolbar-row {
+    position: relative;
+    z-index: 4;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding-top: .4rem;
+    padding-bottom: .5rem;
+    transition: transform .12s ease, opacity .12s ease, padding .12s ease;
+  }
+  .surveillance-toolbar-row .surveillance-title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .surveillance-autohide-toggle.active {
+    border-color: #0dcaf0;
+    color: #0dcaf0;
+    background: rgba(13, 202, 240, 0.12);
+  }
+  /* Manage panel: scrollable, max 40vh so grid always visible */
+  #surveillance-manage-panel {
+    flex-shrink: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    transition: transform .18s ease, opacity .18s ease, max-height .18s ease, margin .18s ease;
+  }
+  /* chrome-hidden: fade out the floating toolbar */
+  body.chrome-autohide-enabled.chrome-hidden .surveillance-chrome[data-autohide="true"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.chrome-autohide-enabled.chrome-hidden #surveillance-manage-panel[data-autohide="true"] {
+    max-height: 0 !important;
+    margin-bottom: 0 !important;
+    overflow: hidden;
+  }
+  /* When autohide is enabled, grid fills full layout height */
+  body.chrome-autohide-enabled .surveillance-grid {
+    height: 100%;
+  }
+  /* Select disabled state when in auto mode */
+  #surveillance-cols.opacity-50 {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+  /* ── Grid ───────────────────────────────────────────────────────── */
+  .surveillance-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    gap: 2px;
+    grid-auto-rows: 1fr;
+    overflow: hidden;
+  }
+  /* Responsive: auto-fit with min 350px per tile (adjusts dynamically) */
+  .surveillance-grid:not(.surveillance-grid-locked) {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+  /* Locked mode: use fixed column count from CSS variable */
+  .surveillance-grid.surveillance-grid-locked {
+    grid-template-columns: repeat(var(--surveillance-cols, 2), minmax(0, 1fr));
+  }
+  /* Responsive breakpoints: when very narrow, limit locked grid to 1-2 cols max */
+  @media (max-width: 640px) {
+    .surveillance-grid.surveillance-grid-locked {
+      grid-template-columns: repeat(min(var(--surveillance-cols), 2), minmax(0, 1fr)) !important;
+    }
+  }
+  /* ── Tile ───────────────────────────────────────────────────────── */
+  .surveillance-tile {
+    background: #000;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+  }
+  .surveillance-tile-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  /* WebRTC video: fills tile, cover crop, no black bars */
+  .surveillance-webrtc {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border: 0;
+    background: #000;
+  }
+  .surveillance-tile .stream-player,
+  .surveillance-tile .go2rtc-player-wrap {
+    position: absolute;
+    inset: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  /* Remove fixed aspect-ratio — tile fills grid cell height */
+  .go2rtc-player-wrap {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+  .go2rtc-iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    overflow: hidden;
+  }
+  /* Cover-crop tuning for go2rtc iframe player (keeps WS on go2rtc origin) */
+  .surveillance-tile .go2rtc-player-wrap {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  .surveillance-tile .go2rtc-iframe.go2rtc-iframe--surveillance {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+    transform-origin: center center;
+  }
+  .surveillance-tile video,
+  .surveillance-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+  .surveillance-tile .stream-player > video.js-hls-player {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  /* ── Tile overlay ───────────────────────────────────────────────── */
+  .surveillance-tile-header {
+    position: absolute;
+    top: .4rem;
+    left: .4rem;
+    right: .4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .surveillance-tile:hover .surveillance-tile-header { opacity: 1; }
+  body.surveillance-show-labels .surveillance-tile-header { opacity: 1; }
+  body.surveillance-edit-mode .surveillance-tile-header { opacity: 1; }
+  .surveillance-tile-title {
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border-radius: .25rem;
+    padding: .12rem .5rem;
+    font-size: .72rem;
+    max-width: calc(100% - 2.5rem);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: auto;
+    text-decoration: none !important;
+  }
+  .surveillance-tile-title:hover { background: rgba(0,0,0,.75); color: #79c0ff; }
+  /* ── Remove button ──────────────────────────────────────────────── */
+  .surveillance-remove-wrap { pointer-events: auto; opacity: 0; transition: opacity .15s; }
+  body.surveillance-edit-mode .surveillance-remove-wrap { opacity: 1; }
+  .surveillance-remove {
+    background: rgba(180, 30, 30, 0.75);
+    border-color: rgba(255, 80, 80, 0.5);
+    color: #fff;
+  }
+  .surveillance-remove:hover { background: rgba(220,40,40,.95); border-color: #f55; color: #fff; }
+  /* ── Edit mode ──────────────────────────────────────────────────── */
+  body.surveillance-edit-mode .surveillance-tile {
+    outline: 2px dashed rgba(255, 180, 0, 0.55);
+    outline-offset: -2px;
+  }
+  #surveillance-edit-btn.active {
+    background-color: rgba(255, 180, 0, 0.15);
+    border-color: #ffc107;
+    color: #ffc107;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row mb-3 align-items-center">
-  <div class="col">
-    <h4 class="mb-0"><i class="bi bi-shield-video me-2 text-info"></i>Surveillance (go2rtc)</h4>
-    <div class="text-muted small">Izvor: {{ go2rtc_base_url }}</div>
-  </div>
-  <div class="col-auto text-muted small">{{ selected_cameras|length }} u gridu</div>
-</div>
+<div class="surveillance-page-layout">
 
-{% if go2rtc_source_error %}
-  <div class="alert alert-warning py-2">
-    {{ go2rtc_source_error }}
-    <div class="small mt-1">Provjeri da je go2rtc API dostupan na <code>{{ go2rtc_base_url }}/api/streams</code>.</div>
-  </div>
-{% endif %}
+<div class="surveillance-chrome app-page-chrome" data-autohide="true">
 
-<div class="card border-secondary mb-3">
-  <div class="card-header py-2">Dodaj kameru po stream nazivu</div>
-  <div class="card-body py-3">
-    <form method="post" action="{% url 'cameras:surveillance_add' %}" class="row g-2 align-items-end">
-      {% csrf_token %}
-      <div class="col-md-4">
-        <label class="form-label small mb-1" for="id_stream_name">Stream name</label>
-        {{ go2rtc_form.stream_name }}
-      </div>
-      <div class="col-md-4">
-        <label class="form-label small mb-1" for="id_title">Naziv (opcionalno)</label>
-        {{ go2rtc_form.title }}
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-success">
-          <i class="bi bi-plus-lg me-1"></i>Dodaj u grid
-        </button>
-      </div>
-    </form>
+{# ── Toolbar row ───────────────────────────────────────────────────── #}
+<div class="surveillance-toolbar-row" data-autohide="true">
+  <div class="surveillance-title">
+    <span class="fw-semibold"><i class="bi bi-shield-video me-1 text-info"></i>{% trans "Surveillance" %}</span>
+    <span class="text-muted small ms-2">{{ go2rtc_base_url }}</span>
+  </div>
+  <div class="d-flex align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-1">
+      <label class="small text-muted mb-0" for="surveillance-cols" title="{% trans 'Force the number of columns (disable for automatic)' %}">{% trans "Columns" %}</label>
+      <select id="surveillance-cols" class="form-select form-select-sm" style="width: auto;">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="surveillance-lock-btn" title="{% trans 'Lock the number of columns (automatic or manual selection)' %}" style="padding: .25rem .5rem;">
+        <i class="bi bi-unlock me-1" id="surveillance-lock-icon"></i><span id="surveillance-lock-label" class="d-none d-sm-inline">{% trans "Auto" %}</span>
+      </button>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="surveillance-labels-btn" title="{% trans 'Show or hide camera labels' %}">
+      <i class="bi bi-tag me-1"></i>{% trans "Labels" %}
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-warning" id="surveillance-edit-btn" title="{% trans 'Edit grid (add or remove cameras)' %}">
+      <i class="bi bi-pencil-square me-1" id="surveillance-edit-icon"></i><span id="surveillance-edit-label">{% trans "Edit" %}</span>
+    </button>
+    <span class="text-muted small">{{ selected_cameras|length }} {% trans "cameras" %}</span>
   </div>
 </div>
 
-<div class="card border-secondary mb-4">
-  <div class="card-header py-2">Dostupni streamovi sa izvora</div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle mb-0">
-        <thead>
-          <tr>
-            <th class="px-3">Stream</th>
-            <th>Producers</th>
-            <th>Consumers</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for stream in go2rtc_streams %}
+{# Management panel — only accessible in edit mode #}
+<div id="surveillance-manage-panel" class="collapse mb-4" data-autohide="true">
+  {% if go2rtc_source_error %}
+    <div class="alert alert-warning py-2">
+      {{ go2rtc_source_error }}
+      <div class="small mt-1">{% trans "Make sure the go2rtc API is available at" %} <code>{{ go2rtc_base_url }}/api/streams</code>.</div>
+    </div>
+  {% endif %}
+
+  <div class="card border-warning mb-3">
+    <div class="card-header py-2 d-flex align-items-center gap-2">
+      <i class="bi bi-pencil-square text-warning"></i>
+      <span>{% trans "Add a camera by stream name" %}</span>
+      <span class="badge text-bg-warning ms-auto">{% trans "Edit mode" %}</span>
+    </div>
+    <div id="add-camera-feedback" class="mb-3"></div>
+    <div class="card-body py-3">
+      <form hx-post="{% url 'cameras:surveillance_add' %}" hx-target="#add-camera-feedback" hx-swap="innerHTML" class="row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-4">
+          <label class="form-label small mb-1" for="id_stream_name">{% trans "Stream name" %}</label>
+          {{ go2rtc_form.stream_name }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small mb-1" for="id_title">{% trans "Display title (optional)" %}</label>
+          {{ go2rtc_form.title }}
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="bi bi-plus-lg me-1"></i>{% trans "Add to grid" %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-secondary mb-2">
+    <div class="card-header py-2">{% trans "Available streams from source" %}</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead>
             <tr>
-              <td class="px-3"><code>{{ stream.name }}</code></td>
-              <td>{{ stream.producers }}</td>
-              <td>{{ stream.consumers }}</td>
-              <td class="text-end pe-3">
-                <form method="post" action="{% url 'cameras:surveillance_add' %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="stream_name" value="{{ stream.name }}">
-                  <input type="hidden" name="title" value="{{ stream.name }}">
-                  <button type="submit" class="btn btn-sm btn-outline-info">
-                    <i class="bi bi-grid-3x3-gap me-1"></i>Dodaj
-                  </button>
-                </form>
-              </td>
+              <th class="px-3">{% trans "Stream" %}</th>
+              <th>{% trans "Producers" %}</th>
+              <th>{% trans "Consumers" %}</th>
+              <th></th>
             </tr>
-          {% empty %}
-            <tr>
-              <td colspan="4" class="text-center text-muted py-3">Nema pronađenih streamova.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for stream in go2rtc_streams %}
+              <tr>
+                <td class="px-3"><code>{{ stream.name }}</code></td>
+                <td>{{ stream.producers }}</td>
+                <td>{{ stream.consumers }}</td>
+                <td class="text-end pe-3">
+                  <form hx-post="{% url 'cameras:surveillance_add' %}" hx-target="#add-camera-feedback" hx-swap="innerHTML">
+                    {% csrf_token %}
+                    <input type="hidden" name="stream_name" value="{{ stream.name }}">
+                    <input type="hidden" name="title" value="{{ stream.name }}">
+                    <button type="submit" class="btn btn-sm btn-outline-info">
+                      <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add" %}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-3">{% trans "No streams found." %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="row g-3">
+</div>
+
+<div id="surveillance-grid" class="surveillance-grid" data-camera-count="{{ selected_cameras|length }}">
   {% for camera in selected_cameras %}
-    <div class="col-12 col-md-6 col-xl-4" data-camera-id="{{ camera.pk }}">
-      <div class="card h-100 border-secondary">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-          <a class="text-decoration-none" href="{% url 'cameras:detail' camera.pk %}">{{ camera.title|default:"(no title)" }}</a>
+    <div class="surveillance-tile" data-camera-id="{{ camera.pk }}">
+      <div class="surveillance-tile-header">
+        <a class="surveillance-tile-title" href="{% url 'cameras:detail' camera.pk %}" title="{{ camera.title|default:_('(no title)') }}">
+          {{ camera.title|default:_('(no title)') }}
+        </a>
+        <span class="surveillance-remove-wrap">
           <form method="post" action="{% url 'cameras:surveillance_remove' camera.pk %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ukloni iz grida">
+            <button type="submit" class="btn btn-sm surveillance-remove py-0 px-2" title="{% trans 'Remove from grid' %}">
               <i class="bi bi-x-lg"></i>
             </button>
           </form>
-        </div>
-        <div class="card-body">
-          {% include "cameras/_stream_player.html" with camera=camera %}
-        </div>
+        </span>
+      </div>
+      <div class="surveillance-tile-body">
+        {% include "cameras/_stream_player.html" with camera=camera surveillance_mode=True %}
       </div>
     </div>
   {% empty %}
-    <div class="col-12">
-      <div class="alert alert-secondary mb-0">Još nema dodanih go2rtc kamera u grid.</div>
+    <div style="grid-column: 1 / -1;">
+      <div class="alert alert-secondary mb-0">{% trans "No go2rtc cameras have been added to the grid yet." %}</div>
     </div>
   {% endfor %}
 </div>
+
+</div>{# /.surveillance-page-layout #}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const I18N = {
+      fixed: "{% trans 'Fixed' %}",
+      auto: "{% trans 'Auto' %}",
+      done: "{% trans 'Done' %}",
+      edit: "{% trans 'Edit' %}"
+    };
+      // Fullscreen mode — hide body scroll for this page
+      document.body.classList.add("surveillance-page");
+
+    const GRID_COLS_KEY = "reconeye-surveillance-cols";
+    const GRID_LOCK_KEY = "reconeye-surveillance-cols-locked";
+    const LABELS_KEY = "reconeye-surveillance-labels";
+    const grid = document.getElementById("surveillance-grid");
+    const select = document.getElementById("surveillance-cols");
+    const lockBtn = document.getElementById("surveillance-lock-btn");
+    const lockIcon = document.getElementById("surveillance-lock-icon");
+    const lockLabel = document.getElementById("surveillance-lock-label");
+    const panel = document.getElementById("surveillance-manage-panel");
+    const editBtn = document.getElementById("surveillance-edit-btn");
+    const labelsBtn = document.getElementById("surveillance-labels-btn");
+
+    if (!grid || !select || !lockBtn) {
+      return;
+    }
+
+    // ── Grid columns ────────────────────────────────────────────────
+    const cameraCount = Number(grid.dataset.cameraCount || 0);
+    let savedCols = null;
+    let isLocked = false;
+    
+    try {
+      savedCols = localStorage.getItem(GRID_COLS_KEY);
+      isLocked = localStorage.getItem(GRID_LOCK_KEY) === "1";
+    } catch (e) {
+      // ignore
+    }
+
+    // Set default columns if not locked
+    if (!isLocked) {
+      if (!["1", "2", "3", "4"].includes(savedCols || "")) {
+        if (cameraCount <= 1) savedCols = "1";
+        else if (cameraCount <= 4) savedCols = "2";
+        else if (cameraCount <= 9) savedCols = "3";
+        else savedCols = "4";
+      }
+    } else {
+      if (!["1", "2", "3", "4"].includes(savedCols || "")) {
+        savedCols = "2";
+      }
+    }
+
+    const updateGridLayout = () => {
+      const locked = grid.classList.contains("surveillance-grid-locked");
+      if (locked) {
+        grid.style.setProperty("--surveillance-cols", select.value);
+      } else {
+        grid.style.removeProperty("--surveillance-cols");
+      }
+    };
+
+    const applyGridMode = (locked) => {
+      isLocked = locked;
+      grid.classList.toggle("surveillance-grid-locked", locked);
+      select.disabled = !locked;
+      select.classList.toggle("opacity-50", !locked);
+      
+      if (lockBtn) {
+        lockBtn.classList.toggle("active", locked);
+        lockBtn.classList.toggle("btn-outline-secondary", !locked);
+        lockBtn.classList.toggle("btn-secondary", locked);
+        if (lockIcon) lockIcon.className = locked ? "bi bi-lock me-1" : "bi bi-unlock me-1";
+        if (lockLabel) lockLabel.textContent = locked ? I18N.fixed : I18N.auto;
+      }
+      
+      updateGridLayout();
+      try {
+        localStorage.setItem(GRID_LOCK_KEY, locked ? "1" : "0");
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    const applyCols = (value) => {
+      const safe = ["1", "2", "3", "4"].includes(String(value)) ? String(value) : "2";
+      select.value = safe;
+      try {
+        localStorage.setItem(GRID_COLS_KEY, safe);
+      } catch (e) {
+        // ignore
+      }
+      updateGridLayout();
+    };
+
+    // Initialize
+    applyCols(savedCols);
+    applyGridMode(isLocked);
+
+    // Event listeners
+    select.addEventListener("change", (event) => applyCols(event.target.value));
+    lockBtn.addEventListener("click", () => applyGridMode(!isLocked));
+
+    // Resize observer: if not locked, responsive grid adjusts automatically
+    if (window.ResizeObserver && !isLocked) {
+      const resizeObserver = new ResizeObserver(() => {
+        // Grid re-layout happens automatically due to CSS grid auto-fit
+      });
+      resizeObserver.observe(grid);
+    }
+
+    // ── Labels toggle ────────────────────────────────────────────────
+    let labelsOn = false;
+    try { labelsOn = localStorage.getItem(LABELS_KEY) === "1"; } catch (e) {}
+
+    const applyLabels = (on) => {
+      labelsOn = on;
+      document.body.classList.toggle("surveillance-show-labels", on);
+      if (labelsBtn) {
+        labelsBtn.classList.toggle("active", on);
+        labelsBtn.classList.toggle("btn-outline-secondary", !on);
+        labelsBtn.classList.toggle("btn-secondary", on);
+      }
+      try { localStorage.setItem(LABELS_KEY, on ? "1" : "0"); } catch (e) {}
+    };
+
+    applyLabels(labelsOn);
+    if (labelsBtn) {
+      labelsBtn.addEventListener("click", () => applyLabels(!labelsOn));
+    }
+
+    // ── Edit mode ────────────────────────────────────────────────────
+    let editMode = false;
+    // Never restore edit mode across page loads — user must explicitly enable
+    const bsCollapse = panel && window.bootstrap && window.bootstrap.Collapse
+      ? new window.bootstrap.Collapse(panel, { toggle: false })
+      : null;
+
+    const applyEditMode = (on) => {
+      editMode = on;
+      document.body.classList.toggle("surveillance-edit-mode", on);
+      if (editBtn) {
+        editBtn.classList.toggle("active", on);
+        editBtn.classList.toggle("btn-outline-warning", !on);
+        editBtn.classList.toggle("btn-warning", on);
+        const icon = document.getElementById("surveillance-edit-icon");
+        const label = document.getElementById("surveillance-edit-label");
+        if (icon) icon.className = on ? "bi bi-check2-square me-1" : "bi bi-pencil-square me-1";
+        if (label) label.textContent = on ? I18N.done : I18N.edit;
+      }
+      if (bsCollapse) {
+        if (on) bsCollapse.show(); else bsCollapse.hide();
+      }
+      if (on) {
+        document.body.classList.remove("chrome-hidden");
+      }
+    };
+
+    // Auto-dismiss alerts from HTMX camera additions after 5 seconds
+    document.addEventListener("htmx:afterSwap", (event) => {
+      if (event.detail.target.id === "add-camera-feedback") {
+        const alert = event.detail.target.querySelector(".alert");
+        if (alert) {
+          setTimeout(() => {
+            const bsAlert = window.bootstrap && window.bootstrap.Alert
+              ? new window.bootstrap.Alert(alert)
+              : null;
+            if (bsAlert) {
+              bsAlert.close();
+            } else {
+              alert.style.display = "none";
+            }
+          }, 5000);
+        }
+      }
+    });
+
+    // ── Prevent pause on all surveillance videos ────────────────────
+    // Prevent pause/keyboard shortcuts on video elements
+    document.addEventListener("keydown", (e) => {
+      if (grid && grid.contains(document.activeElement)) {
+        // Prevent spacebar (pause/play) and P (pause) in surveillance grid
+        if (e.code === "Space" || e.key === "p" || e.key === "P" || e.key === "k" || e.key === "K") {
+          e.preventDefault();
+        }
+      }
+    }, true);
+
+    // Monitor all video elements in grid and enforce autoplay/no-pause
+    const ensurePlayback = (video) => {
+      if (!video) return;
+      if (video.paused) {
+        video.play().catch(() => {}); // Attempt to play, ignore autoplay errors
+      }
+    };
+
+    // For all HLS videos in surveillance
+    if (grid) {
+      const videos = grid.querySelectorAll("video.js-hls-player");
+      videos.forEach((video) => {
+        video.removeAttribute("controls"); // Remove native controls
+        // Monitor for pauses and resume
+        video.addEventListener("pause", () => {
+          setTimeout(() => ensurePlayback(video), 50);
+        });
+        // Resume if stalled
+        video.addEventListener("stalled", () => {
+          setTimeout(() => ensurePlayback(video), 100);
+        });
+        // Resume if ended (shouldn't happen for live streams, but just in case)
+        video.addEventListener("ended", () => {
+          setTimeout(() => ensurePlayback(video), 100);
+        });
+      });
+    }
+
+    // For GO2RTC iframes: prevent pause by blocking interaction
+    const blockIframeContextMenu = (iframe) => {
+      iframe.addEventListener("load", () => {
+        try {
+          // Try to prevent pause inside iframe (cross-origin may block this)
+          iframe.contentDocument?.addEventListener("pause", (e) => {
+            e.preventDefault();
+          }, true);
+        } catch (e) {
+          // Cross-origin: can't access iframe content
+        }
+      }, { once: true });
+
+      // Prevent right-click context menu on iframe
+      iframe.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+      }, true);
+
+      // Prevent right-click from opening pause menu
+      iframe.addEventListener("mousedown", (e) => {
+        if (e.button === 2) {
+          e.preventDefault();
+        }
+      }, true);
+    };
+
+    // GO2RTC iframe watchdog: auto-reload stream player when likely stuck.
+    const IFRAME_LOAD_TIMEOUT_MS = 12000;
+    const IFRAME_STUCK_AFTER_MS = 90000;
+    const IFRAME_RELOAD_COOLDOWN_MS = 20000;
+    const IFRAME_WATCHDOG_CHECK_MS = 15000;
+    const iframeState = new WeakMap();
+
+    const setIframeSrcWithReconnectTs = (iframe) => {
+      try {
+        const url = new URL(iframe.src, window.location.href);
+        url.searchParams.set("_reconnect", String(Date.now()));
+        iframe.src = url.toString();
+      } catch (_) {
+        // Fallback for malformed/relative URLs
+        const separator = iframe.src.includes("?") ? "&" : "?";
+        iframe.src = `${iframe.src}${separator}_reconnect=${Date.now()}`;
+      }
+    };
+
+    const requestIframeReload = (iframe, reason) => {
+      const state = iframeState.get(iframe);
+      if (!state) return;
+      const now = Date.now();
+      if (now - state.lastReloadAt < IFRAME_RELOAD_COOLDOWN_MS) {
+        return;
+      }
+      state.lastReloadAt = now;
+      state.waitingForLoad = true;
+      setIframeSrcWithReconnectTs(iframe);
+      window.setTimeout(() => {
+        const current = iframeState.get(iframe);
+        if (!current) return;
+        if (current.waitingForLoad && Date.now() - current.lastReloadAt >= IFRAME_LOAD_TIMEOUT_MS) {
+          requestIframeReload(iframe, "load-timeout");
+        }
+      }, IFRAME_LOAD_TIMEOUT_MS + 50);
+      console.warn("[surveillance] reloading go2rtc iframe", { reason, src: iframe.src });
+    };
+
+    const attachGo2rtcWatchdog = (iframe) => {
+      if (iframeState.has(iframe)) {
+        return;
+      }
+
+      iframeState.set(iframe, {
+        lastHealthyAt: Date.now(),
+        lastReloadAt: 0,
+        waitingForLoad: true,
+      });
+
+      iframe.addEventListener("load", () => {
+        const state = iframeState.get(iframe);
+        if (!state) return;
+        state.lastHealthyAt = Date.now();
+        state.waitingForLoad = false;
+      });
+
+      iframe.addEventListener("error", () => {
+        requestIframeReload(iframe, "iframe-error");
+      });
+
+      // Initial load timeout safety.
+      window.setTimeout(() => {
+        const state = iframeState.get(iframe);
+        if (!state) return;
+        if (state.waitingForLoad && Date.now() - state.lastReloadAt >= IFRAME_RELOAD_COOLDOWN_MS) {
+          requestIframeReload(iframe, "initial-timeout");
+        }
+      }, IFRAME_LOAD_TIMEOUT_MS + 50);
+    };
+
+    const startGo2rtcWatchdogLoop = (iframes) => {
+      if (!iframes.length) return;
+      window.setInterval(() => {
+        if (document.hidden) {
+          return;
+        }
+        const now = Date.now();
+        iframes.forEach((iframe) => {
+          const state = iframeState.get(iframe);
+          if (!state) return;
+          if (state.waitingForLoad) return;
+          if (now - state.lastHealthyAt >= IFRAME_STUCK_AFTER_MS) {
+            requestIframeReload(iframe, "stuck-watchdog");
+          }
+        });
+      }, IFRAME_WATCHDOG_CHECK_MS);
+    };
+
+    if (grid) {
+      const iframes = grid.querySelectorAll("iframe.go2rtc-iframe--surveillance");
+      iframes.forEach((iframe) => {
+        blockIframeContextMenu(iframe);
+        attachGo2rtcWatchdog(iframe);
+      });
+      startGo2rtcWatchdogLoop(Array.from(iframes));
+    }
+
+    applyEditMode(false);
+    if (editBtn) {
+      editBtn.addEventListener("click", () => applyEditMode(!editMode));
+    }
+
+  });
+</script>
 {% endblock %}

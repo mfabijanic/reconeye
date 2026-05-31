@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Camera Map — ReconEye{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Camera Map" %} — ReconEye{% endblock %}
 
 {% block extra_css %}
 <link
@@ -45,7 +46,13 @@
     border: 1px solid #30363d;
     border-radius: 0.5rem;
     background: #161b22;
+    color: #e6edf3;
     min-height: 68vh;
+  }
+  html[data-bs-theme="light"] .map-sidebar {
+    background: #ffffff;
+    border-color: #d0d7de;
+    color: #0f172a;
   }
   .map-sidebar .preview {
     width: 100%;
@@ -54,11 +61,20 @@
     border-radius: 0.375rem;
     background: #0d1117;
   }
+  html[data-bs-theme="light"] .map-sidebar .preview {
+    background: #f0f1f3;
+  }
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
     background: #161b22;
     color: #e6edf3;
     border: 1px solid #30363d;
+  }
+  html[data-bs-theme="light"] .leaflet-popup-content-wrapper,
+  html[data-bs-theme="light"] .leaflet-popup-tip {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #d0d7de;
   }
   .map-controls {
     display: flex;
@@ -84,24 +100,27 @@
   .suggestion-item:hover {
     background-color: #0d1117;
   }
+  html[data-bs-theme="light"] .suggestion-item:hover {
+    background-color: #f0f1f3;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="row mb-3 align-items-center">
   <div class="col">
-    <h4><i class="bi bi-geo-alt-fill me-2 text-info"></i>Camera Map</h4>
+    <h4><i class="bi bi-geo-alt-fill me-2 text-info"></i>{% trans "Camera Map" %}</h4>
   </div>
   <div class="col-auto map-controls">
     <button type="button" id="fit-map" class="btn btn-sm btn-outline-info">
-      <i class="bi bi-bounding-box-circles me-1"></i>Fit markers
+      <i class="bi bi-bounding-box-circles me-1"></i>{% trans "Fit markers" %}
     </button>
     <button type="button" id="locate-me" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-crosshair me-1"></i>Locate me
+      <i class="bi bi-crosshair me-1"></i>{% trans "Locate me" %}
     </button>
   </div>
   <div class="col-auto text-muted small">
-    <span id="map-count">0</span> cameras on map
+    <span id="map-count">0</span> {% trans "cameras on map" %}
   </div>
 </div>
 
@@ -114,7 +133,7 @@
         type="text"
         id="location-search"
         class="form-control form-control-sm"
-        placeholder="Search location…"
+        placeholder="{% trans 'Search location…' %}"
         autocomplete="off"
       />
       <div
@@ -126,7 +145,7 @@
   </div>
   <div class="col-md-3">
     <select name="source" class="form-select form-select-sm">
-      <option value="">All sources</option>
+      <option value="">{% trans "All sources" %}</option>
       {% for val, label in source_types %}
         <option value="{{ val }}">{{ label }}</option>
       {% endfor %}
@@ -134,7 +153,7 @@
   </div>
   <div class="col-md-2">
     <select name="country" class="form-select form-select-sm">
-      <option value="">All countries</option>
+      <option value="">{% trans "All countries" %}</option>
       {% for country in countries %}
         <option value="{{ country }}">{{ country }}</option>
       {% endfor %}
@@ -142,13 +161,13 @@
   </div>
   <div class="col-md-2">
     <select name="online" class="form-select form-select-sm">
-      <option value="">All statuses</option>
-      <option value="1">Online</option>
-      <option value="0">Offline</option>
+      <option value="">{% trans "All statuses" %}</option>
+      <option value="1">{% trans "Online" %}</option>
+      <option value="0">{% trans "Offline" %}</option>
     </select>
   </div>
   <div class="col-auto">
-    <button type="button" id="reset-map-filters" class="btn btn-sm btn-outline-secondary">Reset</button>
+    <button type="button" id="reset-map-filters" class="btn btn-sm btn-outline-secondary">{% trans "Reset" %}</button>
   </div>
 </form>
 
@@ -157,14 +176,14 @@
     <div class="map-wrap">
       <div id="camera-map"></div>
       <div id="map-loading" class="map-loading">
-        <div class="spinner-border text-info" role="status" aria-label="Loading"></div>
+        <div class="spinner-border text-info" role="status" aria-label="{% trans 'Loading' %}"></div>
       </div>
     </div>
   </div>
   <div class="col-lg-4">
     <div class="map-sidebar p-3" id="camera-panel">
-      <h6 class="text-info mb-3">Camera details</h6>
-      <p class="text-muted small mb-0">Click a marker to preview the camera and view metadata.</p>
+      <h6 class="text-info mb-3">{% trans "Camera details" %}</h6>
+      <p class="text-muted small mb-0">{% trans "Click a marker to preview the camera and view metadata." %}</p>
     </div>
   </div>
 </div>
@@ -179,6 +198,26 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
   (() => {
+    const I18N = {
+      cluster: "{% trans 'Cluster' %}",
+      total: "{% trans 'Total' %}",
+      cameras: "{% trans 'cameras' %}",
+      online: "{% trans 'Online' %}",
+      offline: "{% trans 'Offline' %}",
+      unknown: "{% trans 'Unknown' %}",
+      openDetails: "{% trans 'Open details' %}",
+      stale: "{% trans 'Stale' %}",
+      cameraDetails: "{% trans 'Camera details' %}",
+      noCamerasForFilters: "{% trans 'No cameras found for current filters.' %}",
+      failedToLoadMapData: "{% trans 'Failed to load map data.' %}",
+      showingMarkers: "{% trans 'Showing' %}",
+      of: "{% trans 'of' %}",
+      markersInArea: "{% trans 'markers in this area. Zoom in or filter to narrow results.' %}",
+      youAreHere: "{% trans 'You are here' %}",
+      noLocationsFound: "{% trans 'No locations found' %}",
+      checkStreamAvailability: "{% trans 'Check stream availability' %}",
+      markerDetailsHint: "{% trans 'Click a marker to preview the camera and view metadata.' %}"
+    };
     const MAP_POS_KEY = "reconeye_map_pos";
     function savedMapView() {
       try {
@@ -263,10 +302,10 @@
       const offlineCount = total - onlineCount;
       const popupHtml = `
         <div style="text-align:center;">
-          <strong>Cluster</strong><br>
-          Total: ${total} cameras<br>
-          <span class="badge badge-online">Online: ${onlineCount}</span><br>
-          <span class="badge badge-offline">Offline: ${offlineCount}</span>
+          <strong>${I18N.cluster}</strong><br>
+          ${I18N.total}: ${total} ${I18N.cameras}<br>
+          <span class="badge badge-online">${I18N.online}: ${onlineCount}</span><br>
+          <span class="badge badge-offline">${I18N.offline}: ${offlineCount}</span>
         </div>
       `;
       cluster.bindPopup(popupHtml, { autoPan: false });
@@ -346,9 +385,57 @@
         : '';
     }
 
+    function offsetLatLngByMeters(baseLat, baseLng, meters, angleRad) {
+      const metersPerDegree = 111320;
+      const dLat = (meters * Math.sin(angleRad)) / metersPerDegree;
+      const cosLat = Math.cos((baseLat * Math.PI) / 180);
+      const safeCosLat = Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat;
+      const dLng = (meters * Math.cos(angleRad)) / (metersPerDegree * safeCosLat);
+      return [baseLat + dLat, baseLng + dLng];
+    }
+
+    function spiderfyOverlappingMarkers(cameras) {
+      const grouped = new Map();
+      const keyPrecision = 7;
+
+      cameras.forEach((camera) => {
+        const lat = Number(camera.latitude);
+        const lng = Number(camera.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return;
+        }
+        const key = `${lat.toFixed(keyPrecision)}:${lng.toFixed(keyPrecision)}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key).push({ camera, lat, lng });
+      });
+
+      const result = [];
+      grouped.forEach((group) => {
+        if (group.length <= 1) {
+          result.push(group[0]);
+          return;
+        }
+
+        const radiusMeters = 16;
+        group.forEach((item, idx) => {
+          const angle = (2 * Math.PI * idx) / group.length;
+          const [plotLat, plotLng] = offsetLatLngByMeters(item.lat, item.lng, radiusMeters, angle);
+          result.push({
+            camera: item.camera,
+            lat: plotLat,
+            lng: plotLng,
+          });
+        });
+      });
+
+      return result;
+    }
+
     function popupContent(camera) {
       const title = esc(camera.display_title || camera.title || `Camera #${camera.id}`);
-      const country = esc(camera.country || "Unknown");
+      const country = esc(camera.country || I18N.unknown);
       const city = esc(camera.city || "-");
       const preview = esc(camera.preview_image || "");
       return `
@@ -357,9 +444,9 @@
             <strong>${title}</strong>
             <span>${statusBadge(camera)}${staleBadge(camera)}</span>
           </div>
-          ${preview ? `<img src="${preview}" alt="Camera preview" style="width:100%; border-radius:6px; margin-bottom:8px;" loading="lazy" onerror="this.onerror=null; this.style.display='none';" />` : ""}
+          ${preview ? `<img src="${preview}" alt="${I18N.cameraDetails}" style="width:100%; border-radius:6px; margin-bottom:8px;" loading="lazy" onerror="this.onerror=null; this.style.display='none';" />` : ""}
           <div class="small text-muted mb-2">${city}, ${country}</div>
-          <a class="btn btn-sm btn-outline-info" href="/cameras/${camera.id}/">Open details</a>
+          <a class="btn btn-sm btn-outline-info" href="/cameras/${camera.id}/">${I18N.openDetails}</a>
         </div>
       `;
     }
@@ -450,14 +537,15 @@
         clusterLayer.clearLayers();
         countEl.textContent = String(payload.count || markers.length);
         if (payload.truncated) {
-          setNotice(`Showing ${payload.count} of ${payload.total} markers in this area. Zoom in or filter to narrow results.`);
+          setNotice(`${I18N.showingMarkers} ${payload.count} ${I18N.of} ${payload.total} ${I18N.markersInArea}`);
         } else {
           setNotice("");
         }
 
         const bounds = [];
-        markers.forEach((camera) => {
-          const marker = L.marker([camera.latitude, camera.longitude], {
+        const plotted = spiderfyOverlappingMarkers(markers);
+        plotted.forEach(({ camera, lat, lng }) => {
+          const marker = L.marker([lat, lng], {
             icon: markerIcon(camera),
             cameraOnline: camera.is_online === true,
           });
@@ -476,7 +564,7 @@
             });
           }
           clusterLayer.addLayer(marker);
-          bounds.push([camera.latitude, camera.longitude]);
+          bounds.push([lat, lng]);
         });
 
         if (bounds.length > 0) {
@@ -491,7 +579,7 @@
           // No results from a global (non-viewport) query → show world view
           lastBounds = null;
           programmaticSetView([20, 0], 2);
-          panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-muted small mb-0">No cameras found for current filters.</p>';
+          panelEl.innerHTML = `<h6 class="text-info mb-3">${I18N.cameraDetails}</h6><p class="text-muted small mb-0">${I18N.noCamerasForFilters}</p>`;
         }
         // When useViewport=true returns 0 markers: user is looking at an empty area — do NOT reset map.
 
@@ -537,7 +625,7 @@
             fillOpacity: 0.4,
           })
             .addTo(map)
-            .bindPopup("You are here")
+            .bindPopup(I18N.youAreHere)
             .openPopup();
         },
         () => {},
@@ -587,7 +675,7 @@
         const suggestions = data.suggestions || [];
 
         if (suggestions.length === 0) {
-          suggestionsEl.innerHTML = '<div class="text-muted small p-2">No locations found</div>';
+          suggestionsEl.innerHTML = `<div class="text-muted small p-2">${I18N.noLocationsFound}</div>`;
           suggestionsEl.style.display = "block";
           return;
         }
@@ -609,7 +697,7 @@
                 data-label="${labelAttr}"
               >
                 <strong class="small">${label}</strong>
-                <span class="text-muted small ms-1">${count} camera${count === 1 ? '' : 's'}</span>
+                <span class="text-muted small ms-1">${count} ${I18N.cameras}</span>
               </div>
             `;
           })
@@ -671,7 +759,7 @@
     loadMarkers({ useViewport: _saved !== null }).catch((error) => {
       console.error(error);
       setLoading(false);
-      panelEl.innerHTML = '<h6 class="text-info mb-3">Camera details</h6><p class="text-danger small mb-0">Failed to load map data.</p>';
+      panelEl.innerHTML = `<h6 class="text-info mb-3">${I18N.cameraDetails}</h6><p class="text-danger small mb-0">${I18N.failedToLoadMapData}</p>`;
     });
   })();
 </script>

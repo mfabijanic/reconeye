@@ -22,3 +22,7 @@ class UserMapSettingsInline(admin.StackedInline):
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     inlines = [UserMapSettingsInline]
+
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ("Preferences", {"fields": ("preferred_language",)}),
+    )

@@ -25,7 +25,16 @@ def _normalize_query(query: str) -> str:
 
 
 def _extract_city(address: dict[str, Any]) -> str:
-    for key in ("city", "town", "village", "municipality", "hamlet", "suburb"):
+    for key in (
+        "city",
+        "town",
+        "village",
+        "municipality",
+        "hamlet",
+        "suburb",
+        "city_district",
+        "island",
+    ):
         value = address.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()

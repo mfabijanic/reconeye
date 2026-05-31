@@ -99,3 +99,18 @@ def scrape_whatsupcams(self, country_code: str = "") -> dict:
 )
 def scrape_whatsupcams_job(self, job_id: int) -> dict:
     return _run_existing_job(job_id, self)
+
+
+@shared_task(
+    bind=True,
+    name="reconeye.scraping.refresh_geolocation_for_cameras",
+    max_retries=1,
+    default_retry_delay=120,
+)
+def refresh_geolocation_for_cameras(self, camera_ids: list[int]) -> dict:
+    from apps.scraping.services import refresh_geolocation_for_camera_ids
+
+    try:
+        return refresh_geolocation_for_camera_ids(camera_ids or [])
+    except Exception as exc:
+        raise self.retry(exc=exc)

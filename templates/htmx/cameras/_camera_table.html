@@ -1,15 +1,16 @@
+{% load i18n %}
 <div class="table-responsive">
   <table class="table table-hover table-sm align-middle">
     <thead class="table-dark">
       <tr>
         <th>#</th>
-        <th>Title</th>
-        <th>Source</th>
-        <th>Country</th>
-        <th>City</th>
-        <th>Status</th>
-        <th>Partial</th>
-        <th>Last checked</th>
+        <th>{% trans "Title" %}</th>
+        <th>{% trans "Source" %}</th>
+        <th>{% trans "Country" %}</th>
+        <th>{% trans "City" %}</th>
+        <th>{% trans "Status" %}</th>
+        <th>{% trans "Partial" %}</th>
+        <th>{% trans "Last checked" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -18,21 +19,21 @@
       <tr>
         <td class="text-muted small">{{ camera.pk }}</td>
         <td>
-          <a href="{% url 'cameras:detail' camera.pk %}">{{ camera.title|default:"(no title)" }}</a>
+          <a href="{% url 'cameras:detail' camera.pk %}">{{ camera.title|default:_('(no title)') }}</a>
         </td>
         <td><span class="badge bg-secondary">{{ camera.source_type }}</span></td>
         <td>{{ camera.country|default:"—" }}</td>
         <td>{{ camera.city|default:"—" }}</td>
         <td>
           {% if camera.is_online %}
-            <span class="badge badge-online">Online</span>
+            <span class="badge badge-online">{% trans "Online" %}</span>
           {% else %}
-            <span class="badge badge-offline">Offline</span>
+            <span class="badge badge-offline">{% trans "Offline" %}</span>
           {% endif %}
         </td>
         <td>
           {% if camera.has_partial_metadata %}
-            <i class="bi bi-exclamation-triangle text-warning" title="Partial metadata"></i>
+            <i class="bi bi-exclamation-triangle text-warning" title="{% trans 'Partial metadata' %}"></i>
           {% endif %}
         </td>
         <td class="text-muted small">{{ camera.last_checked|date:"d.m.Y H:i"|default:"—" }}</td>
@@ -49,7 +50,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" class="text-center text-muted py-4">No cameras found.</td></tr>
+      <tr><td colspan="9" class="text-center text-muted py-4">{% trans "No cameras found." %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -57,12 +58,12 @@
 
 {# Pagination #}
 {% if page_obj.has_other_pages %}
-<nav aria-label="Camera pagination" class="mt-2">
+<nav aria-label="{% trans 'Camera pagination' %}" class="mt-2">
   <ul class="pagination pagination-sm justify-content-center">
     {% if page_obj.has_previous %}
       <li class="page-item">
         <a class="page-link"
-           hx-get="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           hx-get="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country }}{% endif %}"
            hx-target="#camera-table">&laquo;</a>
       </li>
     {% endif %}
@@ -72,7 +73,7 @@
     {% if page_obj.has_next %}
       <li class="page-item">
         <a class="page-link"
-           hx-get="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           hx-get="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country }}{% endif %}"
            hx-target="#camera-table">&raquo;</a>
       </li>
     {% endif %}

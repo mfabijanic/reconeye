@@ -50,6 +50,9 @@ class ScrapeJob(models.Model):
 
     @property
     def progress_pct(self) -> int:
+        # For completed jobs that discovered no cameras, show finished state as 100%.
+        if self.status == ScrapeJobStatus.SUCCESS and self.total_found == 0:
+            return 100
         return min(100, round((self.total_processed / max(self.total_found, 1)) * 100))
 
     @property
