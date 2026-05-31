@@ -9,6 +9,7 @@ packages = ["apps", "config"]
 name = "reconeye"
 version = "0.1.0"
 description = "ReconEye — production-ready camera scraping dashboard"
+license = {file = "LICENSE"}
 requires-python = ">=3.12"
 dependencies = [
     "django>=5.0",

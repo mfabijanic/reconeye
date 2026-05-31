@@ -317,26 +317,35 @@
             <i class="bi bi-speedometer2 me-1"></i><span class="nav-text">{% trans "Dashboard" %}</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}"
-             href="{% url 'cameras:list' %}"
-             title="{% trans 'Cameras' %}">
+        <li class="nav-item dropdown">
+          <a
+            id="camerasMenuToggle"
+            class="nav-link dropdown-toggle {% if request.resolver_match.app_name == 'cameras' %}active{% endif %}"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            title="{% trans 'Cameras' %}"
+          >
             <i class="bi bi-camera-video me-1"></i><span class="nav-text">{% trans "Cameras" %}</span>
           </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}"
-             href="{% url 'cameras:surveillance' %}"
-             title="{% trans 'Surveillance' %}">
-            <i class="bi bi-display me-1"></i><span class="nav-text">{% trans "Surveillance" %}</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}"
-             href="{% url 'cameras:map' %}"
-             title="{% trans 'Map' %}">
-            <i class="bi bi-geo-alt me-1"></i><span class="nav-text">{% trans "Map" %}</span>
-          </a>
+          <ul class="dropdown-menu" aria-labelledby="camerasMenuToggle">
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}" href="{% url 'cameras:list' %}">
+                <i class="bi bi-list-ul me-1"></i>{% trans "List" %}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'map' %}active{% endif %}" href="{% url 'cameras:map' %}">
+                <i class="bi bi-geo-alt me-1"></i>{% trans "Map" %}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}" href="{% url 'cameras:surveillance' %}">
+                <i class="bi bi-display me-1"></i>{% trans "Surveillance" %}
+              </a>
+            </li>
+          </ul>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
@@ -684,6 +693,42 @@
           navToggler.setAttribute("aria-expanded", willOpen ? "true" : "false");
         });
       }
+    }
+
+    const camerasToggle = document.getElementById("camerasMenuToggle");
+    const camerasMenu = camerasToggle ? camerasToggle.nextElementSibling : null;
+    const canHover = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (camerasToggle && camerasMenu && canHover && window.bootstrap && window.bootstrap.Dropdown) {
+      const camerasDropdown = window.bootstrap.Dropdown.getOrCreateInstance(camerasToggle);
+      const camerasNavItem = camerasToggle.closest(".dropdown");
+      let hideTimer = null;
+
+      const clearHideTimer = () => {
+        if (hideTimer) {
+          window.clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+      };
+
+      const showCamerasMenu = () => {
+        clearHideTimer();
+        camerasDropdown.show();
+      };
+
+      const hideCamerasMenu = () => {
+        clearHideTimer();
+        hideTimer = window.setTimeout(() => {
+          camerasDropdown.hide();
+        }, 120);
+      };
+
+      if (camerasNavItem) {
+        camerasNavItem.addEventListener("mouseenter", showCamerasMenu);
+        camerasNavItem.addEventListener("mouseleave", hideCamerasMenu);
+      }
+      camerasMenu.addEventListener("mouseenter", clearHideTimer);
+      camerasMenu.addEventListener("mouseleave", hideCamerasMenu);
+      camerasToggle.addEventListener("focus", showCamerasMenu);
     }
 
     const userToggle = document.getElementById("userMenuToggle");

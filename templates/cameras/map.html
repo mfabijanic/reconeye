@@ -94,6 +94,55 @@
     border: 2px solid #0d1117;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   }
+  .map-marker-dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 2px solid #0d1117;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .map-marker-online { background: #238636; }
+  .map-marker-offline { background: #da3633; }
+  .map-marker-selected {
+    width: 18px;
+    height: 18px;
+    border-color: #58a6ff;
+    box-shadow:
+      0 0 0 3px rgba(88, 166, 255, 0.35),
+      0 2px 8px rgba(0, 0, 0, 0.45);
+    transform: scale(1.08);
+    animation: marker-selected-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes marker-selected-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px rgba(88, 166, 255, 0.30),
+        0 2px 8px rgba(0, 0, 0, 0.45);
+      transform: scale(1.06);
+    }
+    50% {
+      box-shadow:
+        0 0 0 6px rgba(88, 166, 255, 0.22),
+        0 3px 10px rgba(0, 0, 0, 0.48);
+      transform: scale(1.12);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .map-marker-selected {
+      animation: none;
+    }
+  }
+  html[data-bs-theme="light"] .map-marker-dot {
+    border-color: #ffffff;
+  }
+  .map-marker-selected.map-marker-online {
+    background: color-mix(in srgb, #238636 80%, #58a6ff 20%);
+  }
+  .map-marker-selected.map-marker-offline {
+    background: color-mix(in srgb, #da3633 80%, #58a6ff 20%);
+  }
   .cluster-online { background: #238636; }
   .cluster-mixed { background: #9a6700; }
   .cluster-offline { background: #da3633; }
@@ -285,6 +334,8 @@
     let currentFetchController = null;
     let moveDebounceHandle = null;
     let suppressMoveEnd = false;
+    let selectedCameraId = null;
+    let selectedMarker = null;
     // If we restored a saved position, mark lastBounds as already known
     // so the first viewport load does NOT call fitBounds (which would override the restored zoom).
     if (_saved) lastBounds = true;  // truthy sentinel; replaced with real L.latLngBounds on first load
@@ -451,13 +502,25 @@
       `;
     }
 
-    function markerIcon(camera) {
-      const color = camera.is_online ? "#238636" : "#da3633";
+    function markerIcon(camera, { selected = false } = {}) {
+      const statusClass = camera.is_online ? "map-marker-online" : "map-marker-offline";
+      const selectedClass = selected ? "map-marker-selected" : "";
       return L.divIcon({
         className: "",
-        html: `<span style="display:block;width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #0d1117;"></span>`,
-        iconSize: [14, 14],
+        html: `<span class="map-marker-dot ${statusClass} ${selectedClass}"></span>`,
+        iconSize: selected ? [18, 18] : [14, 14],
       });
+    }
+
+    function setSelectedMarker(marker, camera) {
+      if (selectedMarker && selectedMarker !== marker && selectedMarker.__cameraData) {
+        selectedMarker.setIcon(markerIcon(selectedMarker.__cameraData, { selected: false }));
+      }
+      selectedCameraId = camera?.id || null;
+      selectedMarker = marker || null;
+      if (selectedMarker && selectedMarker.__cameraData) {
+        selectedMarker.setIcon(markerIcon(selectedMarker.__cameraData, { selected: true }));
+      }
     }
 
     function setLoading(active) {
@@ -543,12 +606,16 @@
         }
 
         const bounds = [];
+        let selectedCameraFound = false;
+        selectedMarker = null;
         const plotted = spiderfyOverlappingMarkers(markers);
         plotted.forEach(({ camera, lat, lng }) => {
+          const isSelected = selectedCameraId === camera.id;
           const marker = L.marker([lat, lng], {
-            icon: markerIcon(camera),
+            icon: markerIcon(camera, { selected: isSelected }),
             cameraOnline: camera.is_online === true,
           });
+          marker.__cameraData = camera;
           marker.bindPopup(popupContent(camera), {
             autoPan: false,
           });
@@ -556,6 +623,7 @@
             marker.openPopup();
           });
           marker.on("click", () => {
+            setSelectedMarker(marker, camera);
             htmx.ajax("GET", getPanelUrl(camera.id), { target: "#camera-panel", swap: "innerHTML" });
           });
           if (CLOSE_POPUP_ON_MOUSEOUT) {
@@ -565,7 +633,16 @@
           }
           clusterLayer.addLayer(marker);
           bounds.push([lat, lng]);
+          if (isSelected) {
+            selectedMarker = marker;
+            selectedCameraFound = true;
+          }
         });
+
+        if (selectedCameraId && !selectedCameraFound) {
+          selectedCameraId = null;
+          selectedMarker = null;
+        }
 
         if (bounds.length > 0) {
           const isFirstFit = lastBounds === null;

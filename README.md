@@ -1,6 +1,10 @@
 # ReconEye
 
-Production-ready Django application for intelligent IP camera discovery and monitoring.
+Django application for IP camera discovery and monitoring.
+
+<p align="center">
+   <img src="static/hero-map.png" alt="ReconEye map hero" width="100%" />
+</p>
 
 ## Tech Stack
 
@@ -187,4 +191,5 @@ For project conventions and architecture decisions, see [.github/copilot-instruc
 
 ## License
 
-TBD
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+See [LICENSE](LICENSE) for details.
