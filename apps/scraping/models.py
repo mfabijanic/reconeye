@@ -17,6 +17,8 @@ class ScrapeJobStatus(models.TextChoices):
 class ScrapeJob(models.Model):
     source_type = models.CharField(max_length=20, choices=SourceType.choices)
     target_country_code = models.CharField(max_length=2, blank=True, db_index=True)
+    offset_pages = models.IntegerField(default=0, help_text="Windy only: pagination offset (0=start, 1=1000-2000, etc)")
+    max_pages = models.IntegerField(default=20, help_text="Windy only: max pages to fetch (1-20, default 20 for ~1000 cameras)")
     status = models.CharField(
         max_length=20,
         choices=ScrapeJobStatus.choices,

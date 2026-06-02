@@ -532,3 +532,63 @@ msgstr "Vremenske oznake"
 
 msgid "stream"
 msgstr "stream"
+
+msgid "Start camera"
+msgstr "Početna kamera"
+
+msgid "block"
+msgstr "blok"
+
+msgid "blocks"
+msgstr "blokova"
+
+msgid "Windy scraping currently supports up to offset 1000 on this API tier."
+msgstr "Windy prikupljanje trenutno podržava do pomaka 1000 na ovom API nivou."
+
+msgid "Enter a valid Windy start camera."
+msgstr "Unesite ispravan početni broj kamere za Windy."
+
+msgid "Windy start camera must be 0, 1000, 2000, and so on."
+msgstr "Početna kamera za Windy mora biti 0, 1000, 2000 i tako dalje."
+
+msgid "Windy start camera above 1000 is not available on the current API tier."
+msgstr "Početna kamera iznad 1000 nije dostupna na trenutnom API nivou."
+
+msgid "Enter a valid number of Windy blocks."
+msgstr "Unesite ispravan broj blokova za Windy."
+
+msgid "Windy block count must be between 1 and 20."
+msgstr "Broj blokova za Windy mora biti između 1 i 20."
+
+msgid "When Windy start camera is 1000, only 1 block is available on this API tier."
+msgstr "Kada je početna kamera 1000, dostupan je samo 1 blok na trenutnom API nivou."
+
+msgid "Failed to enqueue Windy scrape. Check broker/worker status."
+msgstr "Red čekanja za Windy prikupljanje nije uspio. Provjerite broker/worker status."
+
+msgid "Windy %(scope)s scrape queued from %(start)s (job #%(job_id)s): %(task_id)s"
+msgstr "Windy %(scope)s prikupljanje stavljeno u red od %(start)s (posao #%(job_id)s): %(task_id)s"
+
+msgid "Trigger Windy scrape now"
+msgstr "Pokreni Windy prikupljanje odmah"
+
+msgid "Windy scrape task queued: %(task_id)s"
+msgstr "Windy zadatak prikupljanja stavljen u red: %(task_id)s"
+
+msgid "Cleanup: Deactivate partial/non-live Windy cameras"
+msgstr "Čišćenje: Deaktiviraj djelomične/ne-live Windy kamere"
+
+msgid "Deactivated %(count)s partial/non-live Windy cameras"
+msgstr "Deaktivirano %(count)s djelomičnih/ne-live Windy kamera"
+
+msgid "No partial Windy cameras found."
+msgstr "Nisu pronađene djelomične Windy kamere."
+
+msgid "Loading stream…"
+msgstr "Učitavanje streama…"
+
+msgid "Live URL"
+msgstr "Live URL"
+
+msgid "Resolving…"
+msgstr "Razrješavanje…"

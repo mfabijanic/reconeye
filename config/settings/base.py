@@ -201,6 +201,9 @@ NOMINATIM_USER_AGENT = env(
 WUC_STREAM_PREFIX_OVERRIDES: dict[str, str] = {}
 WUC_STREAM_LOCATION_OVERRIDES: dict[str, str] = {}
 GO2RTC_BASE_URL = env("GO2RTC_BASE_URL", default="http://127.0.0.1:1984")
+WINDY_API_KEY = env("WINDY_API_KEY", default="")
+WINDY_API_BASE_URL = env("WINDY_API_BASE_URL", default="https://api.windy.com")
+WINDY_WEB_CAMS_PER_PAGE = env.int("WINDY_WEB_CAMS_PER_PAGE", default=50)
 
 # Logging
 LOGGING = {

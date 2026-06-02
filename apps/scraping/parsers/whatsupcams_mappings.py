@@ -133,6 +133,7 @@ WUC_STREAM_LOCATION_OVERRIDES = {
     "hr_buildkrk02": ["krk", "Krk"],
     "hr_buildrovinj02": ["rovinj", "Rovinj"],
     "hr_buildtrogir01": ["trogir", "Trogir"],
+    "hr_buildzagreb18": ["zagreb", "Zagreb"],
     "hr_buildznjan02": ["znjan", "Žnjan, Split"],
     "hr_cazma01": ["čazma", "Čazma"],
     "hr_cclabin01": ["labin", "Labin"],

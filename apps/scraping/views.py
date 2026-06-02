@@ -69,8 +69,51 @@ class TriggerScrapeView(LoginRequiredMixin, View):
     def post(self, request):
         source = request.POST.get("source_type")
         target_country_code = (request.POST.get("country_code") or "").strip().upper()
+        windy_start_camera_raw = (request.POST.get("windy_start_camera") or "").strip()
+        windy_block_count_raw = (request.POST.get("windy_block_count") or "").strip()
+        windy_start_camera = 0
+        windy_block_count = 1
 
-        if source not in {"INSECAM", "WHATSUPCAMS"}:
+        if source == "WINDY":
+            if windy_start_camera_raw:
+                try:
+                    windy_start_camera = int(windy_start_camera_raw)
+                except ValueError:
+                    messages.error(request, _("Enter a valid Windy start camera."))
+                    return redirect("scraping:job_list")
+
+                if windy_start_camera < 0 or windy_start_camera % 1000 != 0:
+                    messages.error(request, _("Windy start camera must be 0, 1000, 2000, and so on."))
+                    return redirect("scraping:job_list")
+
+                # Current Windy API tier supports offset up to 1000 only.
+                if windy_start_camera > 1000:
+                    messages.error(
+                        request,
+                        _("Windy start camera above 1000 is not available on the current API tier."),
+                    )
+                    return redirect("scraping:job_list")
+            
+            if windy_block_count_raw:
+                try:
+                    windy_block_count = int(windy_block_count_raw)
+                except ValueError:
+                    messages.error(request, _("Enter a valid number of Windy blocks."))
+                    return redirect("scraping:job_list")
+                
+                if windy_block_count < 1 or windy_block_count > 20:
+                    messages.error(request, _("Windy block count must be between 1 and 20."))
+                    return redirect("scraping:job_list")
+
+            # If starting at 1000, only one page-block is effectively available.
+            if windy_start_camera == 1000 and windy_block_count > 1:
+                messages.error(
+                    request,
+                    _("When Windy start camera is 1000, only 1 block is available on this API tier."),
+                )
+                return redirect("scraping:job_list")
+
+        if source not in {"INSECAM", "WHATSUPCAMS", "WINDY"}:
             logger.warning("Invalid scrape source submitted by user=%s: %s", request.user, source)
             messages.error(request, _("Choose a valid scrape source."))
             return redirect("scraping:job_list")
@@ -178,6 +221,43 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                 request,
                 _("WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s")
                 % {"scope": scope, "job_id": job.pk, "task_id": task.id},
+            )
+        elif source == "WINDY":
+            from apps.scraping.tasks import scrape_windy_job
+
+            job = ScrapeJob.objects.create(
+                source_type=source,
+                target_country_code=target_country_code,
+                offset_pages=windy_start_camera // 1000,
+                max_pages=windy_block_count * 20,
+            )
+            try:
+                task = scrape_windy_job.delay(job_id=job.pk)
+            except Exception as exc:
+                job.mark_failed(error=f"Queue enqueue failed: {exc}")
+                logger.exception("Failed to enqueue Windy scrape job #%s: %s", job.pk, exc)
+                messages.error(request, _("Failed to enqueue Windy scrape. Check broker/worker status."))
+                return redirect("scraping:job_list")
+
+            job.celery_task_id = task.id
+            job.save(update_fields=["celery_task_id"])
+            logger.info(
+                "Triggered Windy scrape: task_id=%s country=%s job_id=%s by user=%s",
+                task.id,
+                target_country_code or "ALL",
+                job.pk,
+                request.user,
+            )
+            scope = f"[{target_country_code}] " if target_country_code else ""
+            messages.success(
+                request,
+                _("Windy %(scope)s scrape queued from %(start)s (job #%(job_id)s): %(task_id)s")
+                % {
+                    "scope": scope,
+                    "start": windy_start_camera,
+                    "job_id": job.pk,
+                    "task_id": task.id,
+                },
             )
         return redirect("scraping:job_list")
 

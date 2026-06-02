@@ -103,6 +103,32 @@ def scrape_whatsupcams_job(self, job_id: int) -> dict:
 
 @shared_task(
     bind=True,
+    name="reconeye.scraping.scrape_windy",
+    max_retries=2,
+    default_retry_delay=300,
+)
+def scrape_windy(self, country_code: str = "") -> dict:
+    from apps.cameras.models import SourceType
+
+    return _create_and_run(
+        SourceType.WINDY,
+        self,
+        target_country_code=country_code.strip().upper(),
+    )
+
+
+@shared_task(
+    bind=True,
+    name="reconeye.scraping.scrape_windy_job",
+    max_retries=2,
+    default_retry_delay=300,
+)
+def scrape_windy_job(self, job_id: int) -> dict:
+    return _run_existing_job(job_id, self)
+
+
+@shared_task(
+    bind=True,
     name="reconeye.scraping.refresh_geolocation_for_cameras",
     max_retries=1,
     default_retry_delay=120,

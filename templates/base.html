@@ -103,6 +103,18 @@
     a { color: var(--app-link); }
     a:hover { color: var(--app-link-hover); }
     .table { --bs-table-bg: var(--app-surface); --bs-table-border-color: var(--app-border); }
+    .app-toast-stack {
+      position: fixed;
+      top: 0.9rem;
+      left: 50%;
+      z-index: 1085;
+      width: min(92vw, 760px);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .app-toast-stack .alert {
+      pointer-events: auto;
+    }
     .app-navbar {
       background: var(--app-surface) !important;
       border-color: var(--app-border) !important;
@@ -427,19 +439,22 @@
 </nav>
 {% endif %}
 
-<main class="container-fluid px-4">
-  {% if messages %}
-    <div class="row mb-3">
-      <div class="col">
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
+{% if messages %}
+  <div class="app-toast-stack" aria-live="polite" aria-atomic="true">
+    {% for message in messages %}
+      <div
+        class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show shadow-lg mb-2"
+        role="alert"
+        {% if message.tags == 'success' or message.tags == 'info' %}data-auto-dismiss="1"{% endif %}
+      >
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-    </div>
-  {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
+<main class="container-fluid px-4">
 
   {% block content %}{% endblock %}
 </main>
@@ -476,9 +491,22 @@
     const chromeAutohideToggleBtn = document.getElementById("chrome-autohide-toggle");
     const chromeAutohideIcon = document.getElementById("chrome-autohide-icon");
     const mainNavbar = document.getElementById("main-navbar");
+    const toastAlerts = Array.from(document.querySelectorAll(".app-toast-stack [data-auto-dismiss='1']"));
     const cameraStyleOrder = ["subtle", "neon", "max-cyber"];
     let chromeAutohideEnabled = false;
     let chromeHideTimeout = null;
+
+    toastAlerts.forEach((alert) => {
+      window.setTimeout(() => {
+        const bsAlert = window.bootstrap && window.bootstrap.Alert ? window.bootstrap.Alert.getOrCreateInstance(alert) : null;
+        if (bsAlert) {
+          bsAlert.close();
+          return;
+        }
+        alert.classList.remove("show");
+        window.setTimeout(() => alert.remove(), 150);
+      }, 4500);
+    });
 
     const clearChromeHideTimeout = () => {
       if (chromeHideTimeout) {
@@ -776,6 +804,44 @@
   (() => {
     const HLS_INSTANCE_KEY = "__reconeyeHlsInstance";
     const HLS_WATCHDOG_KEY = "__reconeyeHlsWatchdog";
+    const ACTIVE_PLAYER_KEY = "__reconeyeActivePlayer";
+
+    function setActivePlayer(element) {
+      if (!element) {
+        return;
+      }
+      window[ACTIVE_PLAYER_KEY] = element;
+    }
+
+    function getActivePlayer() {
+      const active = window[ACTIVE_PLAYER_KEY];
+      if (active && active.isConnected) {
+        return active;
+      }
+      const scoped = document.querySelector("#camera-panel video.js-hls-player, #camera-panel iframe.js-iframe-player");
+      if (scoped) {
+        return scoped;
+      }
+      return document.querySelector("video.js-hls-player, iframe.js-iframe-player");
+    }
+
+    function shouldIgnoreHotkey(event) {
+      if (!event) {
+        return true;
+      }
+      if (event.defaultPrevented) {
+        return true;
+      }
+      const target = event.target;
+      if (!target) {
+        return false;
+      }
+      if (target.isContentEditable) {
+        return true;
+      }
+      const tag = (target.tagName || "").toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select";
+    }
 
     function focusPlayer(video) {
       if (!video) {
@@ -814,11 +880,11 @@
       }
     }
 
-    function isFullscreenActiveFor(video) {
-      if (!video) {
+    function isFullscreenActiveFor(element) {
+      if (!element) {
         return false;
       }
-      return document.fullscreenElement === video || document.webkitFullscreenElement === video;
+      return document.fullscreenElement === element || document.webkitFullscreenElement === element;
     }
 
     function exitFullscreen() {
@@ -829,20 +895,20 @@
       }
     }
 
-    function toggleFullscreen(video) {
-      if (!video) {
+    function toggleFullscreen(element) {
+      if (!element) {
         return;
       }
-      if (isFullscreenActiveFor(video)) {
+      if (isFullscreenActiveFor(element)) {
         exitFullscreen();
         return;
       }
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen();
-      } else if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
+      if (element.requestFullscreen) {
+        element.requestFullscreen();
+      } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+      } else if (element.webkitEnterFullscreen) {
+        element.webkitEnterFullscreen();
       }
     }
 
@@ -851,6 +917,8 @@
         return;
       }
       video.dataset.hlsKeyboardBound = "true";
+      video.addEventListener("pointerdown", () => setActivePlayer(video));
+      video.addEventListener("focus", () => setActivePlayer(video));
       video.addEventListener("keydown", (event) => {
         const key = (event.key || "").toLowerCase();
         if (video.dataset.disablePause === "true" && (key === " " || key === "spacebar" || key === "k")) {
@@ -910,6 +978,35 @@
         window.setTimeout(() => {
           resumeIfNeeded();
         }, 120);
+      });
+    }
+
+    function bindIframeKeyboard(iframe) {
+      if (!iframe || iframe.dataset.iframeKeyboardBound === "true") {
+        return;
+      }
+      iframe.dataset.iframeKeyboardBound = "true";
+      iframe.addEventListener("pointerdown", () => setActivePlayer(iframe));
+      iframe.addEventListener("focus", () => setActivePlayer(iframe));
+
+      iframe.addEventListener("keydown", (event) => {
+        const key = (event.key || "").toLowerCase();
+        if (key === "f") {
+          event.preventDefault();
+          toggleFullscreen(iframe);
+        }
+      });
+
+      iframe.addEventListener("dblclick", () => {
+        toggleFullscreen(iframe);
+      });
+    }
+
+    function initIframePlayers(container = document) {
+      const scope = container instanceof Element || container instanceof Document ? container : document;
+      const iframes = scope.querySelectorAll("iframe.js-iframe-player");
+      iframes.forEach((iframe) => {
+        bindIframeKeyboard(iframe);
       });
     }
 
@@ -1154,6 +1251,7 @@
           video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
           attemptAutoplay(video);
           focusPlayer(video);
+          setActivePlayer(video);
           return;
         }
 
@@ -1174,6 +1272,7 @@
           hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
             attemptAutoplay(video);
             focusPlayer(video);
+            setActivePlayer(video);
           });
           let networkErrorCount = 0;
           let mediaErrorCount = 0;
@@ -1213,6 +1312,7 @@
         }
 
         const fallback = document.createElement("div");
+        setActivePlayer(video);
         fallback.className = "alert alert-warning py-2 px-3 small mt-2";
         fallback.textContent = "This browser cannot play HLS streams inline. Use the stream link instead.";
         video.insertAdjacentElement("afterend", fallback);
@@ -1263,6 +1363,7 @@
         video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
         attemptAutoplay(video);
         focusPlayer(video);
+        setActivePlayer(video);
       });
 
       // Initialize fullscreen keyboard for preview images
@@ -1272,9 +1373,35 @@
       });
     }
 
-    document.addEventListener("DOMContentLoaded", () => initHlsPlayers(document));
+    document.addEventListener("DOMContentLoaded", () => {
+      initHlsPlayers(document);
+      initIframePlayers(document);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (shouldIgnoreHotkey(event)) {
+        return;
+      }
+      const key = (event.key || "").toLowerCase();
+      if (key !== "f") {
+        return;
+      }
+      // Surveillance page handles its own f-key fullscreen per focused tile.
+      // Yield to its handler to avoid toggling the wrong element.
+      if (document.body.classList.contains("surveillance-page")) {
+        return;
+      }
+      const player = getActivePlayer();
+      if (!player) {
+        return;
+      }
+      event.preventDefault();
+      toggleFullscreen(player);
+    });
+
     document.body.addEventListener("htmx:afterSwap", (event) => {
       initHlsPlayers(event.target);
+      initIframePlayers(event.target);
     });
     document.body.addEventListener("htmx:beforeSwap", (event) => {
       const scope = event.target instanceof Element ? event.target : null;
@@ -1288,6 +1415,7 @@
     });
 
     window.ReconEye = window.ReconEye || {};
+    window.ReconEye.initIframePlayers = initIframePlayers;
     window.ReconEye.initHlsPlayers = initHlsPlayers;
   })();
 </script>

@@ -6,7 +6,7 @@
       {% with viewer_url=stream_urls.webrtc_embed|default:stream_urls.viewer|default:stream_urls.webrtc|default:camera.stream_url %}
         <div class="stream-player go2rtc-player-wrap">
           <iframe
-            class="go2rtc-iframe go2rtc-iframe--surveillance"
+            class="js-iframe-player go2rtc-iframe go2rtc-iframe--surveillance"
             src="{{ viewer_url }}"
             title="{{ camera.title|default:_('Camera') }}"
             loading="eager"
@@ -14,6 +14,7 @@
             allow="autoplay; fullscreen; picture-in-picture"
             allowfullscreen
             referrerpolicy="no-referrer"
+            tabindex="0"
           ></iframe>
         </div>
       {% endwith %}
@@ -22,7 +23,7 @@
       {% with webrtc_url=stream_urls.webrtc_embed|default:stream_urls.webrtc|default:camera.stream_url %}
         <div class="stream-player go2rtc-player-wrap">
           <iframe
-            class="go2rtc-iframe"
+            class="js-iframe-player go2rtc-iframe"
             src="{{ webrtc_url }}"
             title="{{ camera.title|default:_('Camera') }}"
             loading="lazy"
@@ -30,11 +31,28 @@
             allow="autoplay; fullscreen; picture-in-picture"
             allowfullscreen
             referrerpolicy="no-referrer"
+            tabindex="0"
           ></iframe>
         </div>
       {% endwith %}
     {% endif %}
   {% endwith %}
+{% elif camera.source_type == "WINDY" %}
+  {# Windy: resolve fresh stream URL on load (m3u8 rotates — never cache in DB). #}
+  {# innerHTML swap keeps this div in DOM so htmx:afterSwap fires with a live container #}
+  {# and initHlsPlayers(event.target) can find the new <video> element inside it.        #}
+  <div
+    hx-get="{% url 'cameras:resolve_stream' camera.pk %}"
+    hx-trigger="load"
+    hx-swap="innerHTML"
+    class="stream-player mb-3 d-flex align-items-center justify-content-center bg-black rounded border border-secondary"
+    style="min-height: 240px;"
+  >
+    <span class="text-secondary small">
+      <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+      {% trans "Loading stream…" %}
+    </span>
+  </div>
 {% elif camera.stream_url and '.m3u8' in camera.stream_url|lower %}
   {% if camera.source_type == "WHATSUPCAMS" %}
   {# Live stream: no native controls — custom mute + fullscreen bar only #}

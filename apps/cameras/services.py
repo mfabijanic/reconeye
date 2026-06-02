@@ -229,6 +229,10 @@ def get_camera_map_markers(
     qs = Camera.objects.filter(is_active=True, latitude__isnull=False, longitude__isnull=False)
     # In source data, (0, 0) typically means unknown geolocation.
     qs = qs.exclude(latitude=0, longitude=0)
+    
+    # Strict live-only for Windy: exclude partial metadata cameras
+    if source_type == SourceType.WINDY:
+        qs = qs.filter(has_partial_metadata=False)
 
     if source_type:
         qs = qs.filter(source_type=source_type)
@@ -310,9 +314,22 @@ def upsert_camera(data: dict[str, Any]) -> tuple[Camera, bool]:
       the source site, so they are presumed live until a check task says otherwise).
     - Existing cameras: is_online is NOT overwritten by the scraper — only
       the refresh_camera_status task should change it.
+    
+    Windy strict mode:
+    - Reject (do not insert/update) any Windy camera without stream_url.
+    - Returns (None, False) if rejected.
     """
     source_type = data.get("source_type")
     page_url = data.get("page_url", "")
+    stream_url = data.get("stream_url", "").strip()
+    
+    # STRICT LIVE-ONLY for Windy: reject non-live cameras
+    if source_type == SourceType.WINDY and not stream_url:
+        logger.warning(
+            "WINDY: Rejecting camera (no stream_url) page_url=%s",
+            page_url,
+        )
+        return None, False
 
     # Never let the scraper overwrite is_online on existing cameras.
     defaults = {

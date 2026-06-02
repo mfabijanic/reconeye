@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from django.contrib import admin, messages
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from apps.common.cache import invalidate_scrape_jobs
@@ -32,6 +33,37 @@ def trigger_whatsupcams_scrape(modeladmin, request, queryset) -> None:
 
     task = scrape_whatsupcams.delay()
     messages.success(request, _("WhatsUpCams scrape task queued: %(task_id)s") % {"task_id": task.id})
+
+
+@admin.action(description=_("Trigger Windy scrape now"))
+def trigger_windy_scrape(modeladmin, request, queryset) -> None:
+    from apps.scraping.tasks import scrape_windy
+
+    task = scrape_windy.delay()
+    messages.success(request, _("Windy scrape task queued: %(task_id)s") % {"task_id": task.id})
+
+
+@admin.action(description=_("Cleanup: Deactivate partial/non-live Windy cameras"))
+def cleanup_windy_partial_cameras(modeladmin, request, queryset) -> None:
+    """Deactivate all Windy cameras without stream_url or with has_partial_metadata."""
+    from apps.cameras.models import Camera, SourceType
+    
+    partial_cameras = Camera.objects.filter(
+        source_type=SourceType.WINDY,
+        is_active=True,
+    ).filter(
+        models.Q(stream_url__exact="") | models.Q(has_partial_metadata=True)
+    )
+    count = partial_cameras.count()
+    if count > 0:
+        partial_cameras.update(is_active=False)
+        messages.success(
+            request,
+            _("Deactivated %(count)s partial/non-live Windy cameras") % {"count": count},
+        )
+    else:
+        messages.info(request, _("No partial Windy cameras found."))
+
 
 
 @admin.register(ScrapeJob)
@@ -71,6 +103,8 @@ class ScrapeJobAdmin(admin.ModelAdmin):
         invalidate_scrape_jobs_cache,
         trigger_insecam_scrape,
         trigger_whatsupcams_scrape,
+        trigger_windy_scrape,
+        cleanup_windy_partial_cameras,
     ]
 
     def has_add_permission(self, request) -> bool:

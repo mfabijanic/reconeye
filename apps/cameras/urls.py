@@ -15,4 +15,5 @@ urlpatterns = [
     path("map/data/", views.CameraMapDataView.as_view(), name="map_data"),
     path("map/locations/suggest/", views.CameraLocationSuggestionsView.as_view(), name="map_locations_suggest"),
     path("<int:pk>/", views.CameraDetailView.as_view(), name="detail"),
+    path("<int:pk>/resolve-stream/", views.ResolveWindyStreamView.as_view(), name="resolve_stream"),
 ]

@@ -11,6 +11,9 @@
 <script id="wuc-countries-data" type="application/json">
   [{"value": "", "label": "{% trans 'All countries (optional)…' %}", "required": false}{% for code, label in whatsupcams_countries %}, {"value": "{{ code }}", "label": "{{ label }} ({{ code }})"}{% endfor %}]
 </script>
+<script id="windy-countries-data" type="application/json">
+  [{"value": "", "label": "{% trans 'All countries (optional)…' %}", "required": false}]
+</script>
 
 <div class="row mb-3 align-items-center g-2">
   <div class="col-auto me-auto"><h4 class="mb-0"><i class="bi bi-arrow-repeat me-2 text-info"></i>{% trans "Scrape Jobs" %}</h4></div>
@@ -20,6 +23,7 @@
         <option value="">{% trans "All sources" %}</option>
         <option value="INSECAM"{% if request.GET.source == 'INSECAM' %} selected{% endif %}>Insecam</option>
         <option value="WHATSUPCAMS"{% if request.GET.source == 'WHATSUPCAMS' %} selected{% endif %}>WhatsUpCams</option>
+        <option value="WINDY"{% if request.GET.source == 'WINDY' %} selected{% endif %}>Windy</option>
       </select>
       <select name="status" class="form-select form-select-sm">
         <option value="">{% trans "All statuses" %}</option>
@@ -36,10 +40,27 @@
       <select name="source_type" id="trigger-source-type" class="form-select form-select-sm">
         <option value="INSECAM">Insecam</option>
         <option value="WHATSUPCAMS">WhatsUpCams</option>
+        <option value="WINDY">Windy</option>
       </select>
       <select name="country_code" id="trigger-country-code" class="form-select form-select-sm" style="min-width:200px">
         {# Options populated by JS on load and on source_type change #}
       </select>
+      <div id="windy-start-camera-wrap" class="d-none">
+        <select name="windy_start_camera" id="windy-start-camera" class="form-select form-select-sm" style="min-width:220px">
+          <option value="0">{% trans "Start camera" %}: 0</option>
+          <option value="1000">{% trans "Start camera" %}: 1000</option>
+        </select>
+        <select name="windy_block_count" id="windy-block-count" class="form-select form-select-sm" style="min-width:180px">
+          <option value="1" selected>1 {% trans "block" %} (~1000 {% trans "cameras" %})</option>
+          <option value="2">2 {% trans "blocks" %} (~2000 {% trans "cameras" %})</option>
+          <option value="3">3 {% trans "blocks" %} (~3000 {% trans "cameras" %})</option>
+          <option value="4">4 {% trans "blocks" %} (~4000 {% trans "cameras" %})</option>
+          <option value="5">5 {% trans "blocks" %} (~5000 {% trans "cameras" %})</option>
+          <option value="10">10 {% trans "blocks" %} (~10000 {% trans "cameras" %})</option>
+          <option value="20">20 {% trans "blocks" %} (~20000 {% trans "cameras" %})</option>
+        </select>
+        <div class="form-text small text-muted mt-1">{% trans "Windy scraping currently supports up to offset 1000 on this API tier." %}</div>
+      </div>
       <button type="submit" class="btn btn-sm btn-success d-inline-flex align-items-center text-nowrap">
         <i class="bi bi-play-fill me-1"></i>{% trans "Trigger scrape" %}
       </button>
@@ -53,12 +74,15 @@
   const LS_KEY = 'reconeye_trigger_source';
   const sourceSelect  = document.getElementById('trigger-source-type');
   const countrySelect = document.getElementById('trigger-country-code');
+  const windyStartWrap = document.getElementById('windy-start-camera-wrap');
+  const windyStartSelect = document.getElementById('windy-start-camera');
 
   const insecamData = JSON.parse(document.getElementById('insecam-countries-data').textContent);
   const wucData     = JSON.parse(document.getElementById('wuc-countries-data').textContent);
+  const windyData   = JSON.parse(document.getElementById('windy-countries-data').textContent);
 
   function populateCountries(source) {
-    const data = source === 'WHATSUPCAMS' ? wucData : insecamData;
+    const data = source === 'WHATSUPCAMS' ? wucData : (source === 'WINDY' ? windyData : insecamData);
     countrySelect.innerHTML = '';
     data.forEach(function(item) {
       const opt = document.createElement('option');
@@ -66,12 +90,14 @@
       opt.textContent = item.label;
       countrySelect.appendChild(opt);
     });
-    countrySelect.required = (source !== 'WHATSUPCAMS');
+    countrySelect.required = (source === 'INSECAM');
+    windyStartWrap.classList.toggle('d-none', source !== 'WINDY');
+    windyStartSelect.required = (source === 'WINDY');
   }
 
   // Restore persisted source type
   const saved = localStorage.getItem(LS_KEY);
-  if (saved && (saved === 'INSECAM' || saved === 'WHATSUPCAMS')) {
+  if (saved && (saved === 'INSECAM' || saved === 'WHATSUPCAMS' || saved === 'WINDY')) {
     sourceSelect.value = saved;
   }
 

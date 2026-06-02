@@ -1,0 +1,35 @@
+{% load i18n %}
+{% if is_hls %}
+{# Resolved HLS/m3u8 stream — inline HLS player. Container div already wraps via innerHTML swap. #}
+<video
+  class="js-hls-player camera-frame w-100 rounded border border-secondary bg-black"
+  playsinline
+  muted
+  autoplay
+  preload="metadata"
+  tabindex="0"
+  data-hls-src="{{ resolved_url }}"
+  data-camera-id="{{ camera.pk }}"
+  data-disable-pause="true"
+  {% if camera.preview_image %}poster="{{ camera.preview_image }}"{% endif %}
+></video>
+{% else %}
+{# MJPEG, embedded player page, or unrecognised URL — use iframe #}
+<iframe
+  class="js-iframe-player camera-frame w-100 rounded border border-secondary bg-black"
+  src="{{ resolved_url }}"
+  title="{{ camera.title|default:_('Camera') }}"
+  loading="eager"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  referrerpolicy="no-referrer"
+  tabindex="0"
+  style="min-height: 240px; width: 100%;"
+></iframe>
+{% endif %}
+{# OOB: update Live URL row in camera detail page if the row exists. #}
+{% if resolved_url %}
+<span id="windy-live-url-{{ camera.pk }}" hx-swap-oob="innerHTML">
+  <a href="{{ resolved_url }}" target="_blank" rel="noopener" class="text-break">{{ resolved_url|truncatechars:100 }}</a>
+</span>
+{% endif %}

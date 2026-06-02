@@ -830,6 +830,33 @@
       }
     });
 
+    function focusMediaInPanel(attempt = 0) {
+      const panel = document.getElementById("camera-panel");
+      if (!panel) {
+        return;
+      }
+      const media = panel.querySelector("video.js-hls-player, iframe.js-iframe-player");
+      if (!media) {
+        if (attempt < 12) {
+          window.setTimeout(() => focusMediaInPanel(attempt + 1), 80);
+        }
+        return;
+      }
+      if (typeof media.focus === "function") {
+        media.focus({ preventScroll: true });
+      }
+    }
+
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+      const target = event && event.target instanceof Element ? event.target : null;
+      if (!target) {
+        return;
+      }
+      if (target.id === "camera-panel" || target.closest("#camera-panel")) {
+        focusMediaInPanel(0);
+      }
+    });
+
     applyFiltersFromUrl();
     // If the user had a saved map position, load only markers in that viewport;
     // otherwise do a global load and fit all markers.

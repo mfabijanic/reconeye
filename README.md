@@ -69,7 +69,7 @@ make docker-up     # Full stack (Docker)
 config/                 # Django config + Celery  
 apps/
   cameras/             # Camera models, services, views
-  scraping/            # Scrapers (Insecam, WhatsUpCams), tasks
+   scraping/            # Scrapers (Insecam, WhatsUpCams, Windy), tasks
   dashboard/           # Dashboard stats/views
   users/               # Auth (login/logout)
   common/              # Cache, middleware, health endpoints
@@ -82,7 +82,7 @@ docker/                # Dockerfile, nginx.conf, entrypoint.sh
 ## Core Features
 
 ### Cameras
-- Scraped from **Insecam.org** and **WhatsUpCams** (reference: `wuc` branch)
+- Scraped from **Insecam.org**, **WhatsUpCams** (reference: `wuc` branch), and **Windy Webcams API**
 - Status tracking (online/offline) via periodic health checks
 - Partial metadata handling (stream URL may be unavailable; page URL stored)
 - Indexed by country, city, source type for fast filtering
@@ -93,6 +93,7 @@ docker/                # Dockerfile, nginx.conf, entrypoint.sh
 - **Progress tracking**: live UI updates via HTMX polling
 - **Deduplication** by `source_type` + `page_url`
 - **Retry logic** with tenacity
+- Windy authentication via `x-windy-api-key` header from environment settings
 
 ### Dashboard
 - Real-time stats (online count, by-country breakdown, active jobs)
@@ -119,10 +120,18 @@ docker/                # Dockerfile, nginx.conf, entrypoint.sh
 - **`ScrapeJob.progress_pct`**: `min(100, round((total_processed / max(total_found, 1)) * 100))`
 
 ### Scraping
-- Parsers live in `apps/scraping/parsers/{insecam,whatsupcams}.py`
+- Parsers live in `apps/scraping/parsers/{insecam,whatsupcams,windy}.py`
 - Tasks: `reconeye.<app>.<task_name>` (Celery naming convention)
 - HTTP client: shared factory in `apps/scraping/http.py`
 - Services never import tasks; tasks call services
+
+### Windy API configuration
+- Add your API key in environment variables (recommended):
+   - `WINDY_API_KEY=...`
+   - Optional: `WINDY_API_BASE_URL=https://api.windy.com`
+   - Optional: `WINDY_WEB_CAMS_PER_PAGE=50`
+- Keep API keys in server-side env/config management.
+- Avoid collecting per-user API keys via normal web forms unless you explicitly need multi-tenant user-owned credentials and encrypted secret storage.
 
 ### Views & Templates
 - Class-based views with `LoginRequiredMixin`

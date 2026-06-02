@@ -283,6 +283,33 @@ async def _run_scrape(job: ScrapeJob, *, resolve_streams: bool = True) -> None:
                     new=new,
                     updated=updated,
                 )
+        elif job.source_type == SourceType.WINDY:
+            from apps.scraping.parsers.windy import collect_webcams
+
+            start_page = max(0, job.offset_pages) * 20
+            max_pages = max(1, min(20, job.max_pages or 20))
+
+            cameras = await collect_webcams(
+                target_country_code=(job.target_country_code or None),
+                start_page=start_page,
+                max_pages=max_pages,
+            )
+            total_found = len(cameras)
+            await sync_to_async(job.update_counters, thread_sensitive=True)(found=total_found)
+
+            for start in range(0, total_found, BATCH_SIZE):
+                chunk = cameras[start : start + BATCH_SIZE]
+                chunk_size = len(chunk)
+                new, updated = await _flush_batch_async(chunk)
+                total_new += new
+                total_updated += updated
+                total_processed += chunk_size
+                await sync_to_async(job.update_counters, thread_sensitive=True)(
+                    found=total_found,
+                    processed=chunk_size,
+                    new=new,
+                    updated=updated,
+                )
         else:
             raise ValueError(f"Unknown source_type: {job.source_type}")
 

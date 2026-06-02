@@ -382,6 +382,64 @@ class HtmxCameraCheckStreamView(LoginRequiredMixin, View):
 import logging as _log
 logger = _log.getLogger(__name__)
 
+_DIRECT_STREAM_HINTS = ("axis-cgi", "video.cgi", ".mjpeg", ".mjpg", "/videostream", "rtsp://")
+
+
+class ResolveWindyStreamView(LoginRequiredMixin, View):
+    """Resolve a fresh playable stream URL for a Windy camera and return a player HTML partial.
+
+    On each call:
+    - Run async _resolve_direct_stream_url against the Windy stream page.
+    - Return an HTMX-compatible HTML partial (HLS player or iframe).
+
+    The camera's stored stream_url is always the stable Windy embed page
+    (https://webcams.windy.com/webcams/stream/<id>). The resolved m3u8/MJPEG
+    URL is never written to the database — it is always fetched fresh so
+    that rotating IPCamLive stream IDs and server addresses do not go stale.
+    """
+
+    def get(self, request, pk: int) -> HttpResponse:
+        from asgiref.sync import async_to_sync
+        from apps.scraping.http import build_client
+        from apps.scraping.parsers.windy import _resolve_direct_stream_url
+
+        camera = get_object_or_404(Camera, pk=pk, source_type=SourceType.WINDY)
+        webcam_id = str((camera.source_payload or {}).get("webcam_id") or "").strip()
+        fallback_url = (
+            f"https://webcams.windy.com/webcams/stream/{webcam_id}"
+            if webcam_id
+            else (camera.stream_url or "")
+        )
+
+        resolved_url = ""
+        if webcam_id:
+            try:
+                async def _resolve() -> str:
+                    async with build_client() as client:
+                        return await _resolve_direct_stream_url(client, webcam_id)
+
+                resolved_url = async_to_sync(_resolve)() or ""
+            except Exception:
+                logger.exception("ResolveWindyStreamView: failed to resolve stream for camera %d", pk)
+
+        stream_url = resolved_url or fallback_url
+        stream_url_lower = stream_url.lower()
+        is_hls = ".m3u8" in stream_url_lower
+        is_direct_stream = not is_hls and any(h in stream_url_lower for h in _DIRECT_STREAM_HINTS)
+
+        return HttpResponse(
+            render_to_string(
+                "htmx/cameras/_windy_player.html",
+                {
+                    "camera": camera,
+                    "resolved_url": stream_url,
+                    "is_hls": is_hls,
+                    "is_direct_stream": is_direct_stream,
+                },
+                request=request,
+            )
+        )
+
 
 class HtmxCameraListView(LoginRequiredMixin, ListView):
     """Returns only the camera table partial for HTMX swaps."""

@@ -31,6 +31,14 @@
         {% if camera.stream_url %}<a href="{{ camera.stream_url }}" target="_blank">{{ camera.stream_url|truncatechars:80 }}</a>
         {% else %}—{% endif %}
       </td></tr>
+      {% if camera.source_type == "WINDY" %}
+      <tr>
+        <th>{% trans "Live URL" %}</th>
+        <td><span id="windy-live-url-{{ camera.pk }}" class="text-muted small">
+          <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>{% trans "Resolving…" %}
+        </span></td>
+      </tr>
+      {% endif %}
       <tr><th>{% trans "Page URL" %}</th><td>
         {% if camera.page_url %}<a href="{{ camera.page_url }}" target="_blank">{{ camera.page_url|truncatechars:80 }}</a>
         {% else %}—{% endif %}

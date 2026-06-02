@@ -252,6 +252,109 @@
     border-color: #ffc107;
     color: #ffc107;
   }
+  /* ── Keyboard focus / tile navigation ───────────────────────────── */
+  .surveillance-tile:focus {
+    outline: none;
+  }
+  .surveillance-tile.sv-focused {
+    outline: 3px solid #0dcaf0 !important;
+    outline-offset: -3px;
+    z-index: 2;
+    box-shadow:
+      inset 0 0 0 3px #0dcaf0,
+      0 0 0 3px rgba(13, 202, 240, 0.45),
+      0 0 18px 2px rgba(13, 202, 240, 0.25);
+    animation: sv-focus-pulse 2s ease-in-out infinite;
+  }
+  body.surveillance-edit-mode .surveillance-tile.sv-focused {
+    outline: 3px solid #ffd700 !important;
+    box-shadow:
+      inset 0 0 0 3px #ffd700,
+      0 0 0 3px rgba(255, 215, 0, 0.45),
+      0 0 18px 2px rgba(255, 215, 0, 0.25);
+    animation: sv-focus-pulse-edit 2s ease-in-out infinite;
+  }
+  @keyframes sv-focus-pulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 3px #0dcaf0,
+        0 0 0 3px rgba(13, 202, 240, 0.45),
+        0 0 18px 2px rgba(13, 202, 240, 0.25);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 3px #0dcaf0,
+        0 0 0 3px rgba(13, 202, 240, 0.7),
+        0 0 28px 6px rgba(13, 202, 240, 0.4);
+    }
+  }
+  @keyframes sv-focus-pulse-edit {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 3px #ffd700,
+        0 0 0 3px rgba(255, 215, 0, 0.45),
+        0 0 18px 2px rgba(255, 215, 0, 0.25);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 3px #ffd700,
+        0 0 0 3px rgba(255, 215, 0, 0.7),
+        0 0 28px 6px rgba(255, 215, 0, 0.4);
+    }
+  }
+  /* Corner accent marks on focused tile */
+  .surveillance-tile.sv-focused::before,
+  .surveillance-tile.sv-focused::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .surveillance-tile.sv-focused::before {
+    top: 4px;
+    left: 4px;
+    border-top: 3px solid #0dcaf0;
+    border-left: 3px solid #0dcaf0;
+  }
+  .surveillance-tile.sv-focused::after {
+    bottom: 4px;
+    right: 4px;
+    border-bottom: 3px solid #0dcaf0;
+    border-right: 3px solid #0dcaf0;
+  }
+  body.surveillance-edit-mode .surveillance-tile.sv-focused::before {
+    border-color: #ffd700;
+  }
+  body.surveillance-edit-mode .surveillance-tile.sv-focused::after {
+    border-color: #ffd700;
+  }
+  /* Focus index badge — top-right corner */
+  .sv-focus-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 6;
+    background: rgba(13, 202, 240, 0.9);
+    color: #000;
+    font-size: .6rem;
+    font-weight: 700;
+    padding: .1rem .35rem;
+    border-radius: .25rem;
+    pointer-events: none;
+    letter-spacing: .04em;
+    display: none;
+  }
+  .surveillance-tile.sv-focused .sv-focus-badge {
+    display: block;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .surveillance-tile.sv-focused,
+    body.surveillance-edit-mode .surveillance-tile.sv-focused {
+      animation: none;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -371,7 +474,8 @@
 
 <div id="surveillance-grid" class="surveillance-grid" data-camera-count="{{ selected_cameras|length }}">
   {% for camera in selected_cameras %}
-    <div class="surveillance-tile" data-camera-id="{{ camera.pk }}">
+    <div class="surveillance-tile" data-camera-id="{{ camera.pk }}" tabindex="0">
+      <span class="sv-focus-badge">FOCUS</span>
       <div class="surveillance-tile-header">
         <a class="surveillance-tile-title" href="{% url 'cameras:detail' camera.pk %}" title="{{ camera.title|default:_('(no title)') }}">
           {{ camera.title|default:_('(no title)') }}
@@ -743,6 +847,110 @@
     applyEditMode(false);
     if (editBtn) {
       editBtn.addEventListener("click", () => applyEditMode(!editMode));
+    }
+
+    // ── Tile keyboard navigation (arrows + vim hjkl) ─────────────────
+    // Tracks which tile is currently focused for keyboard navigation.
+    let svFocusedIdx = -1;
+
+    const getTiles = () => Array.from(grid ? grid.querySelectorAll(".surveillance-tile") : []);
+
+    const svGetCols = () => {
+      if (!grid) return 1;
+      const style = window.getComputedStyle(grid);
+      const cols = style.gridTemplateColumns.split(" ").filter(Boolean).length;
+      return Math.max(1, cols);
+    };
+
+    const svFocus = (idx, tiles) => {
+      const list = tiles || getTiles();
+      if (!list.length) return;
+      // Clamp index
+      idx = Math.max(0, Math.min(list.length - 1, idx));
+      list.forEach((t, i) => {
+        t.classList.toggle("sv-focused", i === idx);
+      });
+      svFocusedIdx = idx;
+      const tile = list[idx];
+      // Update badge: show 1-based position
+      const badge = tile.querySelector(".sv-focus-badge");
+      if (badge) badge.textContent = `${idx + 1} / ${list.length}`;
+      // Focus the tile itself so keyboard events keep working
+      tile.focus({ preventScroll: true });
+      tile.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    };
+
+    const svFullscreen = (tile) => {
+      if (!tile) return;
+      if (document.fullscreenElement === tile) {
+        document.exitFullscreen && document.exitFullscreen();
+      } else {
+        (tile.requestFullscreen || tile.webkitRequestFullscreen || (() => {})).call(tile);
+      }
+    };
+
+    // Focus first tile on load if any exist
+    window.setTimeout(() => {
+      const tiles = getTiles();
+      if (tiles.length) svFocus(0, tiles);
+    }, 200);
+
+    // Key: arrow keys, vim hjkl → navigate; f → fullscreen focused tile
+    document.addEventListener("keydown", (e) => {
+      // Skip when typing in an input/textarea/select
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable) return;
+
+      const key = e.key;
+      const tiles = getTiles();
+      if (!tiles.length) return;
+
+      const cols = svGetCols();
+
+      // Normalise current focus index if page changed
+      if (svFocusedIdx < 0 || svFocusedIdx >= tiles.length) svFocusedIdx = 0;
+
+      let next = svFocusedIdx;
+      let handled = true;
+
+      switch (key) {
+        case "ArrowRight": case "l": case "L":
+          next = svFocusedIdx + 1;
+          break;
+        case "ArrowLeft": case "h": case "H":
+          next = svFocusedIdx - 1;
+          break;
+        case "ArrowDown": case "j": case "J":
+          next = svFocusedIdx + cols;
+          break;
+        case "ArrowUp": case "k": case "K":
+          next = svFocusedIdx - cols;
+          break;
+        case "f": case "F":
+          e.stopImmediatePropagation();
+          svFullscreen(tiles[svFocusedIdx]);
+          break;
+        default:
+          handled = false;
+      }
+
+      if (!handled) return;
+      e.preventDefault();
+
+      if (next !== svFocusedIdx && next >= 0 && next < tiles.length) {
+        svFocus(next, tiles);
+      }
+    }, false);
+
+    // Clicking a tile also sets it as the focused one
+    if (grid) {
+      grid.addEventListener("pointerdown", (e) => {
+        const tile = e.target.closest(".surveillance-tile");
+        if (!tile) return;
+        const tiles = getTiles();
+        const idx = tiles.indexOf(tile);
+        if (idx >= 0) svFocus(idx, tiles);
+      }, true);
     }
 
   });
