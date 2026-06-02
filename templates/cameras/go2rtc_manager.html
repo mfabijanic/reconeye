@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "go2rtc Manager" %} — ReconEye{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h4 class="mb-0">
+        <i class="bi bi-hdd-network me-2 text-info"></i>{% trans "go2rtc Manager" %}
+      </h4>
+      <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
+      </a>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="alert alert-info py-2 mb-0">
+      <i class="bi bi-shield-lock me-1"></i>
+      {% trans "Remote go2rtc configuration is read-only in ReconEye. The manager only fetches and compares snapshots; it never writes to the remote server." %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <strong>{% trans "Add or update go2rtc instance" %}</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'cameras:go2rtc_manager_add' %}" class="row g-2">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label mb-1">{% trans "Name" %}</label>
+            {{ instance_form.name }}
+          </div>
+          <div class="col-4">
+            <label class="form-label mb-1">{% trans "Scheme" %}</label>
+            {{ instance_form.scheme }}
+          </div>
+          <div class="col-8">
+            <label class="form-label mb-1">{% trans "Host" %}</label>
+            {{ instance_form.host }}
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1">{% trans "Port" %}</label>
+            {{ instance_form.port }}
+          </div>
+          <div class="col-12 d-grid mt-2">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-plus-circle me-1"></i>{% trans "Save and sync" %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>{% trans "Registered instances" %}</strong>
+        {% if selected_instance %}
+          <form method="post" action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-info">
+              <i class="bi bi-arrow-repeat me-1"></i>{% trans "Sync now" %}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="px-3">{% trans "Instance" %}</th>
+                <th>{% trans "Base URL" %}</th>
+                <th>{% trans "Last sync" %}</th>
+                <th>{% trans "Status" %}</th>
+                <th class="text-end pe-3">{% trans "Streams" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for instance in instances %}
+                <tr class="{% if selected_instance and selected_instance.pk == instance.pk %}table-info-subtle{% endif %}">
+                  <td class="px-3">
+                    <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}" class="text-decoration-none">
+                      <strong>{{ instance.name }}</strong>
+                    </a>
+                  </td>
+                  <td><code>{{ instance.base_url }}</code></td>
+                  <td>
+                    {% if instance.last_synced_at %}
+                      {{ instance.last_synced_at|date:"Y-m-d H:i:s" }}
+                    {% else %}
+                      <span class="text-muted">{% trans "Never" %}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if instance.last_sync_status == 'SUCCESS' %}
+                      <span class="badge text-bg-success">{% trans "Success" %}</span>
+                    {% elif instance.last_sync_status == 'FAILED' %}
+                      <span class="badge text-bg-danger">{% trans "Failed" %}</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">{% trans "Never" %}</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end pe-3">{{ instance.streams.count }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="px-3 py-4 text-center text-muted">{% trans "No go2rtc instances yet." %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <strong>
+          {% trans "Streams" %}
+          {% if selected_instance %}
+            — {{ selected_instance.name }}
+          {% endif %}
+        </strong>
+        {% if selected_instance %}
+          <small class="text-muted">{{ selected_instance.base_url }}</small>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if selected_instance %}
+          <form method="post" action="{% url 'cameras:go2rtc_manager_bulk_add' selected_instance.pk %}" id="bulk-add-form">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom flex-wrap gap-2">
+              <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" value="1" id="select-all-streams">
+                <label class="form-check-label" for="select-all-streams">
+                  {% trans "Select all visible streams" %}
+                </label>
+              </div>
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add selected to Surveillance" %}
+              </button>
+            </div>
+
+            <div class="table-responsive" style="max-height: 420px;">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="sticky-top">
+                  <tr>
+                    <th class="px-3" style="width: 3rem;"></th>
+                    <th>{% trans "Stream" %}</th>
+                    <th>{% trans "Producers" %}</th>
+                    <th>{% trans "Consumers" %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for stream in streams %}
+                    <tr>
+                      <td class="px-3">
+                        <input class="form-check-input stream-checkbox" type="checkbox" name="stream_names" value="{{ stream.stream_name }}">
+                      </td>
+                      <td><code>{{ stream.stream_name }}</code></td>
+                      <td>{{ stream.producers_count }}</td>
+                      <td>{{ stream.consumers_count }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="4" class="px-3 py-3 text-center text-muted">{% trans "No synced streams for this instance yet." %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </form>
+        {% else %}
+          <div class="p-4 text-muted">{% trans "Choose or add an instance to see streams." %}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if selected_instance %}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>{% trans "Latest config snapshot" %}</strong>
+          {% if latest_config %}
+            <small class="text-muted d-flex align-items-center gap-2">
+              {{ latest_config.fetched_at|date:"Y-m-d H:i:s" }}
+              {% if latest_config.is_changed %}
+                <span class="badge text-bg-warning">{% trans "Changed" %}</span>
+              {% else %}
+                <span class="badge text-bg-secondary">{% trans "No change" %}</span>
+              {% endif %}
+            </small>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if latest_config %}
+              <div class="mb-3 small">
+                <div><strong>{% trans "Hash" %}:</strong> <code>{{ latest_config.config_hash }}</code></div>
+                <div class="mt-1">
+                  <strong>{% trans "Diff" %}:</strong>
+                  +{{ latest_config.change_summary.added_count|default:0 }} /
+                  -{{ latest_config.change_summary.removed_count|default:0 }} /
+                  Δ{{ latest_config.change_summary.changed_count|default:0 }}
+                </div>
+              </div>
+            <pre class="small mb-0" style="max-height: 320px; overflow:auto;">{{ latest_config.config_payload|pprint }}</pre>
+          {% else %}
+            <span class="text-muted">{% trans "No config snapshot available yet." %}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <strong>{% trans "Config history and diff" %}</strong>
+          {% if compare_from and compare_to %}
+            <small class="text-muted">
+              {% trans "Comparing" %} {{ compare_from.fetched_at|date:"Y-m-d H:i:s" }} → {{ compare_to.fetched_at|date:"Y-m-d H:i:s" }}
+            </small>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if config_history %}
+            <form method="get" class="row g-2 align-items-end mb-3">
+              <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
+              <div class="col-md-5">
+                <label class="form-label mb-1">{% trans "From snapshot" %}</label>
+                <select name="diff_from" class="form-select form-select-sm">
+                  {% for snap in config_history %}
+                    <option value="{{ snap.pk }}" {% if compare_from and compare_from.pk == snap.pk %}selected{% endif %}>
+                      {{ snap.fetched_at|date:"Y-m-d H:i:s" }} {% if snap.is_changed %}• {% trans "Changed" %}{% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label mb-1">{% trans "To snapshot" %}</label>
+                <select name="diff_to" class="form-select form-select-sm">
+                  {% for snap in config_history %}
+                    <option value="{{ snap.pk }}" {% if compare_to and compare_to.pk == snap.pk %}selected{% endif %}>
+                      {{ snap.fetched_at|date:"Y-m-d H:i:s" }} {% if snap.is_changed %}• {% trans "Changed" %}{% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-sm btn-outline-info">{% trans "Show diff" %}</button>
+              </div>
+            </form>
+
+            <div class="table-responsive mb-3" style="max-height: 260px;">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="sticky-top">
+                  <tr>
+                    <th>{% trans "Fetched at" %}</th>
+                    <th>{% trans "Changed" %}</th>
+                    <th>{% trans "Diff summary" %}</th>
+                    <th>{% trans "Hash" %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for snap in config_history %}
+                    <tr>
+                      <td>{{ snap.fetched_at|date:"Y-m-d H:i:s" }}</td>
+                      <td>
+                        {% if snap.is_changed %}
+                          <span class="badge text-bg-warning">{% trans "Changed" %}</span>
+                        {% else %}
+                          <span class="badge text-bg-secondary">{% trans "No change" %}</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        +{{ snap.change_summary.added_count|default:0 }} /
+                        -{{ snap.change_summary.removed_count|default:0 }} /
+                        Δ{{ snap.change_summary.changed_count|default:0 }}
+                      </td>
+                      <td><code>{{ snap.config_hash|slice:":16" }}</code></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            {% if diff_rows %}
+              <div class="table-responsive" style="max-height: 360px;">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="sticky-top">
+                    <tr>
+                      <th>{% trans "Path" %}</th>
+                      <th>{% trans "Type" %}</th>
+                      <th>{% trans "Before" %}</th>
+                      <th>{% trans "After" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in diff_rows %}
+                      <tr>
+                        <td><code>{{ row.path }}</code></td>
+                        <td>
+                          {% if row.change_type == 'added' %}
+                            <span class="badge text-bg-success">{{ row.change_type }}</span>
+                          {% elif row.change_type == 'removed' %}
+                            <span class="badge text-bg-danger">{{ row.change_type }}</span>
+                          {% else %}
+                            <span class="badge text-bg-warning text-dark">{{ row.change_type }}</span>
+                          {% endif %}
+                        </td>
+                        <td><code>{{ row.before }}</code></td>
+                        <td><code>{{ row.after }}</code></td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-muted small">{% trans "No differences for selected snapshots (or only one snapshot exists)." %}</div>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">{% trans "No config history available yet." %}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const master = document.getElementById("select-all-streams");
+    if (!master) return;
+
+    const getBoxes = () => Array.from(document.querySelectorAll(".stream-checkbox"));
+
+    master.addEventListener("change", () => {
+      getBoxes().forEach((box) => {
+        box.checked = master.checked;
+      });
+    });
+
+    document.addEventListener("change", (event) => {
+      if (!event.target.classList || !event.target.classList.contains("stream-checkbox")) {
+        return;
+      }
+      const boxes = getBoxes();
+      const checked = boxes.filter((box) => box.checked).length;
+      master.checked = boxes.length > 0 && checked === boxes.length;
+      master.indeterminate = checked > 0 && checked < boxes.length;
+    });
+  });
+</script>
+{% endblock %}

@@ -10,14 +10,16 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
-from apps.cameras.forms import Go2RTCCameraForm
-from apps.cameras.models import Camera, MapUISettings, SourceType
+from apps.cameras.forms import Go2RTCBulkAddForm, Go2RTCCameraForm, Go2RTCInstanceForm
+from apps.cameras.models import Camera, Go2RTCConfigSnapshot, Go2RTCInstance, Go2RTCStream, MapUISettings, SourceType
 from apps.cameras.services import (
+    build_config_diff_rows,
     build_camera_display_title,
     ensure_go2rtc_camera_stream_urls,
     extract_camera_stream_id,
@@ -25,6 +27,7 @@ from apps.cameras.services import (
     get_camera_map_markers,
     get_country_choices,
     normalize_go2rtc_base_url,
+    sync_go2rtc_instance,
     upsert_go2rtc_camera,
 )
 from apps.users.models import UserMapSettings
@@ -204,6 +207,146 @@ class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
         camera.save(update_fields=["is_active", "updated_at"])
         messages.success(request, f"Removed camera: {camera.title or camera.pk}")
         return redirect("cameras:surveillance")
+
+
+class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
+    template_name = "cameras/go2rtc_manager.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        instances = Go2RTCInstance.objects.filter(is_active=True).order_by("name")
+
+        selected_instance = None
+        selected_id = self.request.GET.get("instance")
+        if selected_id:
+            try:
+                selected_instance = instances.filter(pk=int(selected_id)).first()
+            except (TypeError, ValueError):
+                selected_instance = None
+        if selected_instance is None:
+            selected_instance = instances.first()
+
+        streams_qs = Go2RTCStream.objects.none()
+        latest_config = None
+        config_history = Go2RTCConfigSnapshot.objects.none()
+        compare_from = None
+        compare_to = None
+        diff_rows: list[dict[str, str]] = []
+        stream_choices: list[tuple[str, str]] = []
+        if selected_instance is not None:
+            streams_qs = selected_instance.streams.order_by("stream_name")
+            latest_config = selected_instance.config_snapshots.order_by("-fetched_at").first()
+            config_history = selected_instance.config_snapshots.order_by("-fetched_at", "-id")[:50]
+            stream_choices = [(s.stream_name, s.stream_name) for s in streams_qs]
+
+            snapshots = list(config_history)
+            from_id_raw = self.request.GET.get("diff_from")
+            to_id_raw = self.request.GET.get("diff_to")
+
+            try:
+                from_id = int(from_id_raw) if from_id_raw else None
+            except (TypeError, ValueError):
+                from_id = None
+            try:
+                to_id = int(to_id_raw) if to_id_raw else None
+            except (TypeError, ValueError):
+                to_id = None
+
+            if snapshots:
+                by_id = {row.id: row for row in snapshots}
+                if len(snapshots) >= 2:
+                    compare_to = by_id.get(to_id) if to_id else snapshots[0]
+                    compare_from = by_id.get(from_id) if from_id else snapshots[1]
+                    if compare_from and compare_to and compare_from.id != compare_to.id:
+                        diff_rows = build_config_diff_rows(
+                            compare_from.config_payload or {},
+                            compare_to.config_payload or {},
+                        )
+                elif len(snapshots) == 1:
+                    compare_to = snapshots[0]
+
+        ctx["instances"] = instances
+        ctx["selected_instance"] = selected_instance
+        ctx["streams"] = streams_qs
+        ctx["latest_config"] = latest_config
+        ctx["config_history"] = config_history
+        ctx["compare_from"] = compare_from
+        ctx["compare_to"] = compare_to
+        ctx["diff_rows"] = diff_rows
+        ctx["instance_form"] = kwargs.get("instance_form") or Go2RTCInstanceForm()
+        ctx["bulk_form"] = kwargs.get("bulk_form") or Go2RTCBulkAddForm(stream_choices=stream_choices)
+        return ctx
+
+
+class AddGo2RTCInstanceView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        form = Go2RTCInstanceForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Invalid go2rtc instance input.")
+            return redirect("cameras:go2rtc_manager")
+
+        clean = form.cleaned_data
+        instance, created = Go2RTCInstance.objects.update_or_create(
+            name=clean["name"].strip(),
+            defaults={
+                "scheme": clean["scheme"],
+                "host": clean["host"].strip(),
+                "port": int(clean["port"]),
+                "is_active": True,
+            },
+        )
+
+        stream_count, error = sync_go2rtc_instance(instance)
+        if error:
+            messages.warning(request, f"Instance saved, but sync failed: {error}")
+        else:
+            action = "added" if created else "updated"
+            messages.success(request, f"go2rtc instance {action}. Synced {stream_count} streams.")
+        return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
+
+
+class SyncGo2RTCInstanceView(LoginRequiredMixin, View):
+    def post(self, request, pk: int, *args, **kwargs):
+        instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        stream_count, error = sync_go2rtc_instance(instance)
+        if error:
+            messages.error(request, f"Sync failed for {instance.name}: {error}")
+        else:
+            messages.success(request, f"Sync completed for {instance.name}. {stream_count} streams available.")
+        return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
+
+
+class BulkAddGo2RTCStreamsView(LoginRequiredMixin, View):
+    def post(self, request, pk: int, *args, **kwargs):
+        instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        streams_qs = instance.streams.order_by("stream_name")
+        stream_choices = [(s.stream_name, s.stream_name) for s in streams_qs]
+        form = Go2RTCBulkAddForm(request.POST, stream_choices=stream_choices)
+
+        if not form.is_valid():
+            messages.error(request, "Select at least one stream.")
+            return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
+
+        selected = form.cleaned_data["stream_names"]
+        created_count = 0
+        updated_count = 0
+
+        for stream_name in selected:
+            _, created = upsert_go2rtc_camera(
+                stream_name=stream_name,
+                title=stream_name,
+                base_url=instance.base_url,
+            )
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        messages.success(
+            request,
+            f"Added to surveillance grid: {created_count} new, {updated_count} updated.",
+        )
+        return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
 
 
 class CameraMapView(LoginRequiredMixin, TemplateView):

@@ -16,7 +16,7 @@ from apps.common.cache import (
     invalidate_scrape_jobs,
 )
 
-from .models import Camera, CameraCheckLog, MapUISettings
+from .models import Camera, CameraCheckLog, Go2RTCConfigSnapshot, Go2RTCInstance, Go2RTCStream, MapUISettings
 
 logger = logging.getLogger(__name__)
 
@@ -174,4 +174,45 @@ class MapUISettingsAdmin(admin.ModelAdmin):
         return not MapUISettings.objects.exists()
 
     def has_delete_permission(self, request, obj: MapUISettings | None = None) -> bool:
+        return False
+
+
+@admin.register(Go2RTCInstance)
+class Go2RTCInstanceAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "scheme",
+        "host",
+        "port",
+        "is_active",
+        "last_sync_status",
+        "last_synced_at",
+    )
+    list_filter = ("is_active", "last_sync_status", "scheme")
+    search_fields = ("name", "host")
+    readonly_fields = ("created_at", "updated_at", "last_synced_at")
+
+
+@admin.register(Go2RTCStream)
+class Go2RTCStreamAdmin(admin.ModelAdmin):
+    list_display = (
+        "instance",
+        "stream_name",
+        "producers_count",
+        "consumers_count",
+        "last_seen_at",
+    )
+    list_filter = ("instance",)
+    search_fields = ("stream_name", "instance__name")
+    readonly_fields = ("first_seen_at", "last_seen_at")
+
+
+@admin.register(Go2RTCConfigSnapshot)
+class Go2RTCConfigSnapshotAdmin(admin.ModelAdmin):
+    list_display = ("instance", "fetched_at", "is_changed", "config_hash")
+    list_filter = ("instance", "is_changed")
+    search_fields = ("instance__name",)
+    readonly_fields = ("instance", "config_payload", "config_hash", "is_changed", "change_summary", "fetched_at")
+
+    def has_add_permission(self, request) -> bool:
         return False

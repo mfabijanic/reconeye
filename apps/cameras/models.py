@@ -126,3 +126,101 @@ class MapUISettings(models.Model):
 
     def __str__(self) -> str:
         return "Map UI Settings"
+
+
+class Go2RTCInstance(models.Model):
+    class LastSyncStatus(models.TextChoices):
+        NEVER = "NEVER", "Never"
+        SUCCESS = "SUCCESS", "Success"
+        FAILED = "FAILED", "Failed"
+
+    name = models.CharField(max_length=120, unique=True)
+    scheme = models.CharField(max_length=8, default="http")
+    host = models.CharField(max_length=255)
+    port = models.PositiveIntegerField(default=1984)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_sync_status = models.CharField(
+        max_length=12,
+        choices=LastSyncStatus.choices,
+        default=LastSyncStatus.NEVER,
+        db_index=True,
+    )
+    last_sync_error = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "go2rtc Instance"
+        verbose_name_plural = "go2rtc Instances"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["is_active", "name"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.base_url})"
+
+    @property
+    def base_url(self) -> str:
+        scheme = (self.scheme or "http").strip().lower() or "http"
+        host = (self.host or "").strip()
+        return f"{scheme}://{host}:{self.port}".rstrip("/")
+
+
+class Go2RTCConfigSnapshot(models.Model):
+    instance = models.ForeignKey(
+        Go2RTCInstance,
+        on_delete=models.CASCADE,
+        related_name="config_snapshots",
+    )
+    config_payload = models.JSONField(default=dict)
+    config_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    is_changed = models.BooleanField(default=False, db_index=True)
+    change_summary = models.JSONField(default=dict)
+    fetched_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "go2rtc Config Snapshot"
+        verbose_name_plural = "go2rtc Config Snapshots"
+        ordering = ["-fetched_at"]
+        indexes = [
+            models.Index(fields=["instance", "-fetched_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.instance.name} @ {self.fetched_at:%Y-%m-%d %H:%M:%S}"
+
+
+class Go2RTCStream(models.Model):
+    instance = models.ForeignKey(
+        Go2RTCInstance,
+        on_delete=models.CASCADE,
+        related_name="streams",
+    )
+    stream_name = models.CharField(max_length=255)
+    producers_count = models.PositiveIntegerField(default=0)
+    consumers_count = models.PositiveIntegerField(default=0)
+    stream_payload = models.JSONField(default=dict)
+    first_seen_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        verbose_name = "go2rtc Stream"
+        verbose_name_plural = "go2rtc Streams"
+        ordering = ["stream_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["instance", "stream_name"],
+                name="uniq_go2rtc_stream_per_instance",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["instance", "stream_name"]),
+            models.Index(fields=["instance", "-last_seen_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.instance.name}: {self.stream_name}"

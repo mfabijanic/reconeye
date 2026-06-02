@@ -177,3 +177,24 @@ def warm_cache(self) -> dict:
     stats = get_dashboard_stats(force=True)
     logger.info("warm_cache: done, stats=%s", stats)
     return stats
+
+
+@shared_task(
+    bind=True,
+    name="reconeye.cameras.sync_go2rtc_instance",
+    max_retries=2,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+)
+def sync_go2rtc_instance_task(self, instance_id: int) -> dict:
+    from apps.cameras.models import Go2RTCInstance
+    from apps.cameras.services import sync_go2rtc_instance
+
+    instance = Go2RTCInstance.objects.get(pk=instance_id, is_active=True)
+    count, error = sync_go2rtc_instance(instance)
+    return {
+        "instance_id": instance_id,
+        "stream_count": count,
+        "error": error,
+        "status": "failed" if error else "success",
+    }

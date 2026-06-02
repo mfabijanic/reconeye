@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import time
 import re
+import hashlib
+import json
 from urllib.parse import quote
 from typing import Any
 
@@ -12,12 +14,20 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.common.cache import TTL_CAMERAS, versioned_key, DOMAIN_CAMERAS
-from apps.cameras.models import Camera, CameraCheckLog, SourceType
+from apps.cameras.models import (
+    Camera,
+    CameraCheckLog,
+    Go2RTCConfigSnapshot,
+    Go2RTCInstance,
+    Go2RTCStream,
+    SourceType,
+)
 
 logger = logging.getLogger(__name__)
 
 CAMERA_LOG_RETENTION_DAYS = 30
 WUC_STREAM_ID_PREFIXES = ("ba_", "do_", "es_", "gr_", "hr_", "ie_", "it_", "mk_", "nl_", "si_")
+GO2RTC_READ_ONLY_METHODS = {"GET"}
 
 
 def is_whatsupcams_stream_id(value: str | None) -> bool:
@@ -382,6 +392,284 @@ def upsert_camera(data: dict[str, Any]) -> tuple[Camera, bool]:
 def normalize_go2rtc_base_url(raw_url: str | None = None) -> str:
     base_url = (raw_url or settings.GO2RTC_BASE_URL or "").strip()
     return base_url.rstrip("/")
+
+
+def _stable_json_dumps(payload: Any) -> str:
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _config_hash(payload: dict[str, Any]) -> str:
+    raw = _stable_json_dumps(payload)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _config_diff_summary(old: Any, new: Any) -> dict[str, Any]:
+    added: list[str] = []
+    removed: list[str] = []
+    changed: list[str] = []
+
+    def walk(old_value: Any, new_value: Any, path: str) -> None:
+        if type(old_value) is not type(new_value):
+            changed.append(path or "<root>")
+            return
+
+        if isinstance(old_value, dict):
+            old_keys = set(old_value.keys())
+            new_keys = set(new_value.keys())
+            for key in sorted(new_keys - old_keys):
+                added.append(f"{path}.{key}" if path else str(key))
+            for key in sorted(old_keys - new_keys):
+                removed.append(f"{path}.{key}" if path else str(key))
+            for key in sorted(old_keys & new_keys):
+                next_path = f"{path}.{key}" if path else str(key)
+                walk(old_value[key], new_value[key], next_path)
+            return
+
+        if isinstance(old_value, list):
+            if len(old_value) != len(new_value):
+                changed.append(path or "<root>")
+                return
+            for idx, (old_item, new_item) in enumerate(zip(old_value, new_value)):
+                walk(old_item, new_item, f"{path}[{idx}]" if path else f"[{idx}]")
+            return
+
+        if old_value != new_value:
+            changed.append(path or "<root>")
+
+    walk(old, new, "")
+    max_sample = 50
+    return {
+        "added_count": len(added),
+        "removed_count": len(removed),
+        "changed_count": len(changed),
+        "added_paths": added[:max_sample],
+        "removed_paths": removed[:max_sample],
+        "changed_paths": changed[:max_sample],
+    }
+
+
+def _short_repr(value: Any, max_len: int = 240) -> str:
+    text = _stable_json_dumps(value)
+    if len(text) <= max_len:
+        return text
+    return f"{text[:max_len]}…"
+
+
+def build_config_diff_rows(old: Any, new: Any, *, max_rows: int = 500) -> list[dict[str, str]]:
+    """Build detailed row-level diff between two config payloads.
+
+    Returns rows with keys: path, change_type, before, after.
+    """
+    rows: list[dict[str, str]] = []
+
+    def add_row(path: str, change_type: str, before: Any, after: Any) -> None:
+        if len(rows) >= max_rows:
+            return
+        rows.append(
+            {
+                "path": path or "<root>",
+                "change_type": change_type,
+                "before": _short_repr(before),
+                "after": _short_repr(after),
+            }
+        )
+
+    def walk(old_value: Any, new_value: Any, path: str) -> None:
+        if len(rows) >= max_rows:
+            return
+
+        if type(old_value) is not type(new_value):
+            add_row(path, "changed", old_value, new_value)
+            return
+
+        if isinstance(old_value, dict):
+            old_keys = set(old_value.keys())
+            new_keys = set(new_value.keys())
+
+            for key in sorted(new_keys - old_keys):
+                next_path = f"{path}.{key}" if path else str(key)
+                add_row(next_path, "added", None, new_value[key])
+            for key in sorted(old_keys - new_keys):
+                next_path = f"{path}.{key}" if path else str(key)
+                add_row(next_path, "removed", old_value[key], None)
+
+            for key in sorted(old_keys & new_keys):
+                next_path = f"{path}.{key}" if path else str(key)
+                walk(old_value[key], new_value[key], next_path)
+            return
+
+        if isinstance(old_value, list):
+            if len(old_value) != len(new_value):
+                add_row(path, "changed", old_value, new_value)
+            for idx, (old_item, new_item) in enumerate(zip(old_value, new_value)):
+                next_path = f"{path}[{idx}]" if path else f"[{idx}]"
+                walk(old_item, new_item, next_path)
+            if len(new_value) > len(old_value):
+                for idx in range(len(old_value), len(new_value)):
+                    next_path = f"{path}[{idx}]" if path else f"[{idx}]"
+                    add_row(next_path, "added", None, new_value[idx])
+            elif len(old_value) > len(new_value):
+                for idx in range(len(new_value), len(old_value)):
+                    next_path = f"{path}[{idx}]" if path else f"[{idx}]"
+                    add_row(next_path, "removed", old_value[idx], None)
+            return
+
+        if old_value != new_value:
+            add_row(path, "changed", old_value, new_value)
+
+    walk(old, new, "")
+    return rows
+
+
+def fetch_go2rtc_instance_payloads(
+    *,
+    base_url: str,
+    timeout_seconds: float = 5.0,
+) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
+    """Fetch streams and config payloads from a go2rtc instance.
+
+    Returns (streams, config, error_message).
+    """
+    normalized_base = normalize_go2rtc_base_url(base_url)
+    if not normalized_base:
+        return [], {}, "go2rtc base URL is empty."
+
+    streams_url = f"{normalized_base}/api/streams"
+    config_url = f"{normalized_base}/api/config"
+
+    def _readonly_get(client: httpx.Client, url: str) -> httpx.Response:
+        method = "GET"
+        if method not in GO2RTC_READ_ONLY_METHODS:
+            raise ValueError("go2rtc manager is read-only for remote configuration")
+        return client.get(url)
+
+    try:
+        with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+            streams_resp = _readonly_get(client, streams_url)
+            streams_resp.raise_for_status()
+            streams_payload = streams_resp.json()
+
+            config_resp = _readonly_get(client, config_url)
+            config_resp.raise_for_status()
+            config_payload = config_resp.json()
+    except Exception as exc:
+        logger.warning("go2rtc manager sync failed base_url=%s error=%s", normalized_base, exc)
+        return [], {}, f"Unable to fetch go2rtc data from {normalized_base}."
+
+    streams_obj: dict[str, Any]
+    if isinstance(streams_payload, dict) and isinstance(streams_payload.get("streams"), dict):
+        streams_obj = streams_payload["streams"]
+    elif isinstance(streams_payload, dict):
+        streams_obj = streams_payload
+    else:
+        streams_obj = {}
+
+    items: list[dict[str, Any]] = []
+    for stream_name, stream_data in streams_obj.items():
+        if not isinstance(stream_name, str) or not stream_name.strip():
+            continue
+        row_payload = stream_data if isinstance(stream_data, dict) else {}
+        items.append(
+            {
+                "stream_name": stream_name.strip(),
+                "producers_count": len(row_payload.get("producers") or []),
+                "consumers_count": len(row_payload.get("consumers") or []),
+                "stream_payload": row_payload,
+            }
+        )
+
+    items.sort(key=lambda row: row["stream_name"].lower())
+    return items, (config_payload if isinstance(config_payload, dict) else {}), None
+
+
+def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
+    """Sync one go2rtc instance and persist stream/config snapshots.
+
+    Returns (stream_count, error_message).
+    """
+    streams, config_payload, error = fetch_go2rtc_instance_payloads(base_url=instance.base_url)
+    now = timezone.now()
+
+    if error:
+        instance.last_sync_status = Go2RTCInstance.LastSyncStatus.FAILED
+        instance.last_sync_error = error
+        instance.last_synced_at = now
+        instance.save(update_fields=["last_sync_status", "last_sync_error", "last_synced_at", "updated_at"])
+        return 0, error
+
+    with transaction.atomic():
+        previous_snapshot = instance.config_snapshots.order_by("-fetched_at").first()
+        existing = {
+            row.stream_name: row
+            for row in Go2RTCStream.objects.select_for_update().filter(instance=instance)
+        }
+
+        touched_names: set[str] = set()
+        to_create: list[Go2RTCStream] = []
+        to_update: list[Go2RTCStream] = []
+
+        for row in streams:
+            name = row["stream_name"]
+            touched_names.add(name)
+            if name in existing:
+                item = existing[name]
+                item.producers_count = int(row["producers_count"])
+                item.consumers_count = int(row["consumers_count"])
+                item.stream_payload = row["stream_payload"]
+                to_update.append(item)
+            else:
+                to_create.append(
+                    Go2RTCStream(
+                        instance=instance,
+                        stream_name=name,
+                        producers_count=int(row["producers_count"]),
+                        consumers_count=int(row["consumers_count"]),
+                        stream_payload=row["stream_payload"],
+                    )
+                )
+
+        stale_ids = [row.id for name, row in existing.items() if name not in touched_names]
+
+        if to_create:
+            Go2RTCStream.objects.bulk_create(to_create, batch_size=500)
+        if to_update:
+            Go2RTCStream.objects.bulk_update(
+                to_update,
+                fields=["producers_count", "consumers_count", "stream_payload", "last_seen_at"],
+                batch_size=500,
+            )
+        if stale_ids:
+            Go2RTCStream.objects.filter(id__in=stale_ids).delete()
+
+        new_hash = _config_hash(config_payload)
+        is_changed = False
+        change_summary: dict[str, Any] = {
+            "added_count": 0,
+            "removed_count": 0,
+            "changed_count": 0,
+            "added_paths": [],
+            "removed_paths": [],
+            "changed_paths": [],
+        }
+
+        if previous_snapshot and previous_snapshot.config_hash:
+            if previous_snapshot.config_hash != new_hash:
+                is_changed = True
+                change_summary = _config_diff_summary(previous_snapshot.config_payload or {}, config_payload)
+
+        Go2RTCConfigSnapshot.objects.create(
+            instance=instance,
+            config_payload=config_payload,
+            config_hash=new_hash,
+            is_changed=is_changed,
+            change_summary=change_summary,
+        )
+
+    instance.last_sync_status = Go2RTCInstance.LastSyncStatus.SUCCESS
+    instance.last_sync_error = ""
+    instance.last_synced_at = now
+    instance.save(update_fields=["last_sync_status", "last_sync_error", "last_synced_at", "updated_at"])
+    return len(streams), None
 
 
 def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:
