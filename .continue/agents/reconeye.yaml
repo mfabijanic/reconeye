@@ -1,0 +1,51 @@
+name: ReconEye
+version: 1.0.0
+schema: v1
+
+models:
+  # 🧠 PRIMARY BRAIN (Qwen3 Coder - main reasoning layer)
+  - name: "Anthropic: Claude Opus 4.8"
+    provider: openrouter
+    model: anthropic/claude-opus-4.8
+    apiKey: "${OPENROUTER_API_KEY}"
+
+  - name: Qwen3 Coder (Primary)
+    provider: openrouter
+    model: qwen/qwen3-coder
+    apiKey: "${OPENROUTER_API_KEY}"
+
+    roles:
+      - chat
+      - edit
+      - apply
+
+    defaultCompletionOptions:
+      temperature: 0.1
+      maxTokens: 3072
+
+  # ⚡ AUTOCOMPLETE (local fast path)
+  # Disable if you are using Github Copilot
+  #- name: Qwen Autocomplete
+  #  provider: ollama
+  #  model: qwen2.5-coder:3b
+
+  #  roles:
+  #    - autocomplete
+
+  #  autocompleteOptions:
+  #    debounceDelay: 300
+  #    maxPromptTokens: 96
+  #    onlyMyCode: true
+
+  #  defaultCompletionOptions:
+  #    temperature: 0.1
+  #    maxTokens: 64
+
+# 🧠 MINIMAL CONTEXT STRATEGY (token optimized)
+context:
+  - provider: currentFile
+
+# intentionally excluded:
+# - codebase (prevents token explosion)
+# - file (duplicates currentFile)
+# - open (expensive multi-file expansion)

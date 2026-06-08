@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ profile.name }} — {% trans "go2rtc Grid" %} — ReconEye{% endblock %}
+
+{% block extra_css %}
+<style>
+  body.go2rtc-grid-page {
+    overflow: hidden;
+  }
+  body.go2rtc-grid-page main.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    height: calc(100vh - var(--app-navbar-height, 5rem));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .go2rtc-grid-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .go2rtc-grid-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    padding: .5rem .85rem;
+    background: rgba(13,17,23,.86);
+    border-bottom: 1px solid var(--app-border);
+  }
+  .go2rtc-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    gap: 2px;
+    grid-auto-rows: 1fr;
+    overflow: hidden;
+  }
+  .go2rtc-grid:not(.go2rtc-grid-locked) {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+  .go2rtc-grid.go2rtc-grid-locked {
+    grid-template-columns: repeat(var(--go2rtc-grid-cols, 2), minmax(0, 1fr));
+  }
+  .go2rtc-tile {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .go2rtc-tile iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
+  .go2rtc-tile-header {
+    position: absolute;
+    top: .35rem;
+    left: .35rem;
+    right: .35rem;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  .go2rtc-tile:hover .go2rtc-tile-header,
+  body.go2rtc-grid-show-labels .go2rtc-tile-header,
+  body.go2rtc-grid-edit-mode .go2rtc-tile-header {
+    opacity: 1;
+  }
+  .go2rtc-tile-title,
+  .go2rtc-tile-meta {
+    background: rgba(0,0,0,.6);
+    color: #fff;
+    border-radius: .25rem;
+    padding: .12rem .45rem;
+    font-size: .7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .go2rtc-tile-remove-wrap { opacity: 0; transition: opacity .15s ease; }
+  body.go2rtc-grid-edit-mode .go2rtc-tile-remove-wrap { opacity: 1; }
+  .go2rtc-grid-remove {
+    background: rgba(180,30,30,.75);
+    border-color: rgba(255,80,80,.5);
+    color: #fff;
+  }
+  .go2rtc-tile:focus { outline: none; }
+  .go2rtc-tile.grid-focused {
+    outline: 3px solid #0dcaf0 !important;
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 3px #0dcaf0, 0 0 0 3px rgba(13,202,240,.45), 0 0 18px 2px rgba(13,202,240,.25);
+  }
+  .grid-focus-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 3;
+    background: rgba(13, 202, 240, 0.9);
+    color: #000;
+    font-size: .6rem;
+    font-weight: 700;
+    padding: .1rem .35rem;
+    border-radius: .25rem;
+    display: none;
+  }
+  .go2rtc-tile.grid-focused .grid-focus-badge { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="go2rtc-grid-layout">
+  <div class="go2rtc-grid-toolbar">
+    <div>
+      <div class="fw-semibold"><i class="bi bi-grid-3x3-gap me-1 text-info"></i>{{ profile.name }}</div>
+      {% if profile.description %}<div class="text-muted small">{{ profile.description }}</div>{% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <select class="form-select form-select-sm" id="go2rtc-profile-switch" style="width:auto; min-width:220px;">
+        {% for row in profiles %}
+          <option value="{% url 'cameras:go2rtc_profile_grid' row.pk %}" {% if row.pk == profile.pk %}selected{% endif %}>{{ row.name }}</option>
+        {% endfor %}
+      </select>
+      <select id="go2rtc-grid-cols" class="form-select form-select-sm" style="width:auto;">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="go2rtc-grid-lock-btn">
+        <i class="bi bi-unlock me-1" id="go2rtc-grid-lock-icon"></i><span id="go2rtc-grid-lock-label">{% trans "Auto" %}</span>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="go2rtc-grid-labels-btn">
+        <i class="bi bi-tag me-1"></i>{% trans "Labels" %}
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-warning" id="go2rtc-grid-edit-btn">
+        <i class="bi bi-pencil-square me-1"></i>{% trans "Edit" %}
+      </button>
+      <a href="{% url 'cameras:go2rtc_manager' %}?profile={{ profile.pk }}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-arrow-left me-1"></i>{% trans "Manager" %}
+      </a>
+    </div>
+  </div>
+
+  <div id="go2rtc-profile-grid" class="go2rtc-grid" data-item-count="{{ tiles|length }}">
+    {% for tile in tiles %}
+      <div class="go2rtc-tile" tabindex="0">
+        <span class="grid-focus-badge">{{ forloop.counter }} / {{ tiles|length }}</span>
+        <div class="go2rtc-tile-header">
+          <div class="d-flex flex-column gap-1" style="min-width:0;">
+            <span class="go2rtc-tile-title">{{ tile.title }}</span>
+            <span class="go2rtc-tile-meta">{{ tile.instance_name }} · {{ tile.stream_name }}</span>
+          </div>
+          <span class="go2rtc-tile-remove-wrap">
+            <form method="post" action="{% url 'cameras:go2rtc_profile_item_remove' tile.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm go2rtc-grid-remove py-0 px-2" title="{% trans 'Remove from profile' %}">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
+          </span>
+        </div>
+        <iframe
+          class="go2rtc-iframe go2rtc-iframe--surveillance"
+          src="{{ tile.webrtc_embed|default:tile.viewer }}"
+          title="{{ tile.title }}"
+          loading="eager"
+          scrolling="no"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowfullscreen
+          referrerpolicy="no-referrer"
+        ></iframe>
+      </div>
+    {% empty %}
+      <div style="grid-column: 1 / -1;">
+        <div class="alert alert-secondary mb-0 m-3">{% trans "This profile has no streams yet." %}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.classList.add("go2rtc-grid-page");
+    const grid = document.getElementById("go2rtc-profile-grid");
+    const select = document.getElementById("go2rtc-grid-cols");
+    const lockBtn = document.getElementById("go2rtc-grid-lock-btn");
+    const lockIcon = document.getElementById("go2rtc-grid-lock-icon");
+    const lockLabel = document.getElementById("go2rtc-grid-lock-label");
+    const labelsBtn = document.getElementById("go2rtc-grid-labels-btn");
+    const editBtn = document.getElementById("go2rtc-grid-edit-btn");
+    const profileSwitch = document.getElementById("go2rtc-profile-switch");
+    if (!grid || !select || !lockBtn) return;
+
+    const COLS_KEY = "reconeye-go2rtc-grid-cols";
+    const LOCK_KEY = "reconeye-go2rtc-grid-cols-locked";
+    const LABELS_KEY = "reconeye-go2rtc-grid-labels";
+    let focusedIdx = -1;
+    let isLocked = false;
+    let labelsOn = false;
+    let editMode = false;
+
+    const getTiles = () => Array.from(grid.querySelectorAll(".go2rtc-tile"));
+    const getCols = () => Math.max(1, window.getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length);
+    const applyCols = (value) => {
+      const safe = ["1","2","3","4"].includes(String(value)) ? String(value) : "2";
+      select.value = safe;
+      localStorage.setItem(COLS_KEY, safe);
+      if (grid.classList.contains("go2rtc-grid-locked")) {
+        grid.style.setProperty("--go2rtc-grid-cols", safe);
+      }
+    };
+    const applyLock = (locked) => {
+      isLocked = locked;
+      grid.classList.toggle("go2rtc-grid-locked", locked);
+      select.disabled = !locked;
+      if (!locked) grid.style.removeProperty("--go2rtc-grid-cols"); else grid.style.setProperty("--go2rtc-grid-cols", select.value);
+      lockIcon.className = locked ? "bi bi-lock me-1" : "bi bi-unlock me-1";
+      lockLabel.textContent = locked ? "Fixed" : "Auto";
+      localStorage.setItem(LOCK_KEY, locked ? "1" : "0");
+    };
+    const applyLabels = (on) => {
+      labelsOn = on;
+      document.body.classList.toggle("go2rtc-grid-show-labels", on);
+      localStorage.setItem(LABELS_KEY, on ? "1" : "0");
+    };
+    const applyEdit = (on) => {
+      editMode = on;
+      document.body.classList.toggle("go2rtc-grid-edit-mode", on);
+    };
+    const focusTile = (idx) => {
+      const tiles = getTiles();
+      if (!tiles.length) return;
+      idx = Math.max(0, Math.min(idx, tiles.length - 1));
+      tiles.forEach((tile, i) => tile.classList.toggle("grid-focused", i === idx));
+      focusedIdx = idx;
+      tiles[idx].focus({preventScroll:true});
+    };
+    const fullscreen = (tile) => {
+      if (!tile) return;
+      if (document.fullscreenElement === tile) document.exitFullscreen && document.exitFullscreen();
+      else (tile.requestFullscreen || tile.webkitRequestFullscreen || (() => {})).call(tile);
+    };
+
+    try {
+      applyCols(localStorage.getItem(COLS_KEY) || "2");
+      applyLock(localStorage.getItem(LOCK_KEY) === "1");
+      applyLabels(localStorage.getItem(LABELS_KEY) === "1");
+    } catch (_) {
+      applyCols("2");
+      applyLock(false);
+      applyLabels(false);
+    }
+
+    select.addEventListener("change", (e) => applyCols(e.target.value));
+    lockBtn.addEventListener("click", () => applyLock(!isLocked));
+    labelsBtn.addEventListener("click", () => applyLabels(!labelsOn));
+    editBtn.addEventListener("click", () => applyEdit(!editMode));
+    if (profileSwitch) {
+      profileSwitch.addEventListener("change", (e) => { window.location.href = e.target.value; });
+    }
+
+    window.setTimeout(() => { const tiles = getTiles(); if (tiles.length) focusTile(0); }, 150);
+    document.addEventListener("keydown", (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (["input","textarea","select","button"].includes(tag) || e.target?.isContentEditable) return;
+      const tiles = getTiles();
+      if (!tiles.length) return;
+      if (focusedIdx < 0 || focusedIdx >= tiles.length) focusedIdx = 0;
+      const cols = getCols();
+      let next = focusedIdx;
+      let handled = true;
+      switch (e.key) {
+        case "ArrowRight": case "l": case "L": next = focusedIdx + 1; break;
+        case "ArrowLeft": case "h": case "H": next = focusedIdx - 1; break;
+        case "ArrowDown": case "j": case "J": next = focusedIdx + cols; break;
+        case "ArrowUp": case "k": case "K": next = focusedIdx - cols; break;
+        case "f": case "F": e.stopImmediatePropagation(); fullscreen(tiles[focusedIdx]); break;
+        default: handled = false;
+      }
+      if (!handled) return;
+      e.preventDefault();
+      if (next !== focusedIdx && next >= 0 && next < tiles.length) focusTile(next);
+    }, false);
+
+    grid.addEventListener("pointerdown", (e) => {
+      const tile = e.target.closest(".go2rtc-tile");
+      if (!tile) return;
+      const idx = getTiles().indexOf(tile);
+      if (idx >= 0) focusTile(idx);
+    }, true);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% load i18n %}
+<div class="col-12">
+  <div class="card">
+    <div class="card-header">
+      <strong>{% trans "Import go2rtc instances from CSV" %}</strong>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info py-2">
+        <i class="bi bi-info-circle me-1"></i>
+        {% trans "Required header columns: name, host. Optional: scheme (default http), port (default 1984), path, group_label." %}
+        <code class="d-block mt-1">name,host,scheme,port,path,group_label</code>
+        <div class="form-text mt-1">
+          {% trans "Preview is a dry-run: nothing is saved until you confirm. On confirm, each instance is upserted and a background sync is dispatched automatically." %}
+        </div>
+      </div>
+
+      <form hx-post="{% url 'cameras:go2rtc_import_preview' %}"
+            hx-target="#import-preview"
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data"
+            class="row g-2">
+        {% csrf_token %}
+        <div class="col-12 col-lg-6">
+          <label class="form-label mb-1">{% trans "CSV file" %}</label>
+          {{ import_form.csv_file }}
+        </div>
+        <div class="col-12 col-lg-6">
+          <label class="form-label mb-1">{% trans "Or paste CSV" %}</label>
+          {{ import_form.csv_text }}
+        </div>
+        <div class="col-12 d-grid d-sm-flex gap-2">
+          <button type="submit" class="btn btn-outline-info">
+            <i class="bi bi-eye me-1"></i>{% trans "Preview (dry-run)" %}
+          </button>
+        </div>
+      </form>
+
+      <div id="import-preview" class="mt-3"></div>
+    </div>
+  </div>
+</div>

@@ -29,6 +29,9 @@ staticfiles/
 .coverage
 htmlcov/
 
+#
+.clinerules
+
 # Logs
 *.log
 /tmp/reconeye-logs/

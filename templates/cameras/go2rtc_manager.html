@@ -9,11 +9,37 @@
       <h4 class="mb-0">
         <i class="bi bi-hdd-network me-2 text-info"></i>{% trans "go2rtc Manager" %}
       </h4>
-      <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
-        <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
-      </a>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'cameras:go2rtc_viewer' %}{% if selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
+        </a>
+        <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
+          <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
+        </a>
+      </div>
     </div>
   </div>
+
+  <div class="col-12">
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab != 'import' %}active{% endif %}"
+           href="{% url 'cameras:go2rtc_manager' %}">
+          <i class="bi bi-hdd-network me-1"></i>{% trans "Instances & Profiles" %}
+        </a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'import' %}active{% endif %}"
+           href="{% url 'cameras:go2rtc_manager' %}?tab=import">
+          <i class="bi bi-upload me-1"></i>{% trans "Import" %}
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  {% if active_tab == 'import' %}
+    {% include "cameras/_go2rtc_import_tab.html" %}
+  {% else %}
 
   <div class="col-12">
     <div class="alert alert-info py-2 mb-0">
@@ -22,7 +48,7 @@
     </div>
   </div>
 
-  <div class="col-lg-4">
+  <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header">
         <strong>{% trans "Add or update go2rtc instance" %}</strong>
@@ -34,17 +60,32 @@
             <label class="form-label mb-1">{% trans "Name" %}</label>
             {{ instance_form.name }}
           </div>
-          <div class="col-4">
+          <div class="col-6 col-sm-2">
             <label class="form-label mb-1">{% trans "Scheme" %}</label>
             {{ instance_form.scheme }}
           </div>
-          <div class="col-8">
+          <div class="col-6 col-sm-4">
             <label class="form-label mb-1">{% trans "Host" %}</label>
             {{ instance_form.host }}
           </div>
-          <div class="col-6">
+          <div class="col-4 col-sm-2">
             <label class="form-label mb-1">{% trans "Port" %}</label>
             {{ instance_form.port }}
+          </div>
+          <div class="col-8 col-sm-4">
+            <label class="form-label mb-1">{% trans "Path" %}</label>
+            {{ instance_form.path }}
+          </div>
+          <div class="col-12">
+            <div class="form-text mt-0">
+              {% trans "Resulting URL" %}:
+              <code id="instance-url-preview">http://host:1984</code>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">{% trans "Group / FQDN" %}</label>
+            {{ instance_form.group_label }}
+            <div class="form-text">{% trans "Optional. Leave empty to auto-group by shared IP: instances whose host resolves to a common IP (including one FQDN with several IPs) are grouped automatically on sync. Set a label only to override automatic grouping." %}</div>
           </div>
           <div class="col-12 d-grid mt-2">
             <button type="submit" class="btn btn-success">
@@ -56,10 +97,65 @@
     </div>
   </div>
 
-  <div class="col-lg-8">
+  <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>{% trans "Registered instances" %}</strong>
+        <strong>{% trans "Grid profiles" %}</strong>
+        {% if selected_profile %}
+          <a href="{% url 'cameras:go2rtc_profile_grid' selected_profile.pk %}" class="btn btn-sm btn-outline-info">
+            <i class="bi bi-layout-wtf me-1"></i>{% trans "Open grid" %}
+          </a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'cameras:go2rtc_profile_add' %}" class="row g-2 mb-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label mb-1">{% trans "Profile name" %}</label>
+            {{ profile_form.name }}
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">{% trans "Description" %}</label>
+            {{ profile_form.description }}
+          </div>
+          <div class="col-12 d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-collection-play me-1"></i>{% trans "Save profile" %}
+            </button>
+          </div>
+        </form>
+
+        <div class="list-group list-group-flush">
+          {% for profile in profiles %}
+            <a href="{% url 'cameras:go2rtc_manager' %}?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}profile={{ profile.pk }}"
+               class="list-group-item list-group-item-action {% if selected_profile and selected_profile.pk == profile.pk %}active{% endif %}">
+              <div class="d-flex justify-content-between align-items-center">
+                <span>
+                  <strong>{{ profile.name }}</strong>
+                  {% if profile.description %}
+                    <small class="d-block {% if selected_profile and selected_profile.pk == profile.pk %}text-white-50{% else %}text-muted{% endif %}">{{ profile.description }}</small>
+                  {% endif %}
+                </span>
+                <span class="badge {% if selected_profile and selected_profile.pk == profile.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}">{{ profile.items.count }}</span>
+              </div>
+            </a>
+          {% empty %}
+            <div class="text-muted small">{% trans "No profiles yet. Create one for a public wall, private monitoring set, or any mixed multi-instance layout." %}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <strong>
+          {% trans "Registered instances" %}
+          <span class="badge text-bg-secondary ms-1">
+            {% if search_query %}{{ instance_filtered_total }}/{{ instance_total }}{% else %}{{ instance_total }}{% endif %}
+          </span>
+        </strong>
         {% if selected_instance %}
           <form method="post" action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}">
             {% csrf_token %}
@@ -69,54 +165,130 @@
           </form>
         {% endif %}
       </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead>
-              <tr>
-                <th class="px-3">{% trans "Instance" %}</th>
-                <th>{% trans "Base URL" %}</th>
-                <th>{% trans "Last sync" %}</th>
-                <th>{% trans "Status" %}</th>
-                <th class="text-end pe-3">{% trans "Streams" %}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for instance in instances %}
-                <tr class="{% if selected_instance and selected_instance.pk == instance.pk %}table-info-subtle{% endif %}">
-                  <td class="px-3">
-                    <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}" class="text-decoration-none">
-                      <strong>{{ instance.name }}</strong>
-                    </a>
-                  </td>
-                  <td><code>{{ instance.base_url }}</code></td>
-                  <td>
-                    {% if instance.last_synced_at %}
-                      {{ instance.last_synced_at|date:"Y-m-d H:i:s" }}
-                    {% else %}
-                      <span class="text-muted">{% trans "Never" %}</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if instance.last_sync_status == 'SUCCESS' %}
-                      <span class="badge text-bg-success">{% trans "Success" %}</span>
-                    {% elif instance.last_sync_status == 'FAILED' %}
-                      <span class="badge text-bg-danger">{% trans "Failed" %}</span>
-                    {% else %}
-                      <span class="badge text-bg-secondary">{% trans "Never" %}</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-end pe-3">{{ instance.streams.count }}</td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="5" class="px-3 py-4 text-center text-muted">{% trans "No go2rtc instances yet." %}</td>
-                </tr>
+
+      <div class="card-body border-bottom py-2">
+        <form method="get" action="{% url 'cameras:go2rtc_manager' %}" id="instance-search-form" class="row g-2 align-items-end">
+          {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+          {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
+          <div class="col-12 col-md-6">
+            <label class="form-label mb-1 small text-muted">{% trans "Search" %}</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="search" name="q" id="instance-search-input"
+                     class="form-control"
+                     value="{{ search_query }}"
+                     placeholder="{% trans 'Search name, host or group…' %}"
+                     autocomplete="off"
+                     aria-label="{% trans 'Search instances' %}">
+              {% if search_query %}
+                <a href="{% url 'cameras:go2rtc_manager' %}?sort={{ sort }}&per_page={{ page_size }}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+                   class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
+                  <i class="bi bi-x-lg"></i>
+                </a>
+              {% endif %}
+              <button type="submit" class="btn btn-outline-info">{% trans "Search" %}</button>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label mb-1 small text-muted">{% trans "Sort by" %}</label>
+            <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="group" {% if sort == 'group' %}selected{% endif %}>{% trans "Group / FQDN" %}</option>
+              <option value="name" {% if sort == 'name' %}selected{% endif %}>{% trans "Name (A–Z)" %}</option>
+              <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>{% trans "Name (Z–A)" %}</option>
+              <option value="status" {% if sort == 'status' %}selected{% endif %}>{% trans "Sync status" %}</option>
+              <option value="streams_desc" {% if sort == 'streams_desc' %}selected{% endif %}>{% trans "Streams (high→low)" %}</option>
+              <option value="streams_asc" {% if sort == 'streams_asc' %}selected{% endif %}>{% trans "Streams (low→high)" %}</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label mb-1 small text-muted">{% trans "Per page" %}</label>
+            <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+              {% for size in page_size_choices %}
+                <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
               {% endfor %}
-            </tbody>
-          </table>
+            </select>
+          </div>
+          <div class="col-12">
+            <div class="form-text mb-0">
+              <kbd>/</kbd> {% trans "or" %} <kbd>Ctrl</kbd>+<kbd>K</kbd> {% trans "to focus" %},
+              <kbd>Esc</kbd> {% trans "to clear" %}.
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
+          {% for group in grouped_instances %}
+            {% if group_view %}
+              <div class="list-group-item bg-body-secondary py-1 px-3 small text-uppercase fw-semibold text-muted">
+                <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
+                <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
+                {% if group.auto %}
+                  <span class="badge text-bg-info ms-1" title="{% trans 'Auto-grouped by shared IP address' %}">
+                    <i class="bi bi-magic me-1"></i>{% trans "auto IP" %}
+                  </span>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% for instance in group.instances %}
+              <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}&sort={{ sort }}&per_page={{ page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if instances_page.number > 1 %}&page={{ instances_page.number }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+                 class="list-group-item list-group-item-action {% if selected_instance and selected_instance.pk == instance.pk %}active{% endif %}">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                  <div class="text-truncate">
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                      <strong class="text-truncate">{{ instance.name }}</strong>
+                      
+                    </div>
+                    <small class="d-block text-truncate {% if selected_instance and selected_instance.pk == instance.pk %}text-white-50{% else %}text-muted{% endif %}">
+                      <code class="{% if selected_instance and selected_instance.pk == instance.pk %}text-white-50{% endif %}">{{ instance.base_url }}</code>
+                      &middot; {% if instance.last_synced_at %}{{ instance.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
+                    </small>
+                  </div>
+                  <span class="badge rounded-pill text-nowrap {% if selected_instance and selected_instance.pk == instance.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}" title="{% trans 'Streams' %}">
+                    <i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}
+                    <span class="badge text-nowrap {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                        {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
+                    </span>
+                  </span>
+                </div>
+              </a>
+            {% endfor %}
+          {% empty %}
+            <div class="list-group-item px-3 py-4 text-center text-muted">
+              {% if search_query %}
+                {% trans "No instances match your search." %}
+              {% else %}
+                {% trans "No go2rtc instances yet." %}
+              {% endif %}
+            </div>
+          {% endfor %}
         </div>
       </div>
+
+      {% if instances_page.paginator.num_pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center py-2">
+          {% if instances_page.has_previous %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="?page={{ instances_page.previous_page_number }}&sort={{ sort }}&per_page={{ page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          {% else %}
+            <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+          {% endif %}
+          <span class="small text-muted">
+            {% blocktrans with current=instances_page.number total=instances_page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktrans %}
+          </span>
+          {% if instances_page.has_next %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="?page={{ instances_page.next_page_number }}&sort={{ sort }}&per_page={{ page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          {% else %}
+            <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -127,25 +299,59 @@
           {% trans "Streams" %}
           {% if selected_instance %}
             — {{ selected_instance.name }}
+            <span class="badge text-bg-secondary ms-1">
+              {% if stream_query %}{{ stream_filtered_total }}/{{ stream_total }}{% else %}{{ stream_total }}{% endif %}
+            </span>
           {% endif %}
         </strong>
         {% if selected_instance %}
           <small class="text-muted">{{ selected_instance.base_url }}</small>
         {% endif %}
       </div>
+      {% if selected_instance %}
+        <div class="card-body border-bottom py-2">
+          <form method="get" action="{% url 'cameras:go2rtc_manager' %}" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="per_page" value="{{ page_size }}">
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            {% if instances_page.number > 1 %}<input type="hidden" name="page" value="{{ instances_page.number }}">{% endif %}
+            {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
+            <div class="input-group input-group-sm" style="max-width: 360px;">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="search" name="stream_q" class="form-control"
+                     value="{{ stream_query }}"
+                     placeholder="{% trans 'Filter streams by name…' %}"
+                     autocomplete="off">
+              {% if stream_query %}
+                <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ selected_instance.pk }}&sort={{ sort }}&per_page={{ page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+                   class="btn btn-outline-secondary" title="{% trans 'Clear stream filter' %}">
+                  <i class="bi bi-x-lg"></i>
+                </a>
+              {% endif %}
+              <button type="submit" class="btn btn-outline-info">{% trans "Filter" %}</button>
+            </div>
+          </form>
+        </div>
+      {% endif %}
       <div class="card-body p-0">
         {% if selected_instance %}
           <form method="post" action="{% url 'cameras:go2rtc_manager_bulk_add' selected_instance.pk %}" id="bulk-add-form">
             {% csrf_token %}
             <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom flex-wrap gap-2">
-              <div class="form-check mb-0">
-                <input class="form-check-input" type="checkbox" value="1" id="select-all-streams">
-                <label class="form-check-label" for="select-all-streams">
-                  {% trans "Select all visible streams" %}
-                </label>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" value="1" id="select-all-streams">
+                  <label class="form-check-label" for="select-all-streams">
+                    {% trans "Select all visible streams" %}
+                  </label>
+                </div>
+                <div style="min-width: 240px;">
+                  {{ bulk_form.profile_id }}
+                </div>
               </div>
               <button type="submit" class="btn btn-sm btn-primary">
-                <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add selected to Surveillance" %}
+                <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add selected to profile" %}
               </button>
             </div>
 
@@ -171,13 +377,43 @@
                     </tr>
                   {% empty %}
                     <tr>
-                      <td colspan="4" class="px-3 py-3 text-center text-muted">{% trans "No synced streams for this instance yet." %}</td>
+                      <td colspan="4" class="px-3 py-3 text-center text-muted">
+                        {% if stream_query %}
+                          {% trans "No streams match this filter." %}
+                        {% else %}
+                          {% trans "No synced streams for this instance yet." %}
+                        {% endif %}
+                      </td>
                     </tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
           </form>
+
+          {% if streams_page and streams_page.paginator.num_pages > 1 %}
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+              {% if streams_page.has_previous %}
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="?instance={{ selected_instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_page={{ streams_page.previous_page_number }}{% if stream_query %}&stream_q={{ stream_query|urlencode }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}">
+                  <i class="bi bi-chevron-left"></i>
+                </a>
+              {% else %}
+                <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+              {% endif %}
+              <span class="small text-muted">
+                {% blocktrans with current=streams_page.number total=streams_page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktrans %}
+              </span>
+              {% if streams_page.has_next %}
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="?instance={{ selected_instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_page={{ streams_page.next_page_number }}{% if stream_query %}&stream_q={{ stream_query|urlencode }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
+              {% else %}
+                <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+              {% endif %}
+            </div>
+          {% endif %}
         {% else %}
           <div class="p-4 text-muted">{% trans "Choose or add an instance to see streams." %}</div>
         {% endif %}
@@ -212,7 +448,14 @@
                   Δ{{ latest_config.change_summary.changed_count|default:0 }}
                 </div>
               </div>
-            <pre class="small mb-0" style="max-height: 320px; overflow:auto;">{{ latest_config.config_payload|pprint }}</pre>
+            {% if latest_config_too_large %}
+              <div class="alert alert-warning py-2 mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                {% blocktrans with kb=latest_config_size|filesizeformat %}The config snapshot is large ({{ kb }}) and is not rendered here to keep the page responsive. Use the hash and diff summary above, or inspect it in the Django admin.{% endblocktrans %}
+              </div>
+            {% else %}
+              <pre class="small mb-0" style="max-height: 320px; overflow:auto;">{{ latest_config.config_payload|pprint }}</pre>
+            {% endif %}
           {% else %}
             <span class="text-muted">{% trans "No config snapshot available yet." %}</span>
           {% endif %}
@@ -333,12 +576,77 @@
       </div>
     </div>
   {% endif %}
+
+  {% endif %}{# active_tab != 'import' #}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  // Keyboard-driven activation for the instance search box.
   document.addEventListener("DOMContentLoaded", () => {
+    // Live preview of the resulting go2rtc base URL while adding an instance.
+    const urlPreview = document.getElementById("instance-url-preview");
+    const addForm = document.querySelector('form[action$="/go2rtc-manager/add/"]');
+    if (urlPreview && addForm) {
+      const schemeEl = addForm.querySelector('[name="scheme"]');
+      const hostEl = addForm.querySelector('[name="host"]');
+      const portEl = addForm.querySelector('[name="port"]');
+      const pathEl = addForm.querySelector('[name="path"]');
+      const updatePreview = () => {
+        const scheme = (schemeEl && schemeEl.value || "http").trim();
+        const host = (hostEl && hostEl.value || "host").trim() || "host";
+        const port = (portEl && portEl.value || "1984").trim() || "1984";
+        let path = (pathEl && pathEl.value || "").trim().replace(/^\/+|\/+$/g, "");
+        let url = `${scheme}://${host}:${port}`;
+        if (path) url += `/${path}`;
+        urlPreview.textContent = url;
+      };
+      [schemeEl, hostEl, portEl, pathEl].forEach((el) => {
+        if (el) {
+          el.addEventListener("input", updatePreview);
+          el.addEventListener("change", updatePreview);
+        }
+      });
+      updatePreview();
+    }
+
+    const searchInput = document.getElementById("instance-search-input");
+    if (searchInput) {
+      const isTypingTarget = (el) => {
+        if (!el) return false;
+        const tag = el.tagName;
+        return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+      };
+
+      document.addEventListener("keydown", (event) => {
+        // Ctrl/Cmd + K focuses the search field from anywhere.
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+          return;
+        }
+        // "/" focuses the search field unless already typing in a field.
+        if (event.key === "/" && !isTypingTarget(document.activeElement)) {
+          event.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+          return;
+        }
+        // Esc clears the field (and submits to reset) when it is focused.
+        if (event.key === "Escape" && document.activeElement === searchInput) {
+          if (searchInput.value) {
+            searchInput.value = "";
+            const form = document.getElementById("instance-search-form");
+            if (form) form.submit();
+          } else {
+            searchInput.blur();
+          }
+        }
+      });
+    }
+
     const master = document.getElementById("select-all-streams");
     if (!master) return;
 
@@ -362,3 +670,4 @@
   });
 </script>
 {% endblock %}
+

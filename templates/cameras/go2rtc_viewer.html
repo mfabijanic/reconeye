@@ -1,0 +1,787 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "go2rtc Viewer" %} — ReconEye{% endblock %}
+
+{% block extra_css %}
+<style>
+  body.go2rtc-viewer-page {
+    overflow: hidden;
+  }
+  body.go2rtc-viewer-page main.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    height: calc(100vh - var(--app-navbar-height, 5rem));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .go2rtc-viewer-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .go2rtc-viewer-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    padding: .55rem .85rem;
+    background: rgba(13,17,23,.86);
+    border-bottom: 1px solid var(--app-border);
+  }
+  .go2rtc-viewer-shell {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .go2rtc-viewer-sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--app-border);
+    background: var(--app-surface);
+    transition: transform .18s ease, width .18s ease, opacity .18s ease;
+    position: relative;
+    z-index: 2;
+  }
+  .go2rtc-viewer-shell.sidebar-auto.sidebar-hidden .go2rtc-viewer-sidebar {
+    transform: translateX(calc(-100% + 1.75rem));
+    opacity: .94;
+  }
+  .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-sidebar:hover,
+  .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-sidebar:focus-within {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  .go2rtc-viewer-sidebar-header,
+  .go2rtc-viewer-sidebar-search,
+  .go2rtc-viewer-sidebar-meta {
+    padding: .75rem .85rem;
+    border-bottom: 1px solid var(--app-border);
+  }
+  .go2rtc-viewer-sidebar-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .go2rtc-viewer-group {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+    border-bottom: 1px solid var(--app-border);
+  }
+  .go2rtc-instance-link {
+    display: block;
+    padding: .75rem .85rem;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--app-border) 72%, transparent);
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .go2rtc-instance-link:hover {
+    background: color-mix(in srgb, var(--app-link) 8%, transparent);
+  }
+  .go2rtc-instance-link.active {
+    background: color-mix(in srgb, var(--app-link) 12%, transparent);
+    box-shadow: inset 3px 0 0 #0dcaf0;
+  }
+  .go2rtc-viewer-stage {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  .go2rtc-viewer-stage-header,
+  .go2rtc-viewer-stage-helper {
+    padding: .65rem .85rem;
+    border-bottom: 1px solid var(--app-border);
+    background: rgba(13,17,23,.88);
+  }
+  .go2rtc-viewer-stage-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .go2rtc-viewer-grid {
+    height: 100%;
+    display: grid;
+    gap: 2px;
+    grid-auto-rows: 1fr;
+    overflow: hidden;
+  }
+  .go2rtc-viewer-grid.grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .go2rtc-viewer-grid.grid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .go2rtc-viewer-tile {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    min-height: 0;
+    outline: none;
+  }
+  .go2rtc-viewer-tile.grid-focused {
+    outline: 3px solid #0dcaf0 !important;
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 3px #0dcaf0, 0 0 0 3px rgba(13,202,240,.45), 0 0 18px 2px rgba(13,202,240,.25);
+  }
+  .go2rtc-viewer-tile iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
+  .go2rtc-viewer-tile-header,
+  .go2rtc-viewer-tile-footer {
+    position: absolute;
+    left: .35rem;
+    right: .35rem;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    opacity: 0;
+    transition: opacity .15s ease;
+    pointer-events: none;
+  }
+  .go2rtc-viewer-tile-header { top: .35rem; }
+  .go2rtc-viewer-tile-footer { bottom: .35rem; }
+  .go2rtc-viewer-tile:hover .go2rtc-viewer-tile-header,
+  .go2rtc-viewer-tile:hover .go2rtc-viewer-tile-footer,
+  .go2rtc-viewer-tile.grid-focused .go2rtc-viewer-tile-header,
+  .go2rtc-viewer-tile.grid-focused .go2rtc-viewer-tile-footer {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .go2rtc-viewer-chip {
+    background: rgba(0,0,0,.65);
+    color: #fff;
+    border-radius: .25rem;
+    padding: .12rem .45rem;
+    font-size: .7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .go2rtc-viewer-copy-btn {
+    background: rgba(0,0,0,.72);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    border-radius: .35rem;
+    padding: .15rem .45rem;
+    font-size: .75rem;
+  }
+  .go2rtc-viewer-copy-btn.is-copied {
+    border-color: rgba(25, 135, 84, .85);
+    color: #8df0b5;
+  }
+  .go2rtc-viewer-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #c4ccd4;
+    text-align: center;
+  }
+  @media (max-width: 991px) {
+    body.go2rtc-viewer-page {
+      overflow: auto;
+    }
+    body.go2rtc-viewer-page main.container-fluid {
+      height: auto;
+      overflow: auto;
+    }
+    .go2rtc-viewer-shell {
+      grid-template-columns: 1fr;
+      overflow: auto;
+    }
+    .go2rtc-viewer-sidebar {
+      min-height: auto;
+      max-height: 40vh;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+    .go2rtc-viewer-grid.grid-6 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .go2rtc-viewer-grid.grid-4,
+    .go2rtc-viewer-grid.grid-6 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="go2rtc-viewer-layout">
+  <div class="go2rtc-viewer-topbar">
+    <div>
+      <div class="fw-semibold"><i class="bi bi-play-btn me-1 text-info"></i>{% trans "go2rtc Viewer" %}</div>
+      <div class="text-muted small">{% trans "Live playback by instance" %}</div>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'cameras:go2rtc_manager' %}{% if selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-arrow-left me-1"></i>{% trans "Open Manager" %}
+      </a>
+      <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-display me-1"></i>{% trans "Open Surveillance" %}
+      </a>
+    </div>
+  </div>
+
+  <div id="go2rtc-viewer-shell" class="go2rtc-viewer-shell{% if sidebar_mode == 'auto' %} sidebar-auto sidebar-hidden{% endif %}">
+    <aside id="go2rtc-viewer-sidebar" class="go2rtc-viewer-sidebar">
+      <div class="go2rtc-viewer-sidebar-header d-flex justify-content-between align-items-center gap-2">
+        <div>
+          <div class="fw-semibold">{% trans "Instances" %}</div>
+          <div class="text-muted small">{{ instance_filtered_total }}/{{ instance_total }} {% trans "visible" %}</div>
+        </div>
+        <a id="go2rtc-sidebar-mode-link"
+            href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={% if sidebar_mode == 'auto' %}pinned{% else %}auto{% endif %}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="bi {% if sidebar_mode == 'auto' %}bi-pin-angle{% else %}bi-layout-sidebar-inset{% endif %} me-1"></i>
+          {% if sidebar_mode == 'auto' %}{% trans "Pinned" %}{% else %}{% trans "Autohide" %}{% endif %}
+        </a>
+      </div>
+
+      <div class="go2rtc-viewer-sidebar-search">
+        <form method="get" action="{% url 'cameras:go2rtc_viewer' %}">
+          {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+          <input type="hidden" name="instance_per_page" value="{{ instance_page_size }}">
+          <input type="hidden" name="viewer_size" value="{{ viewer_size }}">
+          <input type="hidden" name="sidebar" value="{{ sidebar_mode }}">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search"
+                   id="viewer-instance-search"
+                   name="q"
+                   class="form-control"
+                   value="{{ instance_query }}"
+                   placeholder="{% trans 'Search instances…' %}"
+                   autocomplete="off">
+            {% if instance_query %}
+              <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}instance_page=1&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}" class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
+                <i class="bi bi-x-lg"></i>
+              </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="go2rtc-viewer-sidebar-meta small text-muted">
+        <kbd>/</kbd> {% trans "focus search" %} &middot; <kbd>n</kbd>/<kbd>p</kbd> {% trans "page" %}
+      </div>
+
+      <div class="go2rtc-viewer-sidebar-list">
+        {% if grouped_instances %}
+          {% for group in grouped_instances %}
+            <div class="go2rtc-viewer-group px-3 py-2 small text-uppercase fw-semibold text-muted">
+              <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
+              <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
+              {% if group.auto %}
+                <span class="badge text-bg-info ms-1">{% trans "auto IP" %}</span>
+              {% endif %}
+            </div>
+            {% for instance in group.instances %}
+              <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
+                 class="go2rtc-instance-link{% if selected_instance and selected_instance.pk == instance.pk %} active{% endif %}">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div class="text-truncate">
+                    <div class="fw-semibold text-truncate">{{ instance.name }}</div>
+                    <div class="small text-muted text-truncate"><code>{{ instance.base_url }}</code></div>
+                    <div class="small text-muted mt-1">
+                      {% if instance.last_synced_at %}{{ instance.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
+                    </div>
+                  </div>
+                  <div class="d-flex flex-column align-items-end gap-1">
+                    <span class="badge text-bg-secondary"><i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}</span>
+                    <span class="badge {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                      {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
+                    </span>
+                    <button type="button"
+                            class="go2rtc-viewer-copy-btn go2rtc-instance-copy-btn"
+                            data-copy-url="{{ instance.base_url }}"
+                            aria-label="{% trans 'Copy instance URL' %}">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          {% endfor %}
+        {% elif instance_total %}
+          <div class="p-4 text-center text-muted">{% trans "No instances match your search." %}</div>
+        {% else %}
+          <div class="p-4 text-center text-muted">{% trans "No go2rtc instances yet." %}</div>
+        {% endif %}
+      </div>
+
+      {% if instance_page and instance_page.paginator.num_pages > 1 %}
+        <div class="go2rtc-viewer-sidebar-meta d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          {% if instance_page.has_previous %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          {% else %}
+            <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+          {% endif %}
+
+          <span class="small text-muted">
+            {% blocktrans with current=instance_page.number total=instance_page.paginator.num_pages %}Page {{ current }} / {{ total }}{% endblocktrans %}
+          </span>
+
+          {% if instance_page.has_next %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          {% else %}
+            <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+          {% endif %}
+
+          <form method="get" action="{% url 'cameras:go2rtc_viewer' %}" class="d-flex align-items-center gap-1 ms-auto">
+            {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+            {% if instance_query %}<input type="hidden" name="q" value="{{ instance_query }}">{% endif %}
+            <input type="hidden" name="viewer_size" value="{{ viewer_size }}">
+            <input type="hidden" name="sidebar" value="{{ sidebar_mode }}">
+            <input type="hidden" name="instance_per_page" value="{{ instance_page_size }}">
+            <input type="number" name="instance_page" min="1" max="{{ instance_page.paginator.num_pages }}" value="{{ instance_page.number }}" class="form-control form-control-sm" style="width: 5rem;">
+          </form>
+        </div>
+      {% endif %}
+    </aside>
+
+    <section class="go2rtc-viewer-stage">
+      <div class="go2rtc-viewer-stage-header d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+          {% if selected_instance %}
+            <div class="fw-semibold">{{ selected_instance.name }}</div>
+            <div class="small text-muted">{{ selected_instance.base_url }}</div>
+          {% else %}
+            <div class="fw-semibold">{% trans "No instance selected" %}</div>
+            <div class="small text-muted">{% trans "Choose an instance to start playback." %}</div>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          {% if selected_instance %}
+            <span class="badge text-bg-secondary">
+              {% if viewer_total %}
+                {{ viewer_page_start }}-{{ viewer_page_end }}/{{ viewer_total }} {% trans "streams" %}
+              {% else %}
+                0/0 {% trans "streams" %}
+              {% endif %}
+            </span>
+            {% if viewer_page %}
+              <span class="badge text-bg-secondary">{% trans "Page" %} {{ viewer_page.number }}/{{ viewer_page.paginator.num_pages }}</span>
+            {% endif %}
+          {% endif %}
+          {% for size in viewer_size_choices %}
+            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
+               class="btn btn-sm {% if viewer_size == size %}btn-info{% else %}btn-outline-secondary{% endif %}">{{ size }}</a>
+          {% endfor %}
+          <button type="button" id="copy-active-stream-btn" class="btn btn-sm btn-outline-secondary"{% if not active_tile %} disabled{% endif %}>
+            <i class="bi bi-clipboard me-1"></i>{% trans "Copy active stream URL" %}
+          </button>
+          {% if viewer_page and viewer_page.has_previous %}
+            <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          {% else %}
+            <span id="viewer-prev-page-link" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+          {% endif %}
+          {% if viewer_page and viewer_page.has_next %}
+            <a id="viewer-next-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.next_page_number }}&sidebar={{ sidebar_mode }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          {% else %}
+            <span id="viewer-next-page-link" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+          {% endif %}
+          {% if viewer_page and viewer_page.paginator.num_pages > 1 %}
+            <form id="viewer-page-jump-form" class="d-flex align-items-center gap-1">
+              <input id="viewer-page-jump-input"
+                     class="form-control form-control-sm"
+                     type="number"
+                     min="1"
+                     max="{{ viewer_page.paginator.num_pages }}"
+                     value="{{ viewer_page.number }}"
+                     style="width: 5rem;"
+                     aria-label="{% trans 'Jump to page' %}">
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="go2rtc-viewer-stage-helper small text-muted d-flex flex-wrap gap-3">
+        <span><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd> / <kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> {% trans "to move" %}</span>
+        <span><kbd>n</kbd>/<kbd>p</kbd> {% trans "next/previous page" %}</span>
+        <span><kbd>f</kbd> {% trans "fullscreen" %}</span>
+        <span><kbd>c</kbd> {% trans "copy active URL" %}</span>
+      </div>
+
+      <div class="go2rtc-viewer-stage-grid-wrap">
+        {% if not instance_total %}
+          <div class="go2rtc-viewer-empty">
+            <div>
+              <div class="fw-semibold mb-2">{% trans "No go2rtc instances yet." %}</div>
+              <a href="{% url 'cameras:go2rtc_manager' %}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
+            </div>
+          </div>
+        {% elif not grouped_instances %}
+          <div class="go2rtc-viewer-empty">
+            <div class="fw-semibold">{% trans "No instances match your search." %}</div>
+          </div>
+        {% elif selected_instance and not viewer_tiles %}
+          <div class="go2rtc-viewer-empty">
+            <div>
+              <div class="fw-semibold mb-2">{% trans "No synced streams for this instance yet." %}</div>
+              <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ selected_instance.pk }}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
+            </div>
+          </div>
+        {% else %}
+          <div id="go2rtc-viewer-grid" class="go2rtc-viewer-grid grid-{{ viewer_size }}" data-visible-count="{{ viewer_tiles|length }}">
+            {% for tile in viewer_tiles %}
+              <article class="go2rtc-viewer-tile" tabindex="0" data-copy-url="{{ tile.webrtc_embed_url }}" data-stream-name="{{ tile.stream_name }}">
+                <div class="go2rtc-viewer-tile-header">
+                  <div class="d-flex flex-column gap-1" style="min-width:0;">
+                    <span class="go2rtc-viewer-chip">{{ tile.stream_name }}</span>
+                    <span class="go2rtc-viewer-chip">{{ tile.focus_index }}/{{ tile.visible_total }}</span>
+                  </div>
+                  <button type="button" class="go2rtc-viewer-copy-btn" data-copy-url="{{ tile.webrtc_embed_url }}" aria-label="{% trans 'Copy stream URL' %}">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+                <div class="go2rtc-viewer-tile-footer">
+                  <span class="go2rtc-viewer-chip">{% trans "Producers" %}: {{ tile.producers_count }}</span>
+                  <span class="go2rtc-viewer-chip">{% trans "Consumers" %}: {{ tile.consumers_count }}</span>
+                </div>
+                <iframe
+                  class="go2rtc-iframe go2rtc-iframe--surveillance"
+                  src="{{ tile.webrtc_embed_url|default:tile.viewer_url }}"
+                  title="{{ tile.title }}"
+                  loading="eager"
+                  scrolling="no"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowfullscreen
+                  referrerpolicy="no-referrer"
+                ></iframe>
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.classList.add("go2rtc-viewer-page");
+
+    const shell = document.getElementById("go2rtc-viewer-shell");
+    const sidebar = document.getElementById("go2rtc-viewer-sidebar");
+    const sidebarList = sidebar ? sidebar.querySelector(".go2rtc-viewer-sidebar-list") : null;
+    const searchInput = document.getElementById("viewer-instance-search");
+    const grid = document.getElementById("go2rtc-viewer-grid");
+    const copyActiveBtn = document.getElementById("copy-active-stream-btn");
+    const pageJumpForm = document.getElementById("viewer-page-jump-form");
+    const pageJumpInput = document.getElementById("viewer-page-jump-input");
+    const activeInstanceLink = document.querySelector(".go2rtc-instance-link.active");
+    const sidebarScrollStorageKey = "reconeye:go2rtc_viewer:sidebar_scroll_top";
+
+    let focusedIdx = -1;
+
+    const getTiles = () => Array.from(grid ? grid.querySelectorAll(".go2rtc-viewer-tile") : []);
+    const getCols = () => Math.max(1, window.getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length);
+
+    const updateActiveCopyButton = (tile) => {
+      if (!copyActiveBtn) return;
+      const url = tile ? tile.dataset.copyUrl : "";
+      copyActiveBtn.dataset.copyUrl = url;
+      copyActiveBtn.disabled = !url;
+    };
+
+    const focusTile = (idx) => {
+      const tiles = getTiles();
+      if (!tiles.length) return;
+      const nextIdx = Math.max(0, Math.min(idx, tiles.length - 1));
+      tiles.forEach((tile, tileIdx) => tile.classList.toggle("grid-focused", tileIdx === nextIdx));
+      focusedIdx = nextIdx;
+      const tile = tiles[nextIdx];
+      updateActiveCopyButton(tile);
+      tile.focus({ preventScroll: true });
+      tile.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    };
+
+    const fullscreenTile = (tile) => {
+      if (!tile) return;
+      if (document.fullscreenElement === tile) {
+        document.exitFullscreen && document.exitFullscreen();
+      } else {
+        (tile.requestFullscreen || tile.webkitRequestFullscreen || (() => {})).call(tile);
+      }
+    };
+
+    const flashCopied = (button) => {
+      if (!button) return;
+      button.classList.add("is-copied");
+      const icon = button.querySelector("i");
+      if (icon) icon.className = "bi bi-check2";
+      window.setTimeout(() => {
+        button.classList.remove("is-copied");
+        if (icon) icon.className = "bi bi-clipboard";
+      }, 1400);
+    };
+
+    const copyText = async (text, button) => {
+      if (!text) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const fallback = document.createElement("input");
+          fallback.value = text;
+          fallback.setAttribute("readonly", "readonly");
+          fallback.style.position = "absolute";
+          fallback.style.left = "-9999px";
+          document.body.appendChild(fallback);
+          fallback.select();
+          document.execCommand("copy");
+          document.body.removeChild(fallback);
+        }
+        flashCopied(button);
+      } catch (_) {
+        window.prompt("Copy stream URL", text);
+      }
+    };
+
+    const navigateViewerPage = (targetPage) => {
+      if (!targetPage || Number.isNaN(targetPage) || targetPage < 1) return;
+      if (sidebarList) {
+        try {
+          sessionStorage.setItem(sidebarScrollStorageKey, String(sidebarList.scrollTop));
+        } catch (_) {
+          // Ignore storage failures (private mode/quota).
+        }
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set("viewer_page", String(targetPage));
+      window.location.assign(url.toString());
+    };
+
+    const stepViewerPage = (delta) => {
+      if (!pageJumpInput) return;
+      const current = parseInt(pageJumpInput.value || "1", 10);
+      const max = parseInt(pageJumpInput.max || "1", 10);
+      if (Number.isNaN(current) || Number.isNaN(max)) return;
+      const next = Math.max(1, Math.min(max, current + delta));
+      if (next !== current) navigateViewerPage(next);
+    };
+
+    if (copyActiveBtn) {
+      copyActiveBtn.addEventListener("click", () => {
+        copyText(copyActiveBtn.dataset.copyUrl || "", copyActiveBtn);
+      });
+    }
+
+    document.querySelectorAll(".go2rtc-viewer-copy-btn").forEach((button) => {
+      if (button === copyActiveBtn) return;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        copyText(button.dataset.copyUrl || "", button);
+      });
+    });
+
+    if (pageJumpForm && pageJumpInput) {
+      pageJumpForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const next = parseInt(pageJumpInput.value || "1", 10);
+        if (Number.isNaN(next)) return;
+        navigateViewerPage(next);
+      });
+    }
+
+    if (sidebarList) {
+      let restoredScroll = false;
+      try {
+        const saved = sessionStorage.getItem(sidebarScrollStorageKey);
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10);
+          if (!Number.isNaN(parsed) && parsed >= 0) {
+            sidebarList.scrollTop = parsed;
+            restoredScroll = true;
+          }
+        }
+      } catch (_) {
+        // Ignore storage failures.
+      }
+
+      sidebarList.addEventListener("scroll", () => {
+        try {
+          sessionStorage.setItem(sidebarScrollStorageKey, String(sidebarList.scrollTop));
+        } catch (_) {
+          // Ignore storage failures.
+        }
+      }, { passive: true });
+
+      window.addEventListener("beforeunload", () => {
+        try {
+          sessionStorage.setItem(sidebarScrollStorageKey, String(sidebarList.scrollTop));
+        } catch (_) {
+          // Ignore storage failures.
+        }
+      });
+
+      if (!restoredScroll && activeInstanceLink) {
+        window.setTimeout(() => {
+          activeInstanceLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }, 0);
+      }
+    } else if (activeInstanceLink) {
+      window.setTimeout(() => {
+        activeInstanceLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }, 0);
+    }
+
+    if (searchInput) {
+      document.addEventListener("keydown", (event) => {
+        const tag = (document.activeElement?.tagName || "").toLowerCase();
+        const isTypingTarget = ["input", "textarea", "select"].includes(tag) || document.activeElement?.isContentEditable;
+
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+          shell && shell.classList.remove("sidebar-hidden");
+          return;
+        }
+
+        if (event.key === "/" && !isTypingTarget) {
+          event.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+          shell && shell.classList.remove("sidebar-hidden");
+          return;
+        }
+
+        if (event.key === "Escape" && document.activeElement === searchInput) {
+          if (searchInput.value) {
+            searchInput.value = "";
+            searchInput.form && searchInput.form.submit();
+          } else {
+            searchInput.blur();
+          }
+        }
+      });
+    }
+
+    if (shell && shell.classList.contains("sidebar-auto") && sidebar) {
+      sidebar.addEventListener("mouseleave", () => {
+        if (!sidebar.contains(document.activeElement)) {
+          shell.classList.add("sidebar-hidden");
+        }
+      });
+      sidebar.addEventListener("mouseenter", () => {
+        shell.classList.remove("sidebar-hidden");
+      });
+    }
+
+    if (grid) {
+      window.setTimeout(() => {
+        const tiles = getTiles();
+        if (tiles.length) focusTile(0);
+      }, 150);
+
+      document.addEventListener("keydown", (event) => {
+        const tag = (event.target?.tagName || "").toLowerCase();
+        if (["input", "textarea", "select", "button"].includes(tag) || event.target?.isContentEditable) return;
+
+        if (event.key === "n" || event.key === "N") {
+          event.preventDefault();
+          stepViewerPage(1);
+          return;
+        }
+        if (event.key === "p" || event.key === "P") {
+          event.preventDefault();
+          stepViewerPage(-1);
+          return;
+        }
+
+        const tiles = getTiles();
+        if (!tiles.length) return;
+        if (focusedIdx < 0 || focusedIdx >= tiles.length) focusedIdx = 0;
+
+        const cols = getCols();
+        let next = focusedIdx;
+        let handled = true;
+
+        switch (event.key) {
+          case "ArrowRight":
+          case "l":
+          case "L":
+            next = focusedIdx + 1;
+            break;
+          case "ArrowLeft":
+          case "h":
+          case "H":
+            next = focusedIdx - 1;
+            break;
+          case "ArrowDown":
+          case "j":
+          case "J":
+            next = focusedIdx + cols;
+            break;
+          case "ArrowUp":
+          case "k":
+          case "K":
+            next = focusedIdx - cols;
+            break;
+          case "f":
+          case "F":
+            fullscreenTile(tiles[focusedIdx]);
+            break;
+          case "c":
+          case "C":
+            copyText(tiles[focusedIdx].dataset.copyUrl || "", copyActiveBtn);
+            break;
+          default:
+            handled = false;
+        }
+
+        if (!handled) return;
+        event.preventDefault();
+        if (next !== focusedIdx && next >= 0 && next < tiles.length) {
+          focusTile(next);
+        }
+      });
+
+      grid.addEventListener("pointerdown", (event) => {
+        const tile = event.target.closest(".go2rtc-viewer-tile");
+        if (!tile) return;
+        const idx = getTiles().indexOf(tile);
+        if (idx >= 0) focusTile(idx);
+      }, true);
+    }
+  });
+</script>
+{% endblock %}

@@ -16,7 +16,16 @@ from apps.common.cache import (
     invalidate_scrape_jobs,
 )
 
-from .models import Camera, CameraCheckLog, Go2RTCConfigSnapshot, Go2RTCInstance, Go2RTCStream, MapUISettings
+from .models import (
+    Camera,
+    CameraCheckLog,
+    Go2RTCConfigSnapshot,
+    Go2RTCGridItem,
+    Go2RTCGridProfile,
+    Go2RTCInstance,
+    Go2RTCStream,
+    MapUISettings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,20 +186,53 @@ class MapUISettingsAdmin(admin.ModelAdmin):
         return False
 
 
+@admin.action(description=_("Re-resolve host IPs (for auto-grouping)"))
+def reresolve_go2rtc_ips(modeladmin, request, queryset) -> None:
+    from apps.cameras.services import resolve_host_ips
+    from django.utils import timezone
+
+    updated = 0
+    failed = 0
+    now = timezone.now()
+    for instance in queryset:
+        ips = resolve_host_ips(instance.host)
+        if ips:
+            instance.resolved_ips = ips
+            instance.ips_resolved_at = now
+            instance.save(update_fields=["resolved_ips", "ips_resolved_at", "updated_at"])
+            updated += 1
+        else:
+            failed += 1
+    messages.success(
+        request,
+        _("Re-resolved %(ok)s instance(s); %(failed)s could not be resolved.")
+        % {"ok": updated, "failed": failed},
+    )
+
+
 @admin.register(Go2RTCInstance)
 class Go2RTCInstanceAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "group_label",
         "scheme",
         "host",
         "port",
+        "path",
+        "resolved_ips_display",
         "is_active",
         "last_sync_status",
         "last_synced_at",
     )
-    list_filter = ("is_active", "last_sync_status", "scheme")
-    search_fields = ("name", "host")
-    readonly_fields = ("created_at", "updated_at", "last_synced_at")
+    list_filter = ("is_active", "last_sync_status", "scheme", "group_label")
+    search_fields = ("name", "host", "group_label")
+    readonly_fields = ("created_at", "updated_at", "last_synced_at", "ips_resolved_at")
+    actions = [reresolve_go2rtc_ips]
+
+    @admin.display(description=_("Resolved IPs"))
+    def resolved_ips_display(self, obj: Go2RTCInstance) -> str:
+        ips = obj.resolved_ips or []
+        return ", ".join(str(ip) for ip in ips) if ips else "—"
 
 
 @admin.register(Go2RTCStream)
@@ -216,3 +258,19 @@ class Go2RTCConfigSnapshotAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request) -> bool:
         return False
+
+
+@admin.register(Go2RTCGridProfile)
+class Go2RTCGridProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "description", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "description")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(Go2RTCGridItem)
+class Go2RTCGridItemAdmin(admin.ModelAdmin):
+    list_display = ("profile", "instance", "stream_name", "title", "sort_order", "is_active")
+    list_filter = ("profile", "instance", "is_active")
+    search_fields = ("stream_name", "title", "profile__name", "instance__name")
+    readonly_fields = ("created_at", "updated_at")

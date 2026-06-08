@@ -4,9 +4,15 @@ import logging
 import time
 import re
 import hashlib
+import ipaddress
 import json
+import socket
+from dataclasses import dataclass, field
 from urllib.parse import quote
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from apps.cameras.imports import BaseInstanceImportSource, InstanceImportRow
 
 import httpx
 from django.conf import settings
@@ -18,6 +24,8 @@ from apps.cameras.models import (
     Camera,
     CameraCheckLog,
     Go2RTCConfigSnapshot,
+    Go2RTCGridItem,
+    Go2RTCGridProfile,
     Go2RTCInstance,
     Go2RTCStream,
     SourceType,
@@ -28,6 +36,222 @@ logger = logging.getLogger(__name__)
 CAMERA_LOG_RETENTION_DAYS = 30
 WUC_STREAM_ID_PREFIXES = ("ba_", "do_", "es_", "gr_", "hr_", "ie_", "it_", "mk_", "nl_", "si_")
 GO2RTC_READ_ONLY_METHODS = {"GET"}
+# How long DNS resolution is allowed to block during a sync (seconds).
+DNS_RESOLUTION_TIMEOUT = 3.0
+
+
+def resolve_host_ips(host: str, *, timeout: float = DNS_RESOLUTION_TIMEOUT) -> list[str]:
+    """Resolve a host (FQDN or literal IP) to a sorted list of unique IPs.
+
+    A single FQDN may resolve to several IPs (round-robin DNS / multiple A or
+    AAAA records); all of them are returned. Literal IPs are returned as-is
+    (normalized). On any failure an empty list is returned so callers can fall
+    back to host-string grouping.
+    """
+    clean = (host or "").strip()
+    if not clean:
+        return []
+
+    # Literal IP: normalize and return directly (no DNS lookup needed).
+    try:
+        return [str(ipaddress.ip_address(clean))]
+    except ValueError:
+        pass
+
+    previous_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(timeout)
+    ips: set[str] = set()
+    try:
+        # AF_UNSPEC returns both IPv4 and IPv6 records.
+        infos = socket.getaddrinfo(clean, None, proto=socket.IPPROTO_TCP)
+        for info in infos:
+            sockaddr = info[4]
+            if sockaddr and sockaddr[0]:
+                try:
+                    ips.add(str(ipaddress.ip_address(sockaddr[0])))
+                except ValueError:
+                    continue
+    except (socket.gaierror, socket.timeout, OSError) as exc:
+        logger.info("DNS resolution failed host=%s error=%s", clean, exc)
+        return []
+    finally:
+        socket.setdefaulttimeout(previous_timeout)
+
+    return sorted(ips)
+
+
+def group_go2rtc_instances(instances: list[Go2RTCInstance]) -> list[dict[str, Any]]:
+    """Group go2rtc instances for the manager UI.
+
+    Grouping precedence (strongest first):
+      1. Explicit manual ``group_label`` — instances sharing the same non-empty
+         label always form one group, regardless of IP.
+      2. Automatic IP-based grouping — instances whose resolved IP sets overlap
+         (share at least one IP) are merged into the same group. This is
+         transitive: A↔B and B↔C put A, B and C together. Handles a single FQDN
+         resolving to several IPs, several FQDNs pointing at one server, and
+         mixed IP/FQDN entries.
+      3. Host string fallback — instances with no IPs resolved yet are grouped
+         by their normalized host.
+
+    Returns a list of ``{"label": str, "instances": [...], "auto": bool}`` dicts,
+    sorted by label. ``auto`` flags groups formed by IP overlap (i.e. not by an
+    explicit manual label) so the UI can show a hint.
+    """
+    # 1. Pull out manually labelled instances first — they bypass IP logic.
+    manual_groups: dict[str, list[Go2RTCInstance]] = {}
+    auto_candidates: list[Go2RTCInstance] = []
+    for inst in instances:
+        label = (inst.group_label or "").strip()
+        if label:
+            manual_groups.setdefault(label, []).append(inst)
+        else:
+            auto_candidates.append(inst)
+
+    # 2. Union-Find over IP overlap for the auto candidates.
+    parent: dict[int, int] = {id(inst): id(inst) for inst in auto_candidates}
+    by_key: dict[int, Go2RTCInstance] = {id(inst): inst for inst in auto_candidates}
+
+    def find(key: int) -> int:
+        while parent[key] != key:
+            parent[key] = parent[parent[key]]
+            key = parent[key]
+        return key
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    # Map each IP to the instances exposing it, then union instances per IP.
+    ip_to_keys: dict[str, list[int]] = {}
+    for inst in auto_candidates:
+        for ip in inst.ip_set:
+            ip_to_keys.setdefault(ip, []).append(id(inst))
+    for keys in ip_to_keys.values():
+        first = keys[0]
+        for other in keys[1:]:
+            union(first, other)
+
+    # 3. Collect auto groups by their union-find root.
+    auto_roots: dict[int, list[Go2RTCInstance]] = {}
+    host_fallback: dict[str, list[Go2RTCInstance]] = {}
+    for inst in auto_candidates:
+        if inst.ip_set:
+            auto_roots.setdefault(find(id(inst)), []).append(inst)
+        else:
+            # No IPs resolved yet → fall back to host string grouping.
+            host_fallback.setdefault(inst.normalized_host, []).append(inst)
+
+    groups: list[dict[str, Any]] = []
+
+    for label, members in manual_groups.items():
+        groups.append({"label": label, "instances": members, "auto": False})
+
+    for members in auto_roots.values():
+        # Label = shared IP if all members agree on one, else the common host,
+        # else a compact "host (+N more)" summary.
+        hosts = {m.normalized_host for m in members}
+        shared_ips = set.intersection(*(m.ip_set for m in members)) if members else set()
+        if len(hosts) == 1:
+            label = next(iter(hosts))
+        elif shared_ips:
+            label = sorted(shared_ips)[0]
+        else:
+            primary = sorted(hosts)[0]
+            label = f"{primary} (+{len(hosts) - 1} more)"
+        is_auto = len(members) > 1
+        groups.append({"label": label, "instances": members, "auto": is_auto})
+
+    for host, members in host_fallback.items():
+        groups.append({"label": host, "instances": members, "auto": False})
+
+    for group in groups:
+        group["instances"].sort(key=lambda i: (i.name or "").lower())
+
+    groups.sort(key=lambda g: (g["label"] or "").lower())
+    return groups
+
+
+@dataclass
+class ImportReport:
+    """Outcome of an instance import run."""
+
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0  # invalid rows that were not persisted
+    created_names: list[str] = field(default_factory=list)
+    updated_names: list[str] = field(default_factory=list)
+    row_errors: list[dict[str, Any]] = field(default_factory=list)  # {line, name, errors}
+    synced_dispatched: int = 0
+
+    @property
+    def total_valid(self) -> int:
+        return self.created + self.updated
+
+
+def preview_go2rtc_import(source: "BaseInstanceImportSource") -> list["InstanceImportRow"]:
+    """Parse an import source into rows WITHOUT writing anything (dry-run).
+
+    Returns every parsed row (valid and invalid) so the UI can render a
+    preview table and let the user decide before committing.
+    """
+    return list(source.iter_rows())
+
+
+def import_go2rtc_instances(
+    source: "BaseInstanceImportSource",
+    *,
+    sync: bool = True,
+) -> ImportReport:
+    """Upsert go2rtc instances from any import source.
+
+    Mirrors ``AddGo2RTCInstanceView`` semantics: ``update_or_create`` keyed on
+    ``name``. Invalid rows are recorded in the report but never abort the whole
+    import. When ``sync`` is True, a background sync task is dispatched per
+    upserted instance (async, so large imports do not block the request).
+    """
+    from apps.cameras.tasks import sync_go2rtc_instance_task
+
+    report = ImportReport()
+    for row in source.iter_rows():
+        if not row.is_valid:
+            report.skipped += 1
+            report.row_errors.append(
+                {"line": row.source_line, "name": row.name, "errors": row.errors}
+            )
+            continue
+
+        instance, created = Go2RTCInstance.objects.update_or_create(
+            name=row.name,
+            defaults={
+                "scheme": row.scheme,
+                "host": row.host,
+                "port": row.port,
+                "path": row.path,
+                "group_label": row.group_label,
+                "is_active": True,
+            },
+        )
+        if created:
+            report.created += 1
+            report.created_names.append(instance.name)
+        else:
+            report.updated += 1
+            report.updated_names.append(instance.name)
+
+        if sync:
+            sync_go2rtc_instance_task.delay(instance.pk)
+            report.synced_dispatched += 1
+
+    logger.info(
+        "import_go2rtc_instances created=%d updated=%d skipped=%d synced=%d",
+        report.created,
+        report.updated,
+        report.skipped,
+        report.synced_dispatched,
+    )
+    return report
 
 
 def is_whatsupcams_stream_id(value: str | None) -> bool:
@@ -537,6 +761,44 @@ def fetch_go2rtc_instance_payloads(
     streams_url = f"{normalized_base}/api/streams"
     config_url = f"{normalized_base}/api/config"
 
+    def _parse_config_response(response: httpx.Response) -> dict[str, Any]:
+        content_type = (response.headers.get("content-type") or "").lower()
+
+        # Most go2rtc installs return JSON for /api/streams, but /api/config may
+        # return YAML plain text. Keep the manager read-only and parse best-effort.
+        if "json" in content_type:
+            payload = response.json()
+            return payload if isinstance(payload, dict) else {"_value": payload}
+
+        text = response.text or ""
+
+        # Try JSON first even when content-type is missing or wrong.
+        try:
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else {"_value": parsed}
+        except Exception:
+            pass
+
+        # Fallback: try YAML if PyYAML is available.
+        try:
+            import yaml  # type: ignore
+
+            parsed_yaml = yaml.safe_load(text)
+            if isinstance(parsed_yaml, dict):
+                return parsed_yaml
+            return {
+                "_value": parsed_yaml,
+                "_format": "yaml",
+                "_content_type": content_type,
+            }
+        except Exception:
+            # Final fallback: store raw content so snapshots still work.
+            return {
+                "_raw": text,
+                "_format": "text",
+                "_content_type": content_type,
+            }
+
     def _readonly_get(client: httpx.Client, url: str) -> httpx.Response:
         method = "GET"
         if method not in GO2RTC_READ_ONLY_METHODS:
@@ -544,14 +806,17 @@ def fetch_go2rtc_instance_payloads(
         return client.get(url)
 
     try:
-        with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+        # verify=False: go2rtc instances are frequently served over HTTPS with
+        # self-signed/invalid certificates. Sync must succeed regardless of the
+        # certificate being valid, so TLS verification is intentionally disabled.
+        with httpx.Client(timeout=timeout_seconds, follow_redirects=True, verify=False) as client:
             streams_resp = _readonly_get(client, streams_url)
             streams_resp.raise_for_status()
             streams_payload = streams_resp.json()
 
             config_resp = _readonly_get(client, config_url)
             config_resp.raise_for_status()
-            config_payload = config_resp.json()
+            config_payload = _parse_config_response(config_resp)
     except Exception as exc:
         logger.warning("go2rtc manager sync failed base_url=%s error=%s", normalized_base, exc)
         return [], {}, f"Unable to fetch go2rtc data from {normalized_base}."
@@ -589,6 +854,16 @@ def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
     """
     streams, config_payload, error = fetch_go2rtc_instance_payloads(base_url=instance.base_url)
     now = timezone.now()
+
+    # Resolve the host to IP(s) on every sync so auto-grouping stays current
+    # even when DNS records change. Failures are non-fatal: we simply keep the
+    # previous resolution (or fall back to host-string grouping in the UI).
+    resolved_ips = resolve_host_ips(instance.host)
+    if resolved_ips:
+        if instance.resolved_ips != resolved_ips:
+            instance.resolved_ips = resolved_ips
+        instance.ips_resolved_at = now
+        instance.save(update_fields=["resolved_ips", "ips_resolved_at", "updated_at"])
 
     if error:
         instance.last_sync_status = Go2RTCInstance.LastSyncStatus.FAILED
@@ -689,6 +964,71 @@ def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:
     }
 
 
+def upsert_go2rtc_grid_item(
+    *,
+    profile: Go2RTCGridProfile,
+    instance: Go2RTCInstance,
+    stream_name: str,
+    title: str = "",
+) -> tuple[Go2RTCGridItem, bool]:
+    stream_name = stream_name.strip()
+    title = title.strip() or stream_name
+    payload = {
+        "base_url": instance.base_url,
+        "stream_name": stream_name,
+        "stream_urls": build_go2rtc_stream_urls(instance.base_url, stream_name),
+    }
+    next_order = int(profile.items.count())
+    item = Go2RTCGridItem.objects.filter(
+        profile=profile,
+        instance=instance,
+        stream_name=stream_name,
+    ).first()
+    created = item is None
+    if created:
+        item = Go2RTCGridItem.objects.create(
+            profile=profile,
+            instance=instance,
+            stream_name=stream_name,
+            title=title,
+            is_active=True,
+            source_payload=payload,
+            sort_order=next_order,
+        )
+    else:
+        item.title = title
+        item.is_active = True
+        item.source_payload = payload
+        item.save(update_fields=["title", "is_active", "source_payload", "updated_at"])
+    return item, created
+
+
+def get_go2rtc_profile_tiles(profile: Go2RTCGridProfile) -> list[dict[str, Any]]:
+    items = list(
+        profile.items.filter(is_active=True)
+        .select_related("instance")
+        .order_by("sort_order", "id")
+    )
+    tiles: list[dict[str, Any]] = []
+    for item in items:
+        payload = dict(item.source_payload or {})
+        base_url = normalize_go2rtc_base_url(payload.get("base_url") or item.instance.base_url)
+        stream_name = str(payload.get("stream_name") or item.stream_name).strip()
+        urls = build_go2rtc_stream_urls(base_url, stream_name)
+        tiles.append(
+            {
+                "id": item.id,
+                "title": item.title or stream_name,
+                "stream_name": stream_name,
+                "instance_name": item.instance.name,
+                "instance_base_url": base_url,
+                "webrtc_embed": urls["webrtc_embed"],
+                "viewer": urls["viewer"],
+            }
+        )
+    return tiles
+
+
 def ensure_go2rtc_camera_stream_urls(camera: Camera) -> Camera:
     """Ensure persisted GO2RTC cameras have full URL set and WebRTC player URL as primary."""
     if camera.source_type != SourceType.GO2RTC:
@@ -749,7 +1089,9 @@ def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float 
 
     api_url = f"{normalized_base}/api/streams"
     try:
-        with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+        # verify=False: ignore invalid/self-signed TLS certificates so stream
+        # discovery works against go2rtc instances regardless of cert validity.
+        with httpx.Client(timeout=timeout_seconds, follow_redirects=True, verify=False) as client:
             response = client.get(api_url)
             response.raise_for_status()
             payload = response.json()

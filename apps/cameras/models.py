@@ -138,6 +138,40 @@ class Go2RTCInstance(models.Model):
     scheme = models.CharField(max_length=8, default="http")
     host = models.CharField(max_length=255)
     port = models.PositiveIntegerField(default=1984)
+    path = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=(
+            "Optional base path / subdirectory when go2rtc is served behind a "
+            "reverse proxy (e.g. 'go2rtc' or 'app/go2rtc'). The resulting base "
+            "URL becomes scheme://host:port/path."
+        ),
+    )
+    group_label = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        help_text=(
+            "Optional logical grouping (e.g. a shared FQDN or site name). "
+            "Instances with the same label are grouped together in the manager UI. "
+            "Each instance still maps to a single go2rtc process on one host:port. "
+            "When set, this label overrides automatic IP-based grouping."
+        ),
+    )
+    resolved_ips = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "IP addresses the host (FQDN or literal IP) resolved to during the "
+            "last sync. A single FQDN may resolve to several IPs (round-robin "
+            "DNS); instances whose IP sets overlap are auto-grouped together."
+        ),
+    )
+    ips_resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When resolved_ips was last refreshed.",
+    )
     is_active = models.BooleanField(default=True, db_index=True)
 
     last_synced_at = models.DateTimeField(null=True, blank=True)
@@ -158,16 +192,51 @@ class Go2RTCInstance(models.Model):
         ordering = ["name"]
         indexes = [
             models.Index(fields=["is_active", "name"]),
+            models.Index(fields=["is_active", "group_label", "name"]),
         ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.base_url})"
 
     @property
+    def normalized_host(self) -> str:
+        """Lower-cased, whitespace-stripped host used as a stable grouping key."""
+        return (self.host or "").strip().lower()
+
+    @property
+    def ip_set(self) -> set[str]:
+        """Set of resolved IPs for this instance (empty if not yet resolved)."""
+        ips = self.resolved_ips or []
+        return {str(ip).strip() for ip in ips if str(ip).strip()}
+
+    @property
+    def display_group(self) -> str:
+        """Group label used for UI grouping.
+
+        Priority:
+          1. Explicit manual ``group_label`` (always wins).
+          2. Otherwise the normalized host (FQDN/IP) as a stable fallback.
+
+        IP-based auto-grouping that merges *different* hosts sharing an IP is
+        applied at the queryset level (see ``services.group_go2rtc_instances``),
+        because it requires comparing instances against each other.
+        """
+        return (self.group_label or "").strip() or self.normalized_host
+
+    def shares_ip_with(self, other: "Go2RTCInstance") -> bool:
+        """True if this instance and ``other`` have at least one common IP."""
+        mine = self.ip_set
+        return bool(mine) and bool(mine & other.ip_set)
+
+    @property
     def base_url(self) -> str:
         scheme = (self.scheme or "http").strip().lower() or "http"
         host = (self.host or "").strip()
-        return f"{scheme}://{host}:{self.port}".rstrip("/")
+        base = f"{scheme}://{host}:{self.port}"
+        path = (self.path or "").strip().strip("/")
+        if path:
+            base = f"{base}/{path}"
+        return base.rstrip("/")
 
 
 class Go2RTCConfigSnapshot(models.Model):
@@ -224,3 +293,58 @@ class Go2RTCStream(models.Model):
 
     def __str__(self) -> str:
         return f"{self.instance.name}: {self.stream_name}"
+
+
+class Go2RTCGridProfile(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "go2rtc Grid Profile"
+        verbose_name_plural = "go2rtc Grid Profiles"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Go2RTCGridItem(models.Model):
+    profile = models.ForeignKey(
+        Go2RTCGridProfile,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    instance = models.ForeignKey(
+        Go2RTCInstance,
+        on_delete=models.CASCADE,
+        related_name="grid_items",
+    )
+    stream_name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, db_index=True)
+    source_payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "go2rtc Grid Item"
+        verbose_name_plural = "go2rtc Grid Items"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "instance", "stream_name"],
+                name="uniq_go2rtc_grid_item_per_profile_stream",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["profile", "is_active", "sort_order"]),
+            models.Index(fields=["instance", "stream_name"]),
+        ]
+
+    def __str__(self) -> str:
+        label = self.title or self.stream_name
+        return f"{self.profile.name}: {label}"

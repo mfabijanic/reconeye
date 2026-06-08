@@ -1,0 +1,69 @@
+RECONEYE CONTINUE RULES (PRODUCTION FINAL)
+
+PROJECT CONTEXT:
+ReconEye is a Django + HTMX server-rendered application.
+
+The system prioritizes simplicity, maintainability, and minimal complexity.
+
+---
+
+MODEL STRATEGY:
+- Prefer the cheapest sufficient model at all times
+- Local model (Ollama) → autocomplete and trivial edits
+- Qwen3 Coder → primary reasoning, chat, and coding tasks
+- Copilot (Claude Sonnet) → fallback for complex multi-file refactors only (currently disabled unless enabled in config)
+
+Never escalate model usage unless necessary.
+
+---
+
+ARCHITECTURE RULES:
+- Server-rendered Django application only
+- Use HTMX for all UI interactivity
+- No SPA frameworks (React, Vue, Angular)
+- Prefer Django ORM and built-in features
+- Do not introduce new architectural layers or services
+
+---
+
+HTMX RULES:
+- Prefer HTMX over JavaScript for UI behavior
+- Use server-rendered HTML responses instead of API + frontend state
+- Avoid client-side state management
+- Use minimal JavaScript only when strictly necessary
+
+---
+
+ENGINEERING PRINCIPLES:
+- Prefer minimal and incremental changes
+- Reuse existing code, utilities, and patterns
+- Keep logic in Django views/services unless separation is required
+- Avoid overengineering and unnecessary abstractions
+- Avoid architectural changes unless explicitly requested
+- Prefer correctness and simplicity over complexity
+
+---
+
+CONTEXT RULES:
+- Use only relevant local context (current file preferred)
+- Do not assume unseen codebase structure
+- If required context is missing, ask a short clarification question
+
+---
+
+ACTION RULES:
+- Prefer direct implementation over explanation
+- Do not propose multiple solutions unless explicitly requested
+- Do not describe what could be done; implement it
+- Keep responses minimal and focused
+
+---
+
+OUTPUT RULES (LOW TOKEN MODE):
+- Return only minimal diffs
+- Never output full files
+- Show only modified functions, blocks, or lines
+- Use "// ... existing code ..." for unchanged parts
+- No explanations unless explicitly requested
+- If unclear, ask a short question instead of guessing
+
