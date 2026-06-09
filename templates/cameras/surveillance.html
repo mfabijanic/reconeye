@@ -490,7 +490,18 @@
         </span>
       </div>
       <div class="surveillance-tile-body">
-        {% include "cameras/_stream_player.html" with camera=camera surveillance_mode=True %}
+        <div hx-get="{% url 'cameras_htmx:player' camera.pk %}?surveillance=1"
+             hx-trigger="load"
+             hx-swap="innerHTML"
+             class="surveillance-player-slot">
+          <div class="d-flex align-items-center justify-content-center text-muted small py-4">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {% trans "Loading stream…" %}
+          </div>
+          <noscript>
+            {% include "cameras/_stream_player.html" with camera=camera surveillance_mode=True %}
+          </noscript>
+        </div>
       </div>
     </div>
   {% empty %}
@@ -535,26 +546,30 @@
     const cameraCount = Number(grid.dataset.cameraCount || 0);
     let savedCols = null;
     let isLocked = false;
+    let hasSavedLockPreference = false;
     
     try {
       savedCols = localStorage.getItem(GRID_COLS_KEY);
-      isLocked = localStorage.getItem(GRID_LOCK_KEY) === "1";
+      const savedLock = localStorage.getItem(GRID_LOCK_KEY);
+      hasSavedLockPreference = savedLock !== null;
+      isLocked = savedLock === "1";
     } catch (e) {
-      // ignore
+      // Storage unavailable: keep a deterministic default that allows
+      // explicit column control via the selector.
+      isLocked = true;
     }
 
-    // Set default columns if not locked
-    if (!isLocked) {
-      if (!["1", "2", "3", "4"].includes(savedCols || "")) {
-        if (cameraCount <= 1) savedCols = "1";
-        else if (cameraCount <= 4) savedCols = "2";
-        else if (cameraCount <= 9) savedCols = "3";
-        else savedCols = "4";
-      }
-    } else {
-      if (!["1", "2", "3", "4"].includes(savedCols || "")) {
-        savedCols = "2";
-      }
+    // If the user has never chosen lock/auto mode, default to locked layout
+    // so "Columns" behaves predictably (2 cols for small camera counts).
+    if (!hasSavedLockPreference) {
+      isLocked = true;
+    }
+
+    if (!["1", "2", "3", "4"].includes(savedCols || "")) {
+      if (cameraCount <= 1) savedCols = "1";
+      else if (cameraCount <= 4) savedCols = "2";
+      else if (cameraCount <= 9) savedCols = "3";
+      else savedCols = "4";
     }
 
     const updateGridLayout = () => {
@@ -569,8 +584,8 @@
     const applyGridMode = (locked) => {
       isLocked = locked;
       grid.classList.toggle("surveillance-grid-locked", locked);
-      select.disabled = !locked;
-      select.classList.toggle("opacity-50", !locked);
+      select.disabled = false;
+      select.classList.toggle("opacity-50", false);
       
       if (lockBtn) {
         lockBtn.classList.toggle("active", locked);
@@ -604,7 +619,12 @@
     applyGridMode(isLocked);
 
     // Event listeners
-    select.addEventListener("change", (event) => applyCols(event.target.value));
+    select.addEventListener("change", (event) => {
+      if (!isLocked) {
+        applyGridMode(true);
+      }
+      applyCols(event.target.value);
+    });
     lockBtn.addEventListener("click", () => applyGridMode(!isLocked));
 
     // Resize observer: if not locked, responsive grid adjusts automatically

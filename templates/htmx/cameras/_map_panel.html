@@ -9,7 +9,7 @@
   </div>
 </div>
 
-{% include "cameras/_stream_player.html" with camera=camera %}
+{% include "htmx/cameras/_player.html" with camera=camera surveillance_mode=False %}
 {% if stream_id %}
   <p class="text-muted small mt-2">{% trans "Stream ID" %}: <code>{{ stream_id }}</code></p>
 {% endif %}

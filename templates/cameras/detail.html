@@ -5,8 +5,29 @@
 {% block content %}
 <div class="row" data-camera-id="{{ camera.pk }}">
   <div class="col-md-12">
-    <h5><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
-    {% include "cameras/_stream_player.html" with camera=camera %}
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+      <h5 class="mb-0"><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
+      <button type="button"
+        class="btn btn-sm btn-outline-info"
+        hx-get="{% url 'cameras_htmx:player' camera.pk %}"
+        hx-target="#camera-player"
+        hx-swap="innerHTML"
+        title="{% trans 'Refresh player' %}">
+        <i class="bi bi-arrow-clockwise me-1"></i>{% trans "Refresh player" %}
+      </button>
+    </div>
+    <div id="camera-player"
+      hx-get="{% url 'cameras_htmx:player' camera.pk %}"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        {% trans "Loading player…" %}
+      </div>
+      <noscript>
+        {% include "htmx/cameras/_player.html" with camera=camera surveillance_mode=False %}
+      </noscript>
+    </div>
     {% if stream_id %}<p class="text-muted small mt-2">{% trans "Stream ID" %}: <code>{{ stream_id }}</code></p>{% endif %}
     <table class="table table-sm table-bordered mt-3">
       <tr><th>{% trans "Source" %}</th><td>{{ camera.get_source_type_display }}</td></tr>

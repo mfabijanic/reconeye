@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="{{ wrapper_class|default:'stream-player go2rtc-player-wrap' }}">
+  <iframe
+    class="{{ iframe_class|default:'go2rtc-iframe' }}"
+    src="{{ src }}"
+    title="{{ title|default:_('Camera') }}"
+    loading="{{ loading|default:'lazy' }}"
+    scrolling="no"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+    referrerpolicy="no-referrer"
+    {% if tabindex is not None %}tabindex="{{ tabindex }}"{% endif %}
+  ></iframe>
+</div>

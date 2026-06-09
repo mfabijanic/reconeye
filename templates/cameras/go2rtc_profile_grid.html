@@ -172,16 +172,7 @@
             </form>
           </span>
         </div>
-        <iframe
-          class="go2rtc-iframe go2rtc-iframe--surveillance"
-          src="{{ tile.webrtc_embed|default:tile.viewer }}"
-          title="{{ tile.title }}"
-          loading="eager"
-          scrolling="no"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowfullscreen
-          referrerpolicy="no-referrer"
-        ></iframe>
+        {% include "cameras/_unified_player.html" with go2rtc_src=tile.webrtc_embed|default:tile.viewer title=tile.title loading="eager" wrapper_class="" iframe_class="go2rtc-iframe go2rtc-iframe--surveillance" %}
       </div>
     {% empty %}
       <div style="grid-column: 1 / -1;">

@@ -1264,3 +1264,20 @@ class HtmxCameraListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = Camera.objects.filter(is_active=True).order_by("-created_at")
         return _apply_camera_list_filters(qs, self.request)
+
+
+class HtmxUnifiedPlayerView(LoginRequiredMixin, DetailView):
+    """Render only the unified camera player partial for HTMX swaps."""
+
+    model = Camera
+    template_name = "htmx/cameras/_player.html"
+    context_object_name = "camera"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        camera = ctx["camera"]
+        if camera.source_type == SourceType.GO2RTC:
+            camera = ensure_go2rtc_camera_stream_urls(camera)
+            ctx["camera"] = camera
+        ctx["surveillance_mode"] = _to_bool_flag(self.request.GET.get("surveillance"))
+        return ctx

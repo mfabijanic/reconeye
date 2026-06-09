@@ -1,0 +1,64 @@
+{% load i18n %}
+{% if go2rtc_src %}
+  {% include "cameras/_go2rtc_iframe_player.html" with src=go2rtc_src title=title loading=loading wrapper_class=wrapper_class iframe_class=iframe_class tabindex=tabindex %}
+{% elif player.source_type == "GO2RTC" %}
+  {% with stream_urls=player.source_payload.stream_urls %}
+    {% if surveillance_mode %}
+      {# Surveillance mode: prefer WebRTC iframe (user-confirmed most reliable) #}
+      {% with viewer_url=stream_urls.webrtc_embed|default:stream_urls.viewer|default:stream_urls.webrtc|default:player.stream_url %}
+        {% include "cameras/_go2rtc_iframe_player.html" with src=viewer_url title=player.title loading="eager" iframe_class="js-iframe-player go2rtc-iframe go2rtc-iframe--surveillance" tabindex="0" %}
+      {% endwith %}
+    {% else %}
+      {# Other pages: keep built-in go2rtc WebRTC player page #}
+      {% with webrtc_url=stream_urls.webrtc_embed|default:stream_urls.webrtc|default:player.stream_url %}
+        {% include "cameras/_go2rtc_iframe_player.html" with src=webrtc_url title=player.title loading="lazy" iframe_class="js-iframe-player go2rtc-iframe" tabindex="0" %}
+      {% endwith %}
+    {% endif %}
+  {% endwith %}
+{% elif player.source_type == "WINDY" %}
+  {# Windy: resolve fresh stream URL on load (m3u8 rotates — never cache in DB). #}
+  {# innerHTML swap keeps this div in DOM so htmx:afterSwap fires with a live container #}
+  {# and initHlsPlayers(event.target) can find the new <video> element inside it.        #}
+  <div
+    hx-get="{% url 'cameras:resolve_stream' player.pk %}"
+    hx-trigger="load"
+    hx-swap="innerHTML"
+    class="stream-player mb-3 d-flex align-items-center justify-content-center bg-black rounded border border-secondary"
+    style="min-height: 240px;"
+  >
+    <span class="text-secondary small">
+      <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+      {% trans "Loading stream…" %}
+    </span>
+  </div>
+{% elif player.stream_url and '.m3u8' in player.stream_url|lower %}
+  <div class="stream-player mb-3">
+    <video
+      class="js-hls-player camera-frame w-100 rounded border border-secondary bg-black"
+      playsinline
+      muted
+      autoplay
+      preload="metadata"
+      tabindex="0"
+      data-hls-src="{{ player.stream_url }}"
+      data-camera-id="{{ player.pk }}"
+      data-disable-pause="true"
+      {% if player.preview_image %}poster="{{ player.preview_image }}"{% endif %}
+    ></video>
+  </div>
+{% else %}
+  {% with preview=player.preview_image|default:player.stream_url %}
+    {% if preview %}
+      <div class="stream-player mb-3">
+        <img
+          class="preview camera-frame w-100 rounded border border-secondary"
+          src="{{ preview }}"
+          alt="{% trans 'Camera preview' %}"
+          loading="lazy"
+          tabindex="0"
+          onerror="this.onerror=null; this.style.display='none';"
+        />
+      </div>
+    {% endif %}
+  {% endwith %}
+{% endif %}

@@ -237,6 +237,12 @@
       <div class="text-muted small">{% trans "Live playback by instance" %}</div>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button id="viewer-prefetch-toggle"
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              title="{% trans 'Toggle HTML prefetch for neighbouring pages' %}">
+        <i class="bi bi-lightning-charge me-1"></i><span id="viewer-prefetch-label">{% trans "Prefetch" %}</span>
+      </button>
       <a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% elif selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
         <i class="bi bi-arrow-left me-1"></i>{% trans "Open Manager" %}
       </a>
@@ -529,16 +535,7 @@
                   <span class="go2rtc-viewer-chip">{% trans "Producers" %}: {{ tile.producers_count }}</span>
                   <span class="go2rtc-viewer-chip">{% trans "Consumers" %}: {{ tile.consumers_count }}</span>
                 </div>
-                <iframe
-                  class="go2rtc-iframe go2rtc-iframe--surveillance"
-                  src="{{ tile.webrtc_embed_url|default:tile.viewer_url }}"
-                  title="{{ tile.title }}"
-                  loading="eager"
-                  scrolling="no"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowfullscreen
-                  referrerpolicy="no-referrer"
-                ></iframe>
+                {% include "cameras/_unified_player.html" with go2rtc_src=tile.webrtc_embed_url|default:tile.viewer_url title=tile.title loading="eager" wrapper_class="" iframe_class="go2rtc-iframe go2rtc-iframe--surveillance" %}
               </article>
             {% endfor %}
           </div>
@@ -562,8 +559,14 @@
     const copyActiveBtn = document.getElementById("copy-active-stream-btn");
     const pageJumpForm = document.getElementById("viewer-page-jump-form");
     const pageJumpInput = document.getElementById("viewer-page-jump-input");
+    const prevPageLink = document.querySelector("#viewer-prev-page-link[href]");
+    const nextPageLink = document.querySelector("#viewer-next-page-link[href]");
     const activeInstanceLink = document.querySelector(".go2rtc-instance-link.active");
     const sidebarScrollStorageKey = "reconeye:go2rtc_viewer:sidebar_scroll_top";
+    const queryParams = new URLSearchParams(window.location.search);
+    const prefetchMode = (queryParams.get("viewer_prefetch") || "").trim().toLowerCase();
+    const prefetchedHtmlUrls = new Set();
+    const prefetchEnabled = !(prefetchMode === "0" || prefetchMode === "off" || prefetchMode === "false");
 
     let focusedIdx = -1;
 
@@ -631,6 +634,67 @@
       }
     };
 
+    const toAbsoluteUrl = (url) => {
+      try {
+        return new URL(url, window.location.href).toString();
+      } catch (_) {
+        return "";
+      }
+    };
+
+    const withPrefetchQueryMode = (url) => {
+      const absoluteUrl = toAbsoluteUrl(url);
+      if (!absoluteUrl) return "";
+      if (!prefetchMode) return absoluteUrl;
+      try {
+        const nextUrl = new URL(absoluteUrl);
+        nextUrl.searchParams.set("viewer_prefetch", prefetchMode);
+        return nextUrl.toString();
+      } catch (_) {
+        return absoluteUrl;
+      }
+    };
+
+    const warmHtmlUrl = (url) => {
+      if (!prefetchEnabled || !url) return;
+      const absoluteUrl = withPrefetchQueryMode(url);
+      if (!absoluteUrl || prefetchedHtmlUrls.has(absoluteUrl)) return;
+      prefetchedHtmlUrls.add(absoluteUrl);
+
+      const prefetchLink = document.createElement("link");
+      prefetchLink.rel = "prefetch";
+      prefetchLink.href = absoluteUrl;
+      prefetchLink.as = "document";
+      document.head.appendChild(prefetchLink);
+
+      // Warm browser/network cache with HTML only. This does not start stream playback.
+      fetch(absoluteUrl, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+          "X-Requested-With": "ReconEyeViewerPrefetch",
+        },
+      }).catch(() => {
+        // Best effort prefetch; navigation still works through normal full load.
+      });
+    };
+
+    const prefetchNeighborPages = () => {
+      warmHtmlUrl(prevPageLink ? prevPageLink.href : "");
+      warmHtmlUrl(nextPageLink ? nextPageLink.href : "");
+    };
+
+    const scheduleNeighborPrefetch = () => {
+      if (!prefetchEnabled) return;
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(() => {
+          prefetchNeighborPages();
+        }, { timeout: 900 });
+      } else {
+        window.setTimeout(prefetchNeighborPages, 180);
+      }
+    };
+
     const navigateViewerPage = (targetPage) => {
       if (!targetPage || Number.isNaN(targetPage) || targetPage < 1) return;
       if (sidebarList) {
@@ -642,7 +706,9 @@
       }
       const url = new URL(window.location.href);
       url.searchParams.set("viewer_page", String(targetPage));
-      window.location.assign(url.toString());
+      const targetUrl = withPrefetchQueryMode(url.toString());
+      warmHtmlUrl(targetUrl);
+      window.location.assign(targetUrl);
     };
 
     const stepViewerPage = (delta) => {
@@ -675,6 +741,57 @@
         const next = parseInt(pageJumpInput.value || "1", 10);
         if (Number.isNaN(next)) return;
         navigateViewerPage(next);
+      });
+    }
+
+    if (prevPageLink && prefetchMode) {
+      prevPageLink.href = withPrefetchQueryMode(prevPageLink.href);
+    }
+
+    if (nextPageLink && prefetchMode) {
+      nextPageLink.href = withPrefetchQueryMode(nextPageLink.href);
+    }
+
+    if (prevPageLink) {
+      prevPageLink.addEventListener("mouseenter", () => warmHtmlUrl(prevPageLink.href), { passive: true });
+      prevPageLink.addEventListener("focus", () => warmHtmlUrl(prevPageLink.href));
+      prevPageLink.addEventListener("touchstart", () => warmHtmlUrl(prevPageLink.href), { passive: true });
+    }
+
+    if (nextPageLink) {
+      nextPageLink.addEventListener("mouseenter", () => warmHtmlUrl(nextPageLink.href), { passive: true });
+      nextPageLink.addEventListener("focus", () => warmHtmlUrl(nextPageLink.href));
+      nextPageLink.addEventListener("touchstart", () => warmHtmlUrl(nextPageLink.href), { passive: true });
+    }
+
+    scheduleNeighborPrefetch();
+
+    const prefetchToggleBtn = document.getElementById("viewer-prefetch-toggle");
+    const prefetchLabel = document.getElementById("viewer-prefetch-label");
+
+    const updatePrefetchToggleUI = () => {
+      if (!prefetchToggleBtn) return;
+      if (prefetchEnabled) {
+        prefetchToggleBtn.classList.remove("btn-outline-secondary");
+        prefetchToggleBtn.classList.add("btn-success");
+        if (prefetchLabel) prefetchLabel.textContent = "Prefetch ON";
+      } else {
+        prefetchToggleBtn.classList.remove("btn-success");
+        prefetchToggleBtn.classList.add("btn-outline-secondary");
+        if (prefetchLabel) prefetchLabel.textContent = "Prefetch OFF";
+      }
+    };
+
+    if (prefetchToggleBtn) {
+      updatePrefetchToggleUI();
+      prefetchToggleBtn.addEventListener("click", () => {
+        const url = new URL(window.location.href);
+        if (prefetchEnabled) {
+          url.searchParams.set("viewer_prefetch", "off");
+        } else {
+          url.searchParams.delete("viewer_prefetch");
+        }
+        window.location.replace(url.toString());
       });
     }
 

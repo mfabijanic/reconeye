@@ -201,41 +201,7 @@
       background: #000;
       filter: saturate(1.05) contrast(1.03);
     }
-    /* Live stream UX: custom minimal controls bar */
-    .live-controls {
-      background: rgba(13, 17, 23, 0.82);
-      backdrop-filter: blur(4px);
-      border-top: 1px solid var(--app-border);
-    }
-    html[data-bs-theme="light"] .live-controls {
-      background: rgba(248, 250, 252, 0.88);
-      border-top-color: var(--app-border);
-    }
-    .live-badge {
-      font-size: .65rem;
-      letter-spacing: .04em;
-    }
-    .live-ctrl-btn {
-      background: transparent;
-      border: 1px solid var(--app-border);
-      color: var(--app-text);
-      padding: .15rem .4rem;
-      font-size: .8rem;
-      line-height: 1.4;
-    }
-    .live-ctrl-btn:hover {
-      background: var(--app-surface);
-      border-color: var(--app-link);
-      color: var(--app-link);
-    }
-    html[data-bs-theme="light"] .live-ctrl-btn {
-      border-color: var(--app-border);
-    }
-    html[data-bs-theme="light"] .live-ctrl-btn:hover {
-      background: #e8eef7;
-      border-color: var(--app-link);
-      color: var(--app-link);
-    }
+
     @media (min-width: 992px) {
       .navbar-nav-utils {
         border-left: 1px solid var(--app-border);
@@ -1200,41 +1166,6 @@
       video[HLS_WATCHDOG_KEY] = state;
     }
 
-    function bindLiveControls(video) {
-      // Wire up custom mute-toggle and fullscreen buttons in the .live-controls bar
-      const container = video.closest(".stream-player");
-      if (!container) return;
-      const muteBtn = container.querySelector(".js-mute-toggle");
-      const fsBtn = container.querySelector(".js-fullscreen-btn");
-
-      function updateMuteIcon() {
-        if (!muteBtn) return;
-        const icon = muteBtn.querySelector("i");
-        if (!icon) return;
-        icon.className = video.muted ? "bi bi-volume-mute-fill" : "bi bi-volume-up-fill";
-      }
-
-      if (muteBtn) {
-        muteBtn.addEventListener("click", () => {
-          video.muted = !video.muted;
-          updateMuteIcon();
-        });
-        video.addEventListener("volumechange", updateMuteIcon);
-        updateMuteIcon();
-      }
-
-      if (fsBtn) {
-        fsBtn.addEventListener("click", () => toggleFullscreen(video));
-        video.addEventListener("fullscreenchange", () => {
-          const icon = fsBtn.querySelector("i");
-          if (!icon) return;
-          icon.className = document.fullscreenElement === video
-            ? "bi bi-fullscreen-exit"
-            : "bi bi-fullscreen";
-        });
-      }
-    }
-
     function initHlsPlayers(container = document) {
       const scope = container instanceof Element || container instanceof Document ? container : document;
       const players = scope.querySelectorAll("video.js-hls-player[data-hls-src]");
@@ -1252,7 +1183,6 @@
           video.dataset.hlsInitialized = "true";
           bindPlayerKeyboard(video);
           bindPauseGuard(video);
-          if (video.dataset.disablePause === "true") bindLiveControls(video);
           video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
           attemptAutoplay(video);
           focusPlayer(video);
@@ -1311,7 +1241,6 @@
           video.dataset.hlsInitialized = "true";
           bindPlayerKeyboard(video);
           bindPauseGuard(video);
-          if (video.dataset.disablePause === "true") bindLiveControls(video);
           setupHlsWatchdog(video, restartPlayback);
           return;
         }
@@ -1364,7 +1293,6 @@
 
         bindPlayerKeyboard(video);
         bindPauseGuard(video);
-        if (video.dataset.disablePause === "true") bindLiveControls(video);
         video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
         attemptAutoplay(video);
         focusPlayer(video);
