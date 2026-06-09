@@ -204,6 +204,7 @@ GO2RTC_BASE_URL = env("GO2RTC_BASE_URL", default="http://127.0.0.1:1984")
 WINDY_API_KEY = env("WINDY_API_KEY", default="")
 WINDY_API_BASE_URL = env("WINDY_API_BASE_URL", default="https://api.windy.com")
 WINDY_WEB_CAMS_PER_PAGE = env.int("WINDY_WEB_CAMS_PER_PAGE", default=50)
+GEOIP_HTTP_TIMEOUT_SECONDS = env.float("GEOIP_HTTP_TIMEOUT_SECONDS", default=4.0)
 
 # Logging
 LOGGING = {

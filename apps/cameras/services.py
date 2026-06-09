@@ -17,9 +17,11 @@ if TYPE_CHECKING:
 import httpx
 from django.conf import settings
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.common.cache import TTL_CAMERAS, versioned_key, DOMAIN_CAMERAS
+from apps.common.cache import DOMAIN_FILTERS, invalidate_go2rtc
 from apps.cameras.models import (
     Camera,
     CameraCheckLog,
@@ -30,6 +32,7 @@ from apps.cameras.models import (
     Go2RTCStream,
     SourceType,
 )
+from apps.scraping.geoip import geolocate_public_ips, public_ip_hash
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +417,31 @@ def get_country_choices() -> list[str]:
     )
     cache.set(key, countries, TTL_CAMERAS)
     return countries
+
+
+def get_go2rtc_country_choices() -> list[str]:
+    from django.core.cache import cache
+
+    key = versioned_key(DOMAIN_FILTERS, "go2rtc:filters:countries")
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    rows = Go2RTCInstance.objects.filter(is_active=True).values_list(
+        "location_override_enabled",
+        "override_country",
+        "geo_country",
+    )
+    countries: set[str] = set()
+    for override_enabled, override_country, geo_country in rows:
+        if override_enabled and (override_country or "").strip():
+            countries.add((override_country or "").strip())
+        elif (geo_country or "").strip():
+            countries.add((geo_country or "").strip())
+
+    values = sorted(countries)
+    cache.set(key, values, TTL_CAMERAS)
+    return values
 
 
 def get_camera_map_markers(
@@ -865,6 +893,47 @@ def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
         instance.ips_resolved_at = now
         instance.save(update_fields=["resolved_ips", "ips_resolved_at", "updated_at"])
 
+    # GeoIP lookup is cached and only refreshed when the public IP set changes.
+    # This keeps list/filter operations fast while preserving fresh location data
+    # when DNS records rotate.
+    public_ips = [ip for ip in resolved_ips if ip]
+    next_ip_hash = public_ip_hash(public_ips)
+    should_refresh_geo = bool(next_ip_hash) and (
+        next_ip_hash != (instance.geo_ip_hash or "")
+        or instance.geo_resolved_at is None
+    )
+
+    if should_refresh_geo:
+        geo = geolocate_public_ips(public_ips)
+        geo_fields = {
+            "geo_ip_hash": next_ip_hash,
+            "geo_resolved_at": now,
+            "geo_provider": str(geo.get("provider") or ""),
+            "geo_payload": {
+                "host": instance.host,
+                "resolved_ips": public_ips,
+                "found": bool(geo.get("found")),
+                "result_ip": str(geo.get("ip") or ""),
+                "attempted": geo.get("attempted") or [],
+            },
+        }
+        if geo.get("found"):
+            geo_fields.update(
+                {
+                    "geo_country": str(geo.get("country") or ""),
+                    "geo_country_code": str(geo.get("country_code") or "").upper()[:2],
+                    "geo_region": str(geo.get("region") or ""),
+                    "geo_city": str(geo.get("city") or ""),
+                    "geo_latitude": geo.get("latitude"),
+                    "geo_longitude": geo.get("longitude"),
+                }
+            )
+
+        Go2RTCInstance.objects.filter(pk=instance.pk).update(**geo_fields, updated_at=now)
+        for key, value in geo_fields.items():
+            setattr(instance, key, value)
+        invalidate_go2rtc()
+
     if error:
         instance.last_sync_status = Go2RTCInstance.LastSyncStatus.FAILED
         instance.last_sync_error = error
@@ -955,7 +1024,7 @@ def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:
     encoded = quote(stream_name.strip(), safe="")
     return {
         "viewer": f"{base_url}/stream.html?src={encoded}&mode=webrtc&background=false&width=100%25&height=100%25",
-        "webrtc_embed": f"{base_url}/webrtc.html?src={encoded}",
+        "webrtc_embed": f"{base_url}/stream.html?src={encoded}",
         "webrtc": f"{base_url}/api/stream.webrtc?src={encoded}",
         "mse": f"{base_url}/api/stream.mse?src={encoded}",
         "hls": f"{base_url}/api/stream.m3u8?src={encoded}",

@@ -210,11 +210,28 @@ def reresolve_go2rtc_ips(modeladmin, request, queryset) -> None:
     )
 
 
+@admin.action(description=_("Refresh GeoIP location"))
+def refresh_go2rtc_geo(modeladmin, request, queryset) -> None:
+    from apps.cameras.services import sync_go2rtc_instance
+
+    processed = 0
+    for instance in queryset:
+        sync_go2rtc_instance(instance)
+        processed += 1
+
+    messages.success(
+        request,
+        _("GeoIP refresh completed for %(count)s instance(s).")
+        % {"count": processed},
+    )
+
+
 @admin.register(Go2RTCInstance)
 class Go2RTCInstanceAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "group_label",
+        "effective_location",
         "scheme",
         "host",
         "port",
@@ -224,15 +241,101 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
         "last_sync_status",
         "last_synced_at",
     )
-    list_filter = ("is_active", "last_sync_status", "scheme", "group_label")
-    search_fields = ("name", "host", "group_label")
-    readonly_fields = ("created_at", "updated_at", "last_synced_at", "ips_resolved_at")
-    actions = [reresolve_go2rtc_ips]
+    list_filter = (
+        "is_active",
+        "last_sync_status",
+        "scheme",
+        "group_label",
+        "location_override_enabled",
+        "geo_country_code",
+        "override_country_code",
+    )
+    search_fields = (
+        "name",
+        "host",
+        "group_label",
+        "geo_country",
+        "geo_city",
+        "override_country",
+        "override_city",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "last_synced_at",
+        "ips_resolved_at",
+        "geo_resolved_at",
+        "geo_ip_hash",
+        "geo_provider",
+        "geo_payload",
+    )
+    actions = [reresolve_go2rtc_ips, refresh_go2rtc_geo]
+
+    fieldsets = (
+        (None, {
+            "fields": (
+                "name",
+                "scheme",
+                "host",
+                "port",
+                "path",
+                "group_label",
+                "is_active",
+            )
+        }),
+        (_("Auto GeoIP"), {
+            "fields": (
+                "geo_country",
+                "geo_country_code",
+                "geo_region",
+                "geo_city",
+                "geo_latitude",
+                "geo_longitude",
+                "geo_provider",
+                "geo_resolved_at",
+                "geo_ip_hash",
+                "geo_payload",
+            )
+        }),
+        (_("Manual override"), {
+            "fields": (
+                "location_override_enabled",
+                "override_country",
+                "override_country_code",
+                "override_region",
+                "override_city",
+                "override_latitude",
+                "override_longitude",
+            )
+        }),
+        (_("Sync metadata"), {
+            "fields": (
+                "resolved_ips",
+                "ips_resolved_at",
+                "last_sync_status",
+                "last_sync_error",
+                "last_synced_at",
+                "created_at",
+                "updated_at",
+            )
+        }),
+    )
 
     @admin.display(description=_("Resolved IPs"))
     def resolved_ips_display(self, obj: Go2RTCInstance) -> str:
         ips = obj.resolved_ips or []
         return ", ".join(str(ip) for ip in ips) if ips else "—"
+
+    @admin.display(description=_("Location"))
+    def effective_location(self, obj: Go2RTCInstance) -> str:
+        city = obj.effective_city
+        country = obj.effective_country
+        code = obj.effective_country_code
+        if city and country:
+            return f"{city}, {country} ({code})" if code else f"{city}, {country}"
+        if country:
+            return f"{country} ({code})" if code else country
+        return "—"
 
 
 @admin.register(Go2RTCStream)

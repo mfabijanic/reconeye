@@ -5,6 +5,8 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from django.templatetags.static import static
+
 from apps.common.views import HealthView, ReadinessView
 
 urlpatterns = [
@@ -22,6 +24,8 @@ urlpatterns = [
     # Health
     path("health/", HealthView.as_view(), name="health"),
     path("readiness/", ReadinessView.as_view(), name="readiness"),
+    # Favicon
+    path("favicon.ico", RedirectView.as_view(url=static("favicon.ico"), permanent=True),),
 ]
 
 if settings.DEBUG:

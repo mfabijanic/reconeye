@@ -24,6 +24,7 @@ DOMAIN_DASHBOARD = "dashboard"
 DOMAIN_SCRAPE_JOBS = "scrape_jobs"
 DOMAIN_FILTERS = "filters"
 DOMAIN_STATS = "stats"
+DOMAIN_GO2RTC = "go2rtc"
 
 
 def make_key(domain: str, *parts: str | int) -> str:
@@ -71,8 +72,22 @@ def invalidate_scrape_jobs() -> None:
 
 
 def invalidate_all() -> None:
-    for domain in [DOMAIN_CAMERAS, DOMAIN_DASHBOARD, DOMAIN_SCRAPE_JOBS, DOMAIN_FILTERS, DOMAIN_STATS]:
+    for domain in [
+        DOMAIN_CAMERAS,
+        DOMAIN_DASHBOARD,
+        DOMAIN_SCRAPE_JOBS,
+        DOMAIN_FILTERS,
+        DOMAIN_STATS,
+        DOMAIN_GO2RTC,
+    ]:
         bump_generation(domain)
+
+
+def invalidate_go2rtc() -> None:
+    bump_generation(DOMAIN_GO2RTC)
+    bump_generation(DOMAIN_FILTERS)
+    bump_generation(DOMAIN_DASHBOARD)
+    bump_generation(DOMAIN_STATS)
 
 
 def versioned_key(domain: str, *parts: str | int) -> str:

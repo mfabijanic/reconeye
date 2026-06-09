@@ -114,6 +114,7 @@ class ScrapeJob(models.Model):
 
 class GeoLocationProvider(models.TextChoices):
     NOMINATIM = "NOMINATIM", "OpenStreetMap Nominatim"
+    IP_API = "IP_API", "ip-api.com"
 
 
 class GeoLocationCache(models.Model):
@@ -159,3 +160,44 @@ class GeoLocationCache(models.Model):
     def __str__(self) -> str:
         suffix = f" [{self.country_code}]" if self.country_code else ""
         return f"{self.provider}: {self.query}{suffix}"
+
+
+class GeoIPCache(models.Model):
+    provider = models.CharField(
+        max_length=32,
+        choices=GeoLocationProvider.choices,
+        default=GeoLocationProvider.IP_API,
+        db_index=True,
+    )
+    ip = models.GenericIPAddressField()
+    is_hit = models.BooleanField(default=False)
+    country = models.CharField(max_length=120, blank=True)
+    country_code = models.CharField(max_length=2, blank=True, db_index=True)
+    region = models.CharField(max_length=120, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    raw_payload = models.JSONField(default=dict)
+    hits = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Geo IP Cache"
+        verbose_name_plural = "Geo IP Cache"
+        ordering = ["-last_used_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider", "ip"],
+                name="uniq_geo_ip_cache_provider_ip",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["provider", "ip"]),
+            models.Index(fields=["provider", "country_code"]),
+            models.Index(fields=["last_used_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider}: {self.ip}"

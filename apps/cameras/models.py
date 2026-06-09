@@ -172,6 +172,26 @@ class Go2RTCInstance(models.Model):
         blank=True,
         help_text="When resolved_ips was last refreshed.",
     )
+    geo_country = models.CharField(max_length=100, blank=True, db_index=True)
+    geo_country_code = models.CharField(max_length=2, blank=True, db_index=True)
+    geo_region = models.CharField(max_length=120, blank=True)
+    geo_city = models.CharField(max_length=100, blank=True, db_index=True)
+    geo_latitude = models.FloatField(null=True, blank=True)
+    geo_longitude = models.FloatField(null=True, blank=True)
+    geo_provider = models.CharField(max_length=32, blank=True)
+    geo_resolved_at = models.DateTimeField(null=True, blank=True)
+    geo_ip_hash = models.CharField(max_length=64, blank=True)
+    geo_payload = models.JSONField(default=dict, blank=True)
+    location_override_enabled = models.BooleanField(
+        default=False,
+        help_text="When enabled, override location fields are used instead of auto GeoIP values.",
+    )
+    override_country = models.CharField(max_length=100, blank=True, db_index=True)
+    override_country_code = models.CharField(max_length=2, blank=True, db_index=True)
+    override_region = models.CharField(max_length=120, blank=True)
+    override_city = models.CharField(max_length=100, blank=True, db_index=True)
+    override_latitude = models.FloatField(null=True, blank=True)
+    override_longitude = models.FloatField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
 
     last_synced_at = models.DateTimeField(null=True, blank=True)
@@ -193,6 +213,8 @@ class Go2RTCInstance(models.Model):
         indexes = [
             models.Index(fields=["is_active", "name"]),
             models.Index(fields=["is_active", "group_label", "name"]),
+            models.Index(fields=["is_active", "geo_country_code", "name"]),
+            models.Index(fields=["is_active", "override_country_code", "name"]),
         ]
 
     def __str__(self) -> str:
@@ -237,6 +259,43 @@ class Go2RTCInstance(models.Model):
         if path:
             base = f"{base}/{path}"
         return base.rstrip("/")
+
+    @property
+    def effective_country(self) -> str:
+        if self.location_override_enabled and (self.override_country or "").strip():
+            return (self.override_country or "").strip()
+        return (self.geo_country or "").strip()
+
+    @property
+    def effective_country_code(self) -> str:
+        if self.location_override_enabled and (self.override_country_code or "").strip():
+            return (self.override_country_code or "").strip().upper()
+        return (self.geo_country_code or "").strip().upper()
+
+    @property
+    def effective_city(self) -> str:
+        if self.location_override_enabled and (self.override_city or "").strip():
+            return (self.override_city or "").strip()
+        return (self.geo_city or "").strip()
+
+    @property
+    def effective_latitude(self) -> float | None:
+        if self.location_override_enabled and self.override_latitude is not None:
+            return self.override_latitude
+        return self.geo_latitude
+
+    @property
+    def effective_longitude(self) -> float | None:
+        if self.location_override_enabled and self.override_longitude is not None:
+            return self.override_longitude
+        return self.geo_longitude
+
+    @property
+    def country_flag(self) -> str:
+        code = self.effective_country_code
+        if len(code) != 2 or not code.isalpha():
+            return ""
+        return "".join(chr(127397 + ord(char)) for char in code.upper())
 
 
 class Go2RTCConfigSnapshot(models.Model):

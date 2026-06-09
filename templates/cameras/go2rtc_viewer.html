@@ -237,7 +237,7 @@
       <div class="text-muted small">{% trans "Live playback by instance" %}</div>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
-      <a href="{% url 'cameras:go2rtc_manager' %}{% if selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
+      <a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% elif selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
         <i class="bi bi-arrow-left me-1"></i>{% trans "Open Manager" %}
       </a>
       <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-secondary">
@@ -254,7 +254,7 @@
           <div class="text-muted small">{{ instance_filtered_total }}/{{ instance_total }} {% trans "visible" %}</div>
         </div>
         <a id="go2rtc-sidebar-mode-link"
-            href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={% if sidebar_mode == 'auto' %}pinned{% else %}auto{% endif %}"
+          href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={% if sidebar_mode == 'auto' %}pinned{% else %}auto{% endif %}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
            class="btn btn-sm btn-outline-secondary">
           <i class="bi {% if sidebar_mode == 'auto' %}bi-pin-angle{% else %}bi-layout-sidebar-inset{% endif %} me-1"></i>
           {% if sidebar_mode == 'auto' %}{% trans "Pinned" %}{% else %}{% trans "Autohide" %}{% endif %}
@@ -264,6 +264,9 @@
       <div class="go2rtc-viewer-sidebar-search">
         <form method="get" action="{% url 'cameras:go2rtc_viewer' %}">
           {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+          {% for state_key, state_value in manager_state_items %}
+            <input type="hidden" name="{{ state_key }}" value="{{ state_value }}">
+          {% endfor %}
           <input type="hidden" name="instance_per_page" value="{{ instance_page_size }}">
           <input type="hidden" name="viewer_size" value="{{ viewer_size }}">
           <input type="hidden" name="sidebar" value="{{ sidebar_mode }}">
@@ -277,10 +280,39 @@
                    placeholder="{% trans 'Search instances…' %}"
                    autocomplete="off">
             {% if instance_query %}
-              <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}instance_page=1&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}" class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
+              <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page=1&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
                 <i class="bi bi-x-lg"></i>
               </a>
             {% endif %}
+          </div>
+
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <select name="country" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="{% trans 'Country filter' %}">
+                <option value="">{% trans "All countries" %}</option>
+                {% for country in country_choices %}
+                  <option value="{{ country }}" {% if selected_country == country %}selected{% endif %}>{{ country }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-8">
+              <input type="search"
+                     name="city"
+                     class="form-control form-control-sm"
+                     value="{{ selected_city }}"
+                     placeholder="{% trans 'City contains…' %}"
+                     aria-label="{% trans 'City filter' %}">
+            </div>
+            <div class="col-4 d-flex align-items-center justify-content-end">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="viewer-has-geo-filter" name="has_geo" value="1" {% if selected_has_geo %}checked{% endif %} onchange="this.form.submit()">
+                <label class="form-check-label small" for="viewer-has-geo-filter">{% trans "Geo" %}</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-grid mt-2">
+            <button type="submit" class="btn btn-sm btn-outline-info">{% trans "Apply filters" %}</button>
           </div>
         </form>
       </div>
@@ -300,12 +332,30 @@
               {% endif %}
             </div>
             {% for instance in group.instances %}
-              <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
+                <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
                  class="go2rtc-instance-link{% if selected_instance and selected_instance.pk == instance.pk %} active{% endif %}">
                 <div class="d-flex justify-content-between align-items-start gap-2">
                   <div class="text-truncate">
-                    <div class="fw-semibold text-truncate">{{ instance.name }}</div>
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                      <div class="fw-semibold text-truncate">{{ instance.name }}</div>
+                      {% if instance.country_flag %}
+                        <span title="{{ instance.effective_country|default:'' }}">{{ instance.country_flag }}</span>
+                      {% endif %}
+                      {% if instance.effective_country_code %}
+                        <span class="badge text-bg-light border">{{ instance.effective_country_code }}</span>
+                      {% endif %}
+                    </div>
                     <div class="small text-muted text-truncate"><code>{{ instance.base_url }}</code></div>
+                    {% if instance.effective_country or instance.effective_city %}
+                      <div class="small text-muted text-truncate mt-1">
+                        <i class="bi bi-geo-alt me-1"></i>
+                        {% if instance.effective_country %}{{ instance.effective_country }}{% endif %}
+                        {% if instance.effective_city %}
+                          {% if instance.effective_country %}&middot;{% endif %}
+                          {{ instance.effective_city }}
+                        {% endif %}
+                      </div>
+                    {% endif %}
                     <div class="small text-muted mt-1">
                       {% if instance.last_synced_at %}{{ instance.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
                     </div>
@@ -337,7 +387,7 @@
         <div class="go2rtc-viewer-sidebar-meta d-flex align-items-center justify-content-between gap-2 flex-wrap">
           {% if instance_page.has_previous %}
             <a class="btn btn-sm btn-outline-secondary"
-               href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}">
+              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
               <i class="bi bi-chevron-left"></i>
             </a>
           {% else %}
@@ -350,7 +400,7 @@
 
           {% if instance_page.has_next %}
             <a class="btn btn-sm btn-outline-secondary"
-               href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}">
+              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
               <i class="bi bi-chevron-right"></i>
             </a>
           {% else %}
@@ -360,6 +410,12 @@
           <form method="get" action="{% url 'cameras:go2rtc_viewer' %}" class="d-flex align-items-center gap-1 ms-auto">
             {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
             {% if instance_query %}<input type="hidden" name="q" value="{{ instance_query }}">{% endif %}
+            {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
+            {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+            {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
+            {% for state_key, state_value in manager_state_items %}
+              <input type="hidden" name="{{ state_key }}" value="{{ state_value }}">
+            {% endfor %}
             <input type="hidden" name="viewer_size" value="{{ viewer_size }}">
             <input type="hidden" name="sidebar" value="{{ sidebar_mode }}">
             <input type="hidden" name="instance_per_page" value="{{ instance_page_size }}">
@@ -394,21 +450,22 @@
             {% endif %}
           {% endif %}
           {% for size in viewer_size_choices %}
-            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
+            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
+            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
                class="btn btn-sm {% if viewer_size == size %}btn-info{% else %}btn-outline-secondary{% endif %}">{{ size }}</a>
           {% endfor %}
           <button type="button" id="copy-active-stream-btn" class="btn btn-sm btn-outline-secondary"{% if not active_tile %} disabled{% endif %}>
             <i class="bi bi-clipboard me-1"></i>{% trans "Copy active stream URL" %}
           </button>
           {% if viewer_page and viewer_page.has_previous %}
-            <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}" class="btn btn-sm btn-outline-secondary">
+            <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-chevron-left"></i>
             </a>
           {% else %}
             <span id="viewer-prev-page-link" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
           {% endif %}
           {% if viewer_page and viewer_page.has_next %}
-            <a id="viewer-next-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.next_page_number }}&sidebar={{ sidebar_mode }}" class="btn btn-sm btn-outline-secondary">
+            <a id="viewer-next-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.next_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-chevron-right"></i>
             </a>
           {% else %}
@@ -441,7 +498,7 @@
           <div class="go2rtc-viewer-empty">
             <div>
               <div class="fw-semibold mb-2">{% trans "No go2rtc instances yet." %}</div>
-              <a href="{% url 'cameras:go2rtc_manager' %}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
+              <a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% endif %}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
             </div>
           </div>
         {% elif not grouped_instances %}
@@ -452,7 +509,7 @@
           <div class="go2rtc-viewer-empty">
             <div>
               <div class="fw-semibold mb-2">{% trans "No synced streams for this instance yet." %}</div>
-              <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ selected_instance.pk }}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
+              <a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% elif selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">{% trans "Open Manager" %}</a>
             </div>
           </div>
         {% else %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -44,6 +45,7 @@ from apps.cameras.services import (
     fetch_go2rtc_streams,
     get_camera_map_markers,
     get_country_choices,
+    get_go2rtc_country_choices,
     get_go2rtc_profile_tiles,
     group_go2rtc_instances,
     import_go2rtc_instances,
@@ -237,7 +239,8 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
 
     PAGE_SIZE_CHOICES = (5, 10, 25, 50, 100)
     DEFAULT_PAGE_SIZE = 5
-    STREAMS_PER_PAGE = 100
+    STREAM_PAGE_SIZE_CHOICES = (5, 25, 50, 100)
+    DEFAULT_STREAM_PAGE_SIZE = 25
     # Above this serialized size (bytes) we skip the raw config dump in the UI
     # to avoid rendering multi-megabyte payloads (e.g. instances with tens of
     # thousands of streams).
@@ -267,6 +270,18 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         sort = self.request.GET.get("sort")
         return sort if sort in self.SORT_OPTIONS else self.DEFAULT_SORT
 
+    def _resolve_stream_page_size(self) -> int:
+        raw = self.request.GET.get("stream_per_page")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return self.DEFAULT_STREAM_PAGE_SIZE
+        return (
+            value
+            if value in self.STREAM_PAGE_SIZE_CHOICES
+            else self.DEFAULT_STREAM_PAGE_SIZE
+        )
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         sort_key = self._resolve_sort()
@@ -286,6 +301,41 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
                 Q(name__icontains=search_query)
                 | Q(host__icontains=search_query)
                 | Q(group_label__icontains=search_query)
+            )
+
+        country_filter = (self.request.GET.get("country") or "").strip()
+        city_filter = (self.request.GET.get("city") or "").strip()
+        has_geo_filter = (self.request.GET.get("has_geo") or "").strip().lower()
+
+        if country_filter:
+            instances = instances.filter(
+                Q(location_override_enabled=True, override_country__iexact=country_filter)
+                | Q(location_override_enabled=False, geo_country__iexact=country_filter)
+                | Q(
+                    location_override_enabled=True,
+                    override_country="",
+                    geo_country__iexact=country_filter,
+                )
+            )
+
+        if city_filter:
+            instances = instances.filter(
+                Q(location_override_enabled=True, override_city__icontains=city_filter)
+                | Q(location_override_enabled=False, geo_city__icontains=city_filter)
+                | Q(location_override_enabled=True, override_city="", geo_city__icontains=city_filter)
+            )
+
+        if has_geo_filter in {"1", "true", "yes", "on"}:
+            instances = instances.filter(
+                Q(location_override_enabled=True, override_latitude__isnull=False, override_longitude__isnull=False)
+                | Q(location_override_enabled=False, geo_latitude__isnull=False, geo_longitude__isnull=False)
+                | Q(
+                    location_override_enabled=True,
+                    override_latitude__isnull=True,
+                    override_longitude__isnull=True,
+                    geo_latitude__isnull=False,
+                    geo_longitude__isnull=False,
+                )
             )
 
         # Paginate the (possibly filtered) instance list so very large fleets
@@ -348,6 +398,7 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
             selected_profile = profiles.first()
         streams_page = None
         stream_query = (self.request.GET.get("stream_q") or "").strip()
+        stream_page_size = self._resolve_stream_page_size()
         stream_total = 0
         stream_filtered_total = 0
         if selected_instance is not None:
@@ -358,7 +409,7 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
 
             # Paginate streams so instances with thousands of streams stay
             # responsive (and the bulk-add table doesn't render everything).
-            stream_paginator = Paginator(streams_qs, self.STREAMS_PER_PAGE)
+            stream_paginator = Paginator(streams_qs, stream_page_size)
             stream_filtered_total = stream_paginator.count
             try:
                 streams_page = stream_paginator.page(self.request.GET.get("stream_page"))
@@ -421,6 +472,10 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         ctx["instance_total"] = all_instances.count()
         ctx["instance_filtered_total"] = paginator.count
         ctx["search_query"] = search_query
+        ctx["country_choices"] = get_go2rtc_country_choices()
+        ctx["selected_country"] = country_filter
+        ctx["selected_city"] = city_filter
+        ctx["selected_has_geo"] = has_geo_filter in {"1", "true", "yes", "on"}
         ctx["page_size"] = page_size
         ctx["page_size_choices"] = self.PAGE_SIZE_CHOICES
         ctx["sort"] = sort_key
@@ -430,6 +485,8 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         ctx["streams"] = streams_page.object_list if streams_page else []
         ctx["streams_page"] = streams_page
         ctx["stream_query"] = stream_query
+        ctx["stream_page_size"] = stream_page_size
+        ctx["stream_page_size_choices"] = self.STREAM_PAGE_SIZE_CHOICES
         ctx["stream_total"] = stream_total
         ctx["stream_filtered_total"] = stream_filtered_total
         ctx["latest_config"] = latest_config
@@ -452,6 +509,27 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         # stays active across navigation/redirects until explicitly switched.
         ctx["active_tab"] = "import" if self.request.GET.get("tab") == "import" else "instances"
         ctx["import_form"] = kwargs.get("import_form") or Go2RTCImportForm()
+
+        # Preserve manager list state when jumping to the viewer so users can
+        # return to the same page/filters/selection afterwards.
+        manager_return_params: dict[str, str] = {
+            "manager_page": str(instances_page.number),
+            "manager_sort": sort_key,
+            "manager_per_page": str(page_size),
+            "manager_stream_per_page": str(stream_page_size),
+        }
+        if search_query:
+            manager_return_params["manager_q"] = search_query
+        if country_filter:
+            manager_return_params["manager_country"] = country_filter
+        if city_filter:
+            manager_return_params["manager_city"] = city_filter
+        if has_geo_filter in {"1", "true", "yes", "on"}:
+            manager_return_params["manager_has_geo"] = "1"
+        if selected_profile is not None:
+            manager_return_params["manager_profile"] = str(selected_profile.pk)
+
+        ctx["manager_return_query"] = urlencode(manager_return_params)
         return ctx
 
 
@@ -489,6 +567,56 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
             else self.DEFAULT_INSTANCE_PAGE_SIZE
         )
 
+    def _apply_geo_filters(self, qs):
+        country_filter = (self.request.GET.get("country") or "").strip()
+        city_filter = (self.request.GET.get("city") or "").strip()
+        has_geo_selected = _to_bool_flag(self.request.GET.get("has_geo"))
+
+        if country_filter:
+            qs = qs.filter(
+                Q(location_override_enabled=True, override_country__iexact=country_filter)
+                | Q(location_override_enabled=False, geo_country__iexact=country_filter)
+                | Q(
+                    location_override_enabled=True,
+                    override_country="",
+                    geo_country__iexact=country_filter,
+                )
+            )
+
+        if city_filter:
+            qs = qs.filter(
+                Q(location_override_enabled=True, override_city__icontains=city_filter)
+                | Q(location_override_enabled=False, geo_city__icontains=city_filter)
+                | Q(
+                    location_override_enabled=True,
+                    override_city="",
+                    geo_city__icontains=city_filter,
+                )
+            )
+
+        if has_geo_selected:
+            qs = qs.filter(
+                Q(
+                    location_override_enabled=True,
+                    override_latitude__isnull=False,
+                    override_longitude__isnull=False,
+                )
+                | Q(
+                    location_override_enabled=False,
+                    geo_latitude__isnull=False,
+                    geo_longitude__isnull=False,
+                )
+                | Q(
+                    location_override_enabled=True,
+                    override_latitude__isnull=True,
+                    override_longitude__isnull=True,
+                    geo_latitude__isnull=False,
+                    geo_longitude__isnull=False,
+                )
+            )
+
+        return qs, country_filter, city_filter, has_geo_selected
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
@@ -511,6 +639,12 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
                 | Q(host__icontains=instance_query)
                 | Q(group_label__icontains=instance_query)
             )
+        (
+            filtered_instances_qs,
+            country_filter,
+            city_filter,
+            has_geo_selected,
+        ) = self._apply_geo_filters(filtered_instances_qs)
 
         selected_instance = None
         selected_id_raw = self.request.GET.get("instance")
@@ -558,6 +692,26 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
 
         if selected_instance is None and instances:
             selected_instance = instances[0]
+
+        # Carry manager-origin state through viewer navigation using prefixed
+        # params so viewer filters don't overwrite manager filters.
+        manager_state_keys = (
+            "manager_instance",
+            "manager_page",
+            "manager_sort",
+            "manager_per_page",
+            "manager_stream_per_page",
+            "manager_q",
+            "manager_country",
+            "manager_city",
+            "manager_has_geo",
+            "manager_profile",
+        )
+        manager_state_params: dict[str, str] = {}
+        for key in manager_state_keys:
+            value = (self.request.GET.get(key) or "").strip()
+            if value:
+                manager_state_params[key] = value
 
         viewer_page = None
         viewer_tiles: list[dict[str, object]] = []
@@ -613,6 +767,10 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         ctx["grouped_instances"] = grouped_instances
         ctx["selected_instance"] = selected_instance
         ctx["instance_query"] = instance_query
+        ctx["country_choices"] = get_go2rtc_country_choices()
+        ctx["selected_country"] = country_filter
+        ctx["selected_city"] = city_filter
+        ctx["selected_has_geo"] = has_geo_selected
         ctx["instance_total"] = instance_total
         ctx["instance_filtered_total"] = instance_paginator.count
         ctx["viewer_size"] = viewer_size
@@ -625,6 +783,30 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         ctx["viewer_page_start"] = viewer_page_start
         ctx["viewer_page_end"] = viewer_page_end
         ctx["active_tile"] = active_tile
+
+        manager_back_params: dict[str, str] = {}
+        manager_to_back_key = {
+            "manager_instance": "instance",
+            "manager_page": "page",
+            "manager_sort": "sort",
+            "manager_per_page": "per_page",
+            "manager_stream_per_page": "stream_per_page",
+            "manager_q": "q",
+            "manager_country": "country",
+            "manager_city": "city",
+            "manager_has_geo": "has_geo",
+            "manager_profile": "profile",
+        }
+        for manager_key, back_key in manager_to_back_key.items():
+            value = manager_state_params.get(manager_key)
+            if value:
+                manager_back_params[back_key] = value
+        if "instance" not in manager_back_params and selected_instance is not None:
+            manager_back_params["instance"] = str(selected_instance.pk)
+
+        ctx["manager_state_query"] = urlencode(manager_state_params)
+        ctx["manager_state_items"] = list(manager_state_params.items())
+        ctx["manager_back_query"] = urlencode(manager_back_params)
         return ctx
 
 
