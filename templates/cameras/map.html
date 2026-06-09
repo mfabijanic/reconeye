@@ -81,6 +81,74 @@
     gap: 0.5rem;
     justify-content: flex-end;
   }
+  .map-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: blur(2px);
+  }
+  .map-help-overlay.is-open {
+    display: flex;
+  }
+  .map-help-dialog {
+    width: min(760px, calc(100vw - 2rem));
+    max-height: min(86vh, 720px);
+    overflow: auto;
+    border: 1px solid #30363d;
+    border-radius: 0.6rem;
+    background: #161b22;
+    color: #e6edf3;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  }
+  html[data-bs-theme="light"] .map-help-dialog {
+    background: #ffffff;
+    border-color: #d0d7de;
+    color: #0f172a;
+  }
+  .map-help-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem .9rem;
+    border-bottom: 1px solid #30363d;
+    background: rgba(22, 27, 34, 0.95);
+  }
+  html[data-bs-theme="light"] .map-help-header {
+    border-bottom-color: #d0d7de;
+    background: rgba(255, 255, 255, 0.96);
+  }
+  .map-help-body {
+    padding: .9rem;
+  }
+  .map-help-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: .5rem;
+  }
+  .map-help-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+  }
+  .map-help-keys {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    align-items: center;
+    white-space: nowrap;
+  }
   .cluster-icon {
     width: 38px;
     height: 38px;
@@ -167,6 +235,9 @@
     <button type="button" id="locate-me" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-crosshair me-1"></i>{% trans "Locate me" %}
     </button>
+    <button type="button" id="map-help-btn" class="btn btn-sm btn-outline-secondary" aria-haspopup="dialog" aria-controls="map-help-overlay" aria-expanded="false">
+      <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
+    </button>
   </div>
   <div class="col-auto text-muted small">
     <span id="map-count">0</span> {% trans "cameras on map" %}
@@ -233,6 +304,44 @@
     <div class="map-sidebar p-3" id="camera-panel">
       <h6 class="text-info mb-3">{% trans "Camera details" %}</h6>
       <p class="text-muted small mb-0">{% trans "Click a marker to preview the camera and view metadata." %}</p>
+    </div>
+  </div>
+</div>
+
+<div id="map-help-overlay" class="map-help-overlay" hidden>
+  <div id="map-help-dialog" class="map-help-dialog" role="dialog" aria-modal="true" aria-labelledby="map-help-title" tabindex="-1">
+    <div class="map-help-header">
+      <div>
+        <div id="map-help-title" class="fw-semibold"><i class="bi bi-keyboard me-1 text-info"></i>{% trans "Keyboard Help" %}</div>
+        <div class="small text-muted">{% trans "Shortcuts for faster map navigation." %}</div>
+      </div>
+      <button type="button" id="map-help-close" class="btn btn-sm btn-outline-secondary" aria-label="{% trans 'Close help' %}">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="map-help-body">
+      <ul class="map-help-list small text-muted">
+        <li>
+          <span class="map-help-keys"><kbd>?</kbd></span>
+          <span>{% trans "Open or close this Help panel" %}</span>
+        </li>
+        <li>
+          <span class="map-help-keys"><kbd>m</kbd></span>
+          <span>{% trans "Fit map to visible markers" %}</span>
+        </li>
+        <li>
+          <span class="map-help-keys"><kbd>g</kbd></span>
+          <span>{% trans "Locate me" %}</span>
+        </li>
+        <li>
+          <span class="map-help-keys"><kbd>/</kbd></span>
+          <span>{% trans "Focus location search" %}</span>
+        </li>
+        <li>
+          <span class="map-help-keys"><kbd>Esc</kbd></span>
+          <span>{% trans "Close Help or blur location search" %}</span>
+        </li>
+      </ul>
     </div>
   </div>
 </div>
@@ -330,6 +439,10 @@
     const resetEl = document.getElementById("reset-map-filters");
     const fitBtnEl = document.getElementById("fit-map");
     const locateBtnEl = document.getElementById("locate-me");
+    const mapHelpBtnEl = document.getElementById("map-help-btn");
+    const mapHelpOverlayEl = document.getElementById("map-help-overlay");
+    const mapHelpDialogEl = document.getElementById("map-help-dialog");
+    const mapHelpCloseEl = document.getElementById("map-help-close");
     let lastBounds = null;
     let currentFetchController = null;
     let moveDebounceHandle = null;
@@ -342,6 +455,39 @@
     const DEFAULT_MARKER_LIMIT = {{ map_marker_limit|default:1500 }};
     const STATUS_STALE_MINUTES = {{ status_stale_minutes|default:60 }};
     const CLOSE_POPUP_ON_MOUSEOUT = {{ popup_close_on_mouseout|yesno:"true,false" }};
+    let mapHelpOpen = false;
+    let mapHelpLastFocused = null;
+
+    function fitMapToMarkers() {
+      if (lastBounds) {
+        map.fitBounds(lastBounds, { padding: [25, 25], maxZoom: 8 });
+      }
+    }
+
+    function locateMe() {
+      if (!navigator.geolocation) {
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          map.setView([lat, lng], 11);
+          L.circleMarker([lat, lng], {
+            radius: 7,
+            color: "#58a6ff",
+            weight: 2,
+            fillColor: "#58a6ff",
+            fillOpacity: 0.4,
+          })
+            .addTo(map)
+            .bindPopup(I18N.youAreHere)
+            .openPopup();
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 7000 }
+      );
+    }
 
     // Handle cluster hover to open/close popups
     clusterLayer.on('clustermouseover', (e) => {
@@ -680,34 +826,11 @@
     });
 
     fitBtnEl.addEventListener("click", () => {
-      if (lastBounds) {
-        map.fitBounds(lastBounds, { padding: [25, 25], maxZoom: 8 });
-      }
+      fitMapToMarkers();
     });
 
     locateBtnEl.addEventListener("click", () => {
-      if (!navigator.geolocation) {
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          map.setView([lat, lng], 11);
-          L.circleMarker([lat, lng], {
-            radius: 7,
-            color: "#58a6ff",
-            weight: 2,
-            fillColor: "#58a6ff",
-            fillOpacity: 0.4,
-          })
-            .addTo(map)
-            .bindPopup(I18N.youAreHere)
-            .openPopup();
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 7000 }
-      );
+      locateMe();
     });
 
     map.on("moveend", () => {
@@ -723,6 +846,116 @@
     const suggestionsEl = document.getElementById("location-suggestions");
     const suggestionsUrl = "{% url 'cameras:map_locations_suggest' %}";
     let currentLocationFetch = null;
+
+    function isTypingTarget(target) {
+      const tag = (target?.tagName || "").toLowerCase();
+      return ["input", "textarea", "select"].includes(tag) || target?.isContentEditable;
+    }
+
+    function openMapHelp() {
+      if (!mapHelpOverlayEl || mapHelpOpen) {
+        return;
+      }
+      mapHelpLastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      mapHelpOpen = true;
+      mapHelpOverlayEl.hidden = false;
+      mapHelpOverlayEl.classList.add("is-open");
+      if (mapHelpBtnEl) {
+        mapHelpBtnEl.setAttribute("aria-expanded", "true");
+      }
+      window.setTimeout(() => {
+        if (mapHelpCloseEl) {
+          mapHelpCloseEl.focus({ preventScroll: true });
+        } else if (mapHelpDialogEl) {
+          mapHelpDialogEl.focus({ preventScroll: true });
+        }
+      }, 0);
+    }
+
+    function closeMapHelp() {
+      if (!mapHelpOverlayEl || !mapHelpOpen) {
+        return;
+      }
+      mapHelpOpen = false;
+      mapHelpOverlayEl.classList.remove("is-open");
+      mapHelpOverlayEl.hidden = true;
+      if (mapHelpBtnEl) {
+        mapHelpBtnEl.setAttribute("aria-expanded", "false");
+      }
+      if (mapHelpLastFocused && mapHelpLastFocused.isConnected) {
+        mapHelpLastFocused.focus({ preventScroll: true });
+      }
+    }
+
+    function toggleMapHelp() {
+      if (mapHelpOpen) {
+        closeMapHelp();
+      } else {
+        openMapHelp();
+      }
+    }
+
+    if (mapHelpBtnEl) {
+      mapHelpBtnEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleMapHelp();
+      });
+    }
+
+    if (mapHelpCloseEl) {
+      mapHelpCloseEl.addEventListener("click", () => closeMapHelp());
+    }
+
+    if (mapHelpOverlayEl) {
+      mapHelpOverlayEl.addEventListener("click", (event) => {
+        if (event.target === mapHelpOverlayEl) {
+          closeMapHelp();
+        }
+      });
+    }
+
+    if (mapHelpDialogEl) {
+      mapHelpDialogEl.addEventListener("click", (event) => event.stopPropagation());
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (mapHelpOpen) {
+          event.preventDefault();
+          closeMapHelp();
+          return;
+        }
+        if (document.activeElement === locationSearchEl) {
+          locationSearchEl.blur();
+          suggestionsEl.style.display = "none";
+        }
+      }
+
+      const canToggleHelp = !event.altKey && !event.ctrlKey && !event.metaKey && !isTypingTarget(event.target);
+      if (event.key === "?" && canToggleHelp) {
+        event.preventDefault();
+        toggleMapHelp();
+        return;
+      }
+
+      if (!mapHelpOpen && event.key === "/" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        locationSearchEl.focus();
+        locationSearchEl.select();
+        return;
+      }
+
+      const canUseMapShortcuts = !mapHelpOpen && !event.altKey && !event.ctrlKey && !event.metaKey && !isTypingTarget(event.target);
+      if (canUseMapShortcuts && (event.key === "m" || event.key === "M")) {
+        event.preventDefault();
+        fitMapToMarkers();
+        return;
+      }
+      if (canUseMapShortcuts && (event.key === "g" || event.key === "G")) {
+        event.preventDefault();
+        locateMe();
+      }
+    });
 
     locationSearchEl.addEventListener("input", async (event) => {
       const query = event.target.value.trim();

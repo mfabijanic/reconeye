@@ -355,6 +355,64 @@
       animation: none;
     }
   }
+  .surveillance-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(2px);
+  }
+  .surveillance-help-overlay.is-open {
+    display: flex;
+  }
+  .surveillance-help-dialog {
+    width: min(760px, calc(100vw - 2rem));
+    max-height: min(86vh, 720px);
+    overflow: auto;
+    border: 1px solid var(--app-border);
+    border-radius: .6rem;
+    background: color-mix(in srgb, var(--app-surface) 94%, #000);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+  }
+  .surveillance-help-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem .9rem;
+    border-bottom: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 92%, #000);
+  }
+  .surveillance-help-body {
+    padding: .9rem;
+  }
+  .surveillance-help-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: .5rem;
+  }
+  .surveillance-help-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+  }
+  .surveillance-help-keys {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    align-items: center;
+    white-space: nowrap;
+  }
 </style>
 {% endblock %}
 
@@ -387,6 +445,9 @@
     </button>
     <button type="button" class="btn btn-sm btn-outline-warning" id="surveillance-edit-btn" title="{% trans 'Edit grid (add or remove cameras)' %}">
       <i class="bi bi-pencil-square me-1" id="surveillance-edit-icon"></i><span id="surveillance-edit-label">{% trans "Edit" %}</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="surveillance-help-btn" aria-haspopup="dialog" aria-controls="surveillance-help-overlay" aria-expanded="false" title="{% trans 'Keyboard shortcuts help' %}">
+      <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
     </button>
     <span class="text-muted small">{{ selected_cameras|length }} {% trans "cameras" %}</span>
   </div>
@@ -511,6 +572,44 @@
   {% endfor %}
 </div>
 
+<div id="surveillance-help-overlay" class="surveillance-help-overlay" hidden>
+  <div id="surveillance-help-dialog" class="surveillance-help-dialog" role="dialog" aria-modal="true" aria-labelledby="surveillance-help-title" tabindex="-1">
+    <div class="surveillance-help-header">
+      <div>
+        <div id="surveillance-help-title" class="fw-semibold"><i class="bi bi-keyboard me-1 text-info"></i>{% trans "Keyboard Help" %}</div>
+        <div class="small text-muted">{% trans "Shortcuts for faster grid navigation." %}</div>
+      </div>
+      <button type="button" id="surveillance-help-close" class="btn btn-sm btn-outline-secondary" aria-label="{% trans 'Close help' %}">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="surveillance-help-body">
+      <ul class="surveillance-help-list small text-muted">
+        <li>
+          <span class="surveillance-help-keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span>
+          <span>{% trans "Move focus between tiles" %}</span>
+        </li>
+        <li>
+          <span class="surveillance-help-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd></span>
+          <span>{% trans "Move focus with arrow keys" %}</span>
+        </li>
+        <li>
+          <span class="surveillance-help-keys"><kbd>f</kbd></span>
+          <span>{% trans "Fullscreen focused tile" %}</span>
+        </li>
+        <li>
+          <span class="surveillance-help-keys"><kbd>?</kbd></span>
+          <span>{% trans "Open or close this Help panel" %}</span>
+        </li>
+        <li>
+          <span class="surveillance-help-keys"><kbd>Esc</kbd></span>
+          <span>{% trans "Close Help" %}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 </div>{# /.surveillance-page-layout #}
 {% endblock %}
 
@@ -537,10 +636,51 @@
     const panel = document.getElementById("surveillance-manage-panel");
     const editBtn = document.getElementById("surveillance-edit-btn");
     const labelsBtn = document.getElementById("surveillance-labels-btn");
+    const helpBtn = document.getElementById("surveillance-help-btn");
+    const helpOverlay = document.getElementById("surveillance-help-overlay");
+    const helpDialog = document.getElementById("surveillance-help-dialog");
+    const helpCloseBtn = document.getElementById("surveillance-help-close");
 
     if (!grid || !select || !lockBtn) {
       return;
     }
+
+    let helpOpen = false;
+    let helpLastFocused = null;
+
+    const isTypingTarget = (target) => {
+      const tag = (target?.tagName || "").toLowerCase();
+      return ["input", "textarea", "select"].includes(tag) || target?.isContentEditable;
+    };
+
+    const openHelp = () => {
+      if (!helpOverlay || helpOpen) return;
+      helpLastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      helpOpen = true;
+      helpOverlay.hidden = false;
+      helpOverlay.classList.add("is-open");
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "true");
+      window.setTimeout(() => {
+        if (helpCloseBtn) helpCloseBtn.focus({ preventScroll: true });
+        else if (helpDialog) helpDialog.focus({ preventScroll: true });
+      }, 0);
+    };
+
+    const closeHelp = () => {
+      if (!helpOverlay || !helpOpen) return;
+      helpOpen = false;
+      helpOverlay.classList.remove("is-open");
+      helpOverlay.hidden = true;
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "false");
+      if (helpLastFocused && helpLastFocused.isConnected) {
+        helpLastFocused.focus({ preventScroll: true });
+      }
+    };
+
+    const toggleHelp = () => {
+      if (helpOpen) closeHelp();
+      else openHelp();
+    };
 
     // ── Grid columns ────────────────────────────────────────────────
     const cameraCount = Number(grid.dataset.cameraCount || 0);
@@ -654,6 +794,40 @@
     if (labelsBtn) {
       labelsBtn.addEventListener("click", () => applyLabels(!labelsOn));
     }
+
+    if (helpBtn) {
+      helpBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleHelp();
+      });
+    }
+
+    if (helpCloseBtn) {
+      helpCloseBtn.addEventListener("click", () => closeHelp());
+    }
+
+    if (helpOverlay) {
+      helpOverlay.addEventListener("click", (event) => {
+        if (event.target === helpOverlay) closeHelp();
+      });
+    }
+
+    if (helpDialog) {
+      helpDialog.addEventListener("click", (event) => event.stopPropagation());
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && helpOpen) {
+        event.preventDefault();
+        closeHelp();
+        return;
+      }
+      const canToggleHelp = !event.altKey && !event.ctrlKey && !event.metaKey && !isTypingTarget(event.target);
+      if (event.key === "?" && canToggleHelp) {
+        event.preventDefault();
+        toggleHelp();
+      }
+    });
 
     // ── Edit mode ────────────────────────────────────────────────────
     let editMode = false;
@@ -917,6 +1091,7 @@
 
     // Key: arrow keys, vim hjkl → navigate; f → fullscreen focused tile
     document.addEventListener("keydown", (e) => {
+      if (helpOpen) return;
       // Skip when typing in an input/textarea/select
       const tag = (e.target?.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable) return;

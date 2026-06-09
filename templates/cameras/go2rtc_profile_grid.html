@@ -117,6 +117,64 @@
     display: none;
   }
   .go2rtc-tile.grid-focused .grid-focus-badge { display: block; }
+  .go2rtc-grid-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(2px);
+  }
+  .go2rtc-grid-help-overlay.is-open {
+    display: flex;
+  }
+  .go2rtc-grid-help-dialog {
+    width: min(680px, calc(100vw - 2rem));
+    max-height: min(84vh, 680px);
+    overflow: auto;
+    border: 1px solid var(--app-border);
+    border-radius: .6rem;
+    background: color-mix(in srgb, var(--app-surface) 94%, #000);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+  }
+  .go2rtc-grid-help-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem .9rem;
+    border-bottom: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 92%, #000);
+  }
+  .go2rtc-grid-help-body {
+    padding: .9rem;
+  }
+  .go2rtc-grid-help-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: .5rem;
+  }
+  .go2rtc-grid-help-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+  }
+  .go2rtc-grid-help-keys {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    align-items: center;
+    white-space: nowrap;
+  }
 </style>
 {% endblock %}
 
@@ -147,6 +205,9 @@
       </button>
       <button type="button" class="btn btn-sm btn-outline-warning" id="go2rtc-grid-edit-btn">
         <i class="bi bi-pencil-square me-1"></i>{% trans "Edit" %}
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="go2rtc-grid-help-btn" aria-haspopup="dialog" aria-controls="go2rtc-grid-help-overlay" aria-expanded="false">
+        <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
       </button>
       <a href="{% url 'cameras:go2rtc_manager' %}?profile={{ profile.pk }}" class="btn btn-sm btn-outline-info">
         <i class="bi bi-arrow-left me-1"></i>{% trans "Manager" %}
@@ -181,6 +242,44 @@
     {% endfor %}
   </div>
 </div>
+
+<div id="go2rtc-grid-help-overlay" class="go2rtc-grid-help-overlay" hidden>
+  <div id="go2rtc-grid-help-dialog" class="go2rtc-grid-help-dialog" role="dialog" aria-modal="true" aria-labelledby="go2rtc-grid-help-title" tabindex="-1">
+    <div class="go2rtc-grid-help-header">
+      <div>
+        <div id="go2rtc-grid-help-title" class="fw-semibold"><i class="bi bi-keyboard me-1 text-info"></i>{% trans "Keyboard Help" %}</div>
+        <div class="small text-muted">{% trans "Shortcuts for faster grid navigation." %}</div>
+      </div>
+      <button type="button" id="go2rtc-grid-help-close" class="btn btn-sm btn-outline-secondary" aria-label="{% trans 'Close help' %}">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="go2rtc-grid-help-body">
+      <ul class="go2rtc-grid-help-list small text-muted">
+        <li>
+          <span class="go2rtc-grid-help-keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span>
+          <span>{% trans "Move focus between tiles" %}</span>
+        </li>
+        <li>
+          <span class="go2rtc-grid-help-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd></span>
+          <span>{% trans "Move focus with arrow keys" %}</span>
+        </li>
+        <li>
+          <span class="go2rtc-grid-help-keys"><kbd>f</kbd></span>
+          <span>{% trans "Fullscreen focused tile" %}</span>
+        </li>
+        <li>
+          <span class="go2rtc-grid-help-keys"><kbd>?</kbd></span>
+          <span>{% trans "Open or close this Help panel" %}</span>
+        </li>
+        <li>
+          <span class="go2rtc-grid-help-keys"><kbd>Esc</kbd></span>
+          <span>{% trans "Close Help" %}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -195,6 +294,10 @@
     const labelsBtn = document.getElementById("go2rtc-grid-labels-btn");
     const editBtn = document.getElementById("go2rtc-grid-edit-btn");
     const profileSwitch = document.getElementById("go2rtc-profile-switch");
+    const helpBtn = document.getElementById("go2rtc-grid-help-btn");
+    const helpOverlay = document.getElementById("go2rtc-grid-help-overlay");
+    const helpDialog = document.getElementById("go2rtc-grid-help-dialog");
+    const helpCloseBtn = document.getElementById("go2rtc-grid-help-close");
     if (!grid || !select || !lockBtn) return;
 
     const COLS_KEY = "reconeye-go2rtc-grid-cols";
@@ -204,9 +307,41 @@
     let isLocked = false;
     let labelsOn = false;
     let editMode = false;
+    let helpOpen = false;
+    let helpLastFocused = null;
 
     const getTiles = () => Array.from(grid.querySelectorAll(".go2rtc-tile"));
     const getCols = () => Math.max(1, window.getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length);
+    const isTypingTarget = (target) => {
+      const tag = (target?.tagName || "").toLowerCase();
+      return ["input", "textarea", "select"].includes(tag) || target?.isContentEditable;
+    };
+    const openHelp = () => {
+      if (!helpOverlay || helpOpen) return;
+      helpLastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      helpOpen = true;
+      helpOverlay.hidden = false;
+      helpOverlay.classList.add("is-open");
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "true");
+      window.setTimeout(() => {
+        if (helpCloseBtn) helpCloseBtn.focus({ preventScroll: true });
+        else if (helpDialog) helpDialog.focus({ preventScroll: true });
+      }, 0);
+    };
+    const closeHelp = () => {
+      if (!helpOverlay || !helpOpen) return;
+      helpOpen = false;
+      helpOverlay.classList.remove("is-open");
+      helpOverlay.hidden = true;
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "false");
+      if (helpLastFocused && helpLastFocused.isConnected) {
+        helpLastFocused.focus({ preventScroll: true });
+      }
+    };
+    const toggleHelp = () => {
+      if (helpOpen) closeHelp();
+      else openHelp();
+    };
     const applyCols = (value) => {
       const safe = ["1","2","3","4"].includes(String(value)) ? String(value) : "2";
       select.value = safe;
@@ -265,8 +400,43 @@
       profileSwitch.addEventListener("change", (e) => { window.location.href = e.target.value; });
     }
 
+    if (helpBtn) {
+      helpBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        toggleHelp();
+      });
+    }
+
+    if (helpCloseBtn) {
+      helpCloseBtn.addEventListener("click", () => closeHelp());
+    }
+
+    if (helpOverlay) {
+      helpOverlay.addEventListener("click", (e) => {
+        if (e.target === helpOverlay) closeHelp();
+      });
+    }
+
+    if (helpDialog) {
+      helpDialog.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && helpOpen) {
+        e.preventDefault();
+        closeHelp();
+        return;
+      }
+      const canToggleHelp = !e.altKey && !e.ctrlKey && !e.metaKey && !isTypingTarget(e.target);
+      if (e.key === "?" && canToggleHelp) {
+        e.preventDefault();
+        toggleHelp();
+      }
+    });
+
     window.setTimeout(() => { const tiles = getTiles(); if (tiles.length) focusTile(0); }, 150);
     document.addEventListener("keydown", (e) => {
+      if (helpOpen) return;
       const tag = (e.target?.tagName || "").toLowerCase();
       if (["input","textarea","select","button"].includes(tag) || e.target?.isContentEditable) return;
       const tiles = getTiles();

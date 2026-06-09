@@ -41,6 +41,20 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    position: relative;
+  }
+  .go2rtc-viewer-shell.sidebar-auto {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .go2rtc-viewer-shell.sidebar-auto::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.34);
+    opacity: 1;
+    transition: opacity .18s ease;
+    pointer-events: auto;
+    z-index: 1;
   }
   .go2rtc-viewer-sidebar {
     display: flex;
@@ -52,9 +66,43 @@
     position: relative;
     z-index: 2;
   }
+  .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: clamp(280px, 24vw, 340px);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.03), 12px 0 36px rgba(0,0,0,.42);
+  }
+  .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-stage {
+    grid-column: 1;
+  }
+  .go2rtc-viewer-shell.sidebar-auto::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: .25rem;
+    width: .35rem;
+    height: 3.4rem;
+    border-radius: 999px;
+    transform: translateY(-50%);
+    background: linear-gradient(180deg, rgba(13,202,240,.92), rgba(13,202,240,.4));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+    z-index: 3;
+  }
   .go2rtc-viewer-shell.sidebar-auto.sidebar-hidden .go2rtc-viewer-sidebar {
     transform: translateX(calc(-100% + 1.75rem));
     opacity: .94;
+    box-shadow: none;
+  }
+  .go2rtc-viewer-shell.sidebar-auto.sidebar-hidden::before {
+    opacity: .95;
+  }
+  .go2rtc-viewer-shell.sidebar-auto.sidebar-hidden::after {
+    opacity: 0;
+    pointer-events: none;
   }
   .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-sidebar:hover,
   .go2rtc-viewer-shell.sidebar-auto .go2rtc-viewer-sidebar:focus-within {
@@ -101,11 +149,79 @@
     overflow: hidden;
     background: #000;
   }
-  .go2rtc-viewer-stage-header,
-  .go2rtc-viewer-stage-helper {
+  .go2rtc-viewer-stage-header {
     padding: .65rem .85rem;
     border-bottom: 1px solid var(--app-border);
     background: rgba(13,17,23,.88);
+  }
+  .go2rtc-viewer-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(2px);
+  }
+  .go2rtc-viewer-help-overlay.is-open {
+    display: flex;
+  }
+  .go2rtc-viewer-help-dialog {
+    width: min(760px, calc(100vw - 2rem));
+    max-height: min(86vh, 720px);
+    overflow: auto;
+    border: 1px solid var(--app-border);
+    border-radius: .6rem;
+    background: color-mix(in srgb, var(--app-surface) 94%, #000);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+  }
+  .go2rtc-viewer-help-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem .9rem;
+    border-bottom: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 92%, #000);
+  }
+  .go2rtc-viewer-help-body {
+    padding: .9rem;
+  }
+  .go2rtc-viewer-help-grid {
+    display: grid;
+    gap: .8rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .go2rtc-viewer-help-card {
+    border: 1px solid color-mix(in srgb, var(--app-border) 82%, transparent);
+    border-radius: .5rem;
+    padding: .7rem .8rem;
+    background: color-mix(in srgb, var(--app-surface) 80%, #000);
+  }
+  .go2rtc-viewer-help-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: .45rem;
+  }
+  .go2rtc-viewer-help-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .6rem;
+  }
+  .go2rtc-viewer-help-keys {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    align-items: center;
+    white-space: nowrap;
   }
   .go2rtc-viewer-stage-grid-wrap {
     flex: 1;
@@ -210,6 +326,12 @@
       grid-template-columns: 1fr;
       overflow: auto;
     }
+    .go2rtc-viewer-shell::after {
+      display: none !important;
+    }
+    .go2rtc-viewer-shell::before {
+      display: none !important;
+    }
     .go2rtc-viewer-sidebar {
       min-height: auto;
       max-height: 40vh;
@@ -223,6 +345,9 @@
   @media (max-width: 640px) {
     .go2rtc-viewer-grid.grid-4,
     .go2rtc-viewer-grid.grid-6 {
+      grid-template-columns: 1fr;
+    }
+    .go2rtc-viewer-help-grid {
       grid-template-columns: 1fr;
     }
   }
@@ -463,6 +588,9 @@
           <button type="button" id="copy-active-stream-btn" class="btn btn-sm btn-outline-secondary"{% if not active_tile %} disabled{% endif %}>
             <i class="bi bi-clipboard me-1"></i>{% trans "Copy active stream URL" %}
           </button>
+          <button type="button" id="go2rtc-viewer-help-btn" class="btn btn-sm btn-outline-secondary" aria-haspopup="dialog" aria-controls="go2rtc-viewer-help-overlay" aria-expanded="false">
+            <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
+          </button>
           {% if viewer_page and viewer_page.has_previous %}
             <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-chevron-left"></i>
@@ -490,13 +618,6 @@
             </form>
           {% endif %}
         </div>
-      </div>
-
-      <div class="go2rtc-viewer-stage-helper small text-muted d-flex flex-wrap gap-3">
-        <span><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd> / <kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> {% trans "to move" %}</span>
-        <span><kbd>n</kbd>/<kbd>p</kbd> {% trans "next/previous page" %}</span>
-        <span><kbd>f</kbd> {% trans "fullscreen" %}</span>
-        <span><kbd>c</kbd> {% trans "copy active URL" %}</span>
       </div>
 
       <div class="go2rtc-viewer-stage-grid-wrap">
@@ -544,6 +665,70 @@
     </section>
   </div>
 </div>
+
+<div id="go2rtc-viewer-help-overlay" class="go2rtc-viewer-help-overlay" hidden>
+  <div id="go2rtc-viewer-help-dialog" class="go2rtc-viewer-help-dialog" role="dialog" aria-modal="true" aria-labelledby="go2rtc-viewer-help-title" tabindex="-1">
+    <div class="go2rtc-viewer-help-header">
+      <div>
+        <div id="go2rtc-viewer-help-title" class="fw-semibold"><i class="bi bi-keyboard me-1 text-info"></i>{% trans "Keyboard Help" %}</div>
+        <div class="small text-muted">{% trans "Shortcuts for faster grid navigation." %}</div>
+      </div>
+      <button type="button" id="go2rtc-viewer-help-close" class="btn btn-sm btn-outline-secondary" aria-label="{% trans 'Close help' %}">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="go2rtc-viewer-help-body">
+      <div class="go2rtc-viewer-help-grid">
+        <section class="go2rtc-viewer-help-card">
+          <h3 class="h6 mb-2">{% trans "Grid navigation" %}</h3>
+          <ul class="go2rtc-viewer-help-list small text-muted">
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span>
+              <span>{% trans "Move focus between tiles" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd></span>
+              <span>{% trans "Move focus with arrow keys" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>f</kbd></span>
+              <span>{% trans "Fullscreen focused tile" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>c</kbd></span>
+              <span>{% trans "Copy focused stream URL" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>?</kbd></span>
+              <span>{% trans "Open or close this Help panel" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>Esc</kbd></span>
+              <span>{% trans "Close Help" %}</span>
+            </li>
+          </ul>
+        </section>
+        <section class="go2rtc-viewer-help-card">
+          <h3 class="h6 mb-2">{% trans "Search and paging" %}</h3>
+          <ul class="go2rtc-viewer-help-list small text-muted">
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>/</kbd></span>
+              <span>{% trans "Focus instance search" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>Ctrl</kbd><span>/</span><kbd>Cmd</kbd> <span>+</span> <kbd>K</kbd></span>
+              <span>{% trans "Focus instance search" %}</span>
+            </li>
+            <li>
+              <span class="go2rtc-viewer-help-keys"><kbd>n</kbd><span>/</span><kbd>p</kbd></span>
+              <span>{% trans "Next / previous stream page" %}</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -561,6 +746,10 @@
     const pageJumpInput = document.getElementById("viewer-page-jump-input");
     const prevPageLink = document.querySelector("#viewer-prev-page-link[href]");
     const nextPageLink = document.querySelector("#viewer-next-page-link[href]");
+    const helpBtn = document.getElementById("go2rtc-viewer-help-btn");
+    const helpOverlay = document.getElementById("go2rtc-viewer-help-overlay");
+    const helpDialog = document.getElementById("go2rtc-viewer-help-dialog");
+    const helpCloseBtn = document.getElementById("go2rtc-viewer-help-close");
     const activeInstanceLink = document.querySelector(".go2rtc-instance-link.active");
     const sidebarScrollStorageKey = "reconeye:go2rtc_viewer:sidebar_scroll_top";
     const queryParams = new URLSearchParams(window.location.search);
@@ -569,9 +758,47 @@
     const prefetchEnabled = !(prefetchMode === "0" || prefetchMode === "off" || prefetchMode === "false");
 
     let focusedIdx = -1;
+    let helpOpen = false;
+    let helpLastFocused = null;
 
     const getTiles = () => Array.from(grid ? grid.querySelectorAll(".go2rtc-viewer-tile") : []);
     const getCols = () => Math.max(1, window.getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length);
+    const isTypingTarget = (target) => {
+      const tag = (target?.tagName || "").toLowerCase();
+      return ["input", "textarea", "select"].includes(tag) || target?.isContentEditable;
+    };
+
+    const openHelp = () => {
+      if (!helpOverlay || helpOpen) return;
+      helpLastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      helpOpen = true;
+      helpOverlay.hidden = false;
+      helpOverlay.classList.add("is-open");
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "true");
+      window.setTimeout(() => {
+        if (helpCloseBtn) {
+          helpCloseBtn.focus({ preventScroll: true });
+        } else if (helpDialog) {
+          helpDialog.focus({ preventScroll: true });
+        }
+      }, 0);
+    };
+
+    const closeHelp = () => {
+      if (!helpOverlay || !helpOpen) return;
+      helpOpen = false;
+      helpOverlay.classList.remove("is-open");
+      helpOverlay.hidden = true;
+      if (helpBtn) helpBtn.setAttribute("aria-expanded", "false");
+      if (helpLastFocused && helpLastFocused.isConnected) {
+        helpLastFocused.focus({ preventScroll: true });
+      }
+    };
+
+    const toggleHelp = () => {
+      if (helpOpen) closeHelp();
+      else openHelp();
+    };
 
     const updateActiveCopyButton = (tile) => {
       if (!copyActiveBtn) return;
@@ -726,6 +953,41 @@
       });
     }
 
+    if (helpBtn) {
+      helpBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleHelp();
+      });
+    }
+
+    if (helpCloseBtn) {
+      helpCloseBtn.addEventListener("click", () => closeHelp());
+    }
+
+    if (helpOverlay) {
+      helpOverlay.addEventListener("click", (event) => {
+        if (event.target === helpOverlay) closeHelp();
+      });
+    }
+
+    if (helpDialog) {
+      helpDialog.addEventListener("click", (event) => event.stopPropagation());
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && helpOpen) {
+        event.preventDefault();
+        closeHelp();
+        return;
+      }
+
+      const canToggleHelp = !event.altKey && !event.ctrlKey && !event.metaKey && !isTypingTarget(event.target);
+      if (event.key === "?" && canToggleHelp) {
+        event.preventDefault();
+        toggleHelp();
+      }
+    });
+
     document.querySelectorAll(".go2rtc-viewer-copy-btn").forEach((button) => {
       if (button === copyActiveBtn) return;
       button.addEventListener("click", (event) => {
@@ -839,8 +1101,7 @@
 
     if (searchInput) {
       document.addEventListener("keydown", (event) => {
-        const tag = (document.activeElement?.tagName || "").toLowerCase();
-        const isTypingTarget = ["input", "textarea", "select"].includes(tag) || document.activeElement?.isContentEditable;
+        const typingTarget = isTypingTarget(document.activeElement);
 
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
           event.preventDefault();
@@ -850,7 +1111,7 @@
           return;
         }
 
-        if (event.key === "/" && !isTypingTarget) {
+        if (event.key === "/" && !typingTarget) {
           event.preventDefault();
           searchInput.focus();
           searchInput.select();
@@ -870,13 +1131,35 @@
     }
 
     if (shell && shell.classList.contains("sidebar-auto") && sidebar) {
+      const isDesktopSidebarOverlay = () => window.innerWidth > 991;
+      const hideSidebar = () => {
+        if (!isDesktopSidebarOverlay()) return;
+        shell.classList.add("sidebar-hidden");
+      };
+      const showSidebar = () => {
+        if (!isDesktopSidebarOverlay()) return;
+        shell.classList.remove("sidebar-hidden");
+      };
+
       sidebar.addEventListener("mouseleave", () => {
         if (!sidebar.contains(document.activeElement)) {
-          shell.classList.add("sidebar-hidden");
+          hideSidebar();
         }
       });
       sidebar.addEventListener("mouseenter", () => {
-        shell.classList.remove("sidebar-hidden");
+        showSidebar();
+      });
+
+      shell.addEventListener("click", (event) => {
+        if (!isDesktopSidebarOverlay() || shell.classList.contains("sidebar-hidden")) return;
+        if (sidebar.contains(event.target)) return;
+        hideSidebar();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (!isDesktopSidebarOverlay() || shell.classList.contains("sidebar-hidden")) return;
+        hideSidebar();
       });
     }
 
@@ -887,6 +1170,7 @@
       }, 150);
 
       document.addEventListener("keydown", (event) => {
+        if (helpOpen) return;
         const tag = (event.target?.tagName || "").toLowerCase();
         if (["input", "textarea", "select", "button"].includes(tag) || event.target?.isContentEditable) return;
 
