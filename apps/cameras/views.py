@@ -249,6 +249,7 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
     # Maps the ?sort= query value to an order_by expression. The stream-count
     # options use the annotated `stream_count` field.
     SORT_OPTIONS = {
+        "newest": ("-created_at", "-id"),
         "group": ("group_label", "name"),
         "name": ("name",),
         "name_desc": ("-name",),
@@ -256,7 +257,7 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         "streams_asc": ("stream_count", "name"),
         "status": ("last_sync_status", "name"),
     }
-    DEFAULT_SORT = "group"
+    DEFAULT_SORT = "newest"
 
     def _resolve_page_size(self) -> int:
         raw = self.request.GET.get("per_page")
@@ -542,6 +543,11 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
     DEFAULT_INSTANCE_PAGE_SIZE = 50
     SIDEBAR_MODES = {"pinned", "auto"}
     DEFAULT_SIDEBAR_MODE = "pinned"
+    SORT_OPTIONS = {
+        "newest": ("-created_at", "-id"),
+        "group": ("group_label", "name", "pk"),
+    }
+    DEFAULT_SORT = "newest"
 
     def _resolve_viewer_size(self) -> int:
         raw = self.request.GET.get("viewer_size")
@@ -566,6 +572,10 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
             if value in self.INSTANCE_PAGE_SIZE_CHOICES
             else self.DEFAULT_INSTANCE_PAGE_SIZE
         )
+
+    def _resolve_sort(self) -> str:
+        sort = (self.request.GET.get("sort") or "").strip().lower()
+        return sort if sort in self.SORT_OPTIONS else self.DEFAULT_SORT
 
     def _apply_geo_filters(self, qs):
         country_filter = (self.request.GET.get("country") or "").strip()
@@ -624,11 +634,12 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         viewer_size = self._resolve_viewer_size()
         sidebar_mode = self._resolve_sidebar_mode()
         instance_page_size = self._resolve_instance_page_size()
+        sort_key = self._resolve_sort()
 
         all_instances_qs = (
             Go2RTCInstance.objects.filter(is_active=True)
             .annotate(stream_count=Count("streams"))
-            .order_by("group_label", "name", "pk")
+            .order_by(*self.SORT_OPTIONS[sort_key])
         )
         instance_total = all_instances_qs.count()
 
@@ -666,18 +677,27 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
                 pk=selected_instance.pk
             ).exists()
             if selected_in_filtered:
-                leading_count = filtered_instances_qs.filter(
-                    Q(group_label__lt=selected_instance.group_label)
-                    | (
-                        Q(group_label=selected_instance.group_label)
-                        & Q(name__lt=selected_instance.name)
-                    )
-                    | (
-                        Q(group_label=selected_instance.group_label)
-                        & Q(name=selected_instance.name)
-                        & Q(pk__lt=selected_instance.pk)
-                    )
-                ).count()
+                if sort_key == "group":
+                    leading_count = filtered_instances_qs.filter(
+                        Q(group_label__lt=selected_instance.group_label)
+                        | (
+                            Q(group_label=selected_instance.group_label)
+                            & Q(name__lt=selected_instance.name)
+                        )
+                        | (
+                            Q(group_label=selected_instance.group_label)
+                            & Q(name=selected_instance.name)
+                            & Q(pk__lt=selected_instance.pk)
+                        )
+                    ).count()
+                else:
+                    leading_count = filtered_instances_qs.filter(
+                        Q(created_at__gt=selected_instance.created_at)
+                        | (
+                            Q(created_at=selected_instance.created_at)
+                            & Q(pk__gt=selected_instance.pk)
+                        )
+                    ).count()
                 resolved_instance_page = str((leading_count // instance_page_size) + 1)
 
         try:
@@ -688,7 +708,11 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
             instance_page = instance_paginator.page(instance_paginator.num_pages)
 
         instances = list(instance_page.object_list)
-        grouped_instances = group_go2rtc_instances(instances) if instances else []
+        group_view = sort_key == "group"
+        if group_view:
+            grouped_instances = group_go2rtc_instances(instances) if instances else []
+        else:
+            grouped_instances = [{"label": "", "instances": instances}] if instances else []
 
         if selected_instance is None and instances:
             selected_instance = instances[0]
@@ -765,8 +789,10 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         ctx["instance_page_size"] = instance_page_size
         ctx["instance_page_size_choices"] = self.INSTANCE_PAGE_SIZE_CHOICES
         ctx["grouped_instances"] = grouped_instances
+        ctx["group_view"] = group_view
         ctx["selected_instance"] = selected_instance
         ctx["instance_query"] = instance_query
+        ctx["sort"] = sort_key
         ctx["country_choices"] = get_go2rtc_country_choices()
         ctx["selected_country"] = country_filter
         ctx["selected_city"] = city_filter

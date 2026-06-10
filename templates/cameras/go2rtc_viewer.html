@@ -385,7 +385,7 @@
           <div class="text-muted small">{{ instance_filtered_total }}/{{ instance_total }} {% trans "visible" %}</div>
         </div>
         <a id="go2rtc-sidebar-mode-link"
-          href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={% if sidebar_mode == 'auto' %}pinned{% else %}auto{% endif %}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
+          href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={% if sidebar_mode == 'auto' %}pinned{% else %}auto{% endif %}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
            class="btn btn-sm btn-outline-secondary">
           <i class="bi {% if sidebar_mode == 'auto' %}bi-pin-angle{% else %}bi-layout-sidebar-inset{% endif %} me-1"></i>
           {% if sidebar_mode == 'auto' %}{% trans "Pinned" %}{% else %}{% trans "Autohide" %}{% endif %}
@@ -411,13 +411,19 @@
                    placeholder="{% trans 'Search instances…' %}"
                    autocomplete="off">
             {% if instance_query %}
-              <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page=1&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
+              <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page=1&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Clear search' %}">
                 <i class="bi bi-x-lg"></i>
               </a>
             {% endif %}
           </div>
 
           <div class="row g-2 mt-1">
+            <div class="col-12">
+              <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="{% trans 'Sort instances' %}">
+                <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
+                <option value="group" {% if sort == 'group' %}selected{% endif %}>{% trans "Group / FQDN" %}</option>
+              </select>
+            </div>
             <div class="col-12">
               <select name="country" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="{% trans 'Country filter' %}">
                 <option value="">{% trans "All countries" %}</option>
@@ -455,15 +461,17 @@
       <div class="go2rtc-viewer-sidebar-list">
         {% if grouped_instances %}
           {% for group in grouped_instances %}
-            <div class="go2rtc-viewer-group px-3 py-2 small text-uppercase fw-semibold text-muted">
-              <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
-              <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
-              {% if group.auto %}
-                <span class="badge text-bg-info ms-1">{% trans "auto IP" %}</span>
-              {% endif %}
-            </div>
+            {% if group_view %}
+              <div class="go2rtc-viewer-group px-3 py-2 small text-uppercase fw-semibold text-muted">
+                <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
+                <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
+                {% if group.auto %}
+                  <span class="badge text-bg-info ms-1">{% trans "auto IP" %}</span>
+                {% endif %}
+              </div>
+            {% endif %}
             {% for instance in group.instances %}
-                <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
+                <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&sort={{ sort }}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
                  class="go2rtc-instance-link{% if selected_instance and selected_instance.pk == instance.pk %} active{% endif %}">
                 <div class="d-flex justify-content-between align-items-start gap-2">
                   <div class="text-truncate">
@@ -523,7 +531,7 @@
         <div class="go2rtc-viewer-sidebar-meta d-flex align-items-center justify-content-between gap-2 flex-wrap">
           {% if instance_page.has_previous %}
             <a class="btn btn-sm btn-outline-secondary"
-              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
+              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
               <i class="bi bi-chevron-left"></i>
             </a>
           {% else %}
@@ -536,7 +544,7 @@
 
           {% if instance_page.has_next %}
             <a class="btn btn-sm btn-outline-secondary"
-              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
+              href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
               <i class="bi bi-chevron-right"></i>
             </a>
           {% else %}
@@ -546,6 +554,7 @@
           <form method="get" action="{% url 'cameras:go2rtc_viewer' %}" class="d-flex align-items-center gap-1 ms-auto">
             {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
             {% if instance_query %}<input type="hidden" name="q" value="{{ instance_query }}">{% endif %}
+            <input type="hidden" name="sort" value="{{ sort }}">
             {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
             {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
             {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
@@ -586,8 +595,7 @@
             {% endif %}
           {% endif %}
           {% for size in viewer_size_choices %}
-            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}"
-            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
+            <a href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
                class="btn btn-sm {% if viewer_size == size %}btn-info{% else %}btn-outline-secondary{% endif %}">{{ size }}</a>
           {% endfor %}
           <button type="button" id="copy-active-stream-btn" class="btn btn-sm btn-outline-secondary"{% if not active_tile %} disabled{% endif %}>
@@ -597,14 +605,14 @@
             <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
           </button>
           {% if viewer_page and viewer_page.has_previous %}
-            <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+            <a id="viewer-prev-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&sort={{ sort }}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.previous_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-chevron-left"></i>
             </a>
           {% else %}
             <span id="viewer-prev-page-link" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
           {% endif %}
           {% if viewer_page and viewer_page.has_next %}
-            <a id="viewer-next-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.next_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+            <a id="viewer-next-page-link" href="?instance={{ selected_instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&sort={{ sort }}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page={{ viewer_page.next_page_number }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-chevron-right"></i>
             </a>
           {% else %}
