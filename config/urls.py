@@ -21,6 +21,7 @@ urlpatterns = [
     path("htmx/cameras/", include("apps.cameras.htmx_urls", namespace="cameras_htmx")),
     path("htmx/scraping/", include("apps.scraping.htmx_urls", namespace="scraping_htmx")),
     path("htmx/dashboard/", include("apps.dashboard.htmx_urls", namespace="dashboard_htmx")),
+    path("htmx/common/", include("apps.common.htmx_urls", namespace="common_htmx")),
     # Health
     path("health/", HealthView.as_view(), name="health"),
     path("readiness/", ReadinessView.as_view(), name="readiness"),

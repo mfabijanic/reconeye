@@ -120,6 +120,85 @@
       border-color: var(--app-border) !important;
       transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
     }
+    .app-notifications-menu {
+      min-width: min(92vw, 25rem);
+      max-width: min(92vw, 25rem);
+      border: 1px solid var(--app-border);
+      background: color-mix(in srgb, var(--app-surface) 92%, transparent);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .16);
+      padding: .5rem;
+    }
+    .app-notifications-toggle {
+      position: relative;
+    }
+    .app-notifications-dot {
+      position: absolute;
+      top: .2rem;
+      right: .2rem;
+      width: .5rem;
+      height: .5rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--app-neon) 88%, white 12%);
+      box-shadow: 0 0 0 2px var(--app-surface);
+    }
+    .app-notifications-panel {
+      display: grid;
+      gap: .45rem;
+    }
+    .app-notifications-section-label {
+      padding: .15rem .15rem 0;
+      color: var(--bs-secondary-color);
+      font-size: .73rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .app-notification-row {
+      display: grid;
+      grid-template-columns: 1.25rem 1fr auto;
+      gap: .65rem;
+      align-items: center;
+      border: 1px solid var(--app-border);
+      border-radius: .55rem;
+      padding: .5rem .6rem;
+      background: color-mix(in srgb, var(--app-surface) 86%, transparent);
+    }
+    .app-notification-icon {
+      font-size: .95rem;
+      text-align: center;
+    }
+    .app-notification-title {
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .app-notification-meta {
+      color: var(--bs-secondary-color);
+      font-size: .84rem;
+      line-height: 1.25;
+    }
+    .app-notification-time {
+      margin-top: .2rem;
+      color: var(--bs-secondary-color);
+      font-size: .75rem;
+      line-height: 1.2;
+    }
+    .app-notification-empty {
+      border-top: 1px dashed var(--app-border);
+      margin-top: .1rem;
+      padding-top: .45rem;
+    }
+    .app-notification-job-status {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      margin-right: .35rem;
+    }
+    .app-notifications-footer {
+      border-top: 1px solid var(--app-border);
+      margin-top: .45rem;
+      padding-top: .45rem;
+    }
     body {
       --app-navbar-height: 4.25rem;
       --app-chrome-reveal-zone: 24px;
@@ -163,18 +242,6 @@
       background: transparent;
       pointer-events: auto;
       cursor: default;
-    }
-    .nav-job-badge {
-      background-color: #9a6700;
-      font-size: .65rem;
-      vertical-align: middle;
-      padding: .2em .45em;
-      border-radius: .4em;
-      animation: badge-pulse 2s ease-in-out infinite;
-    }
-    @keyframes badge-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .55; }
     }
     .camera-style-select {
       min-width: 7.75rem;
@@ -243,10 +310,6 @@
       html[data-navbar-text-mode="icons-text"] .navbar-nav-utils #text-mode-toggle {
         opacity: 0.55;
         font-weight: 400;
-      }
-      /* Ensure badge stays visible in icons-only mode */
-      html[data-navbar-text-mode="icons-only"] .nav-job-badge {
-        display: inline-block;
       }
     }
     /* Collapsed navbar: divider + row layout for utility controls */
@@ -334,12 +397,7 @@
           <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
              href="{% url 'scraping:job_list' %}"
              title="{% trans 'Scrape Jobs' %}">
-            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span><span
-              id="nav-job-status"
-              hx-get="{% url 'scraping_htmx:nav_job_status' %}"
-              hx-trigger="load, every 8s"
-              hx-swap="innerHTML"
-            ></span>
+            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span>
           </a>
         </li>
         {% if user.is_staff %}
@@ -375,6 +433,47 @@
           <button class="btn btn-sm btn-outline-secondary" id="chrome-autohide-toggle" type="button" aria-label="Toggle auto-hide mode" title="Toggle auto-hide mode">
             <i class="bi bi-arrows-collapse" id="chrome-autohide-icon"></i>
           </button>
+        </li>
+        <li class="nav-item dropdown d-flex align-items-center">
+          <button
+            class="btn btn-sm btn-outline-secondary app-notifications-toggle"
+            type="button"
+            id="notificationsToggle"
+            data-bs-toggle="dropdown"
+            data-bs-display="static"
+            data-bs-auto-close="outside"
+            aria-expanded="false"
+            aria-label="{% trans 'Open notifications' %}"
+            title="{% trans 'Notifications' %}"
+          >
+            <i class="bi bi-bell"></i>
+            <span id="notifications-dot"></span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end app-notifications-menu" aria-labelledby="notificationsToggle">
+            <div class="d-flex align-items-center justify-content-between px-1 pb-1">
+              <span class="small fw-semibold text-body-secondary text-uppercase">{% trans "Notifications" %}</span>
+            </div>
+            <div
+              id="nav-notifications-panel"
+              hx-get="{% url 'common_htmx:nav_notifications' %}"
+              hx-trigger="load, every 8s"
+              hx-swap="innerHTML"
+            >
+              <div class="app-notifications-panel">
+                <div class="app-notification-row">
+                  <div class="app-notification-icon text-secondary"><i class="bi bi-hourglass-split"></i></div>
+                  <div class="app-notification-content">
+                    <div class="app-notification-title">{% trans "Loading notifications..." %}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="app-notifications-footer px-1">
+              <a class="small text-decoration-none" href="{% url 'scraping:job_list' %}">
+                <i class="bi bi-box-arrow-up-right me-1"></i>{% trans "Open Scrape Jobs" %}
+              </a>
+            </div>
+          </div>
         </li>
         <li class="nav-item dropdown d-flex align-items-center">
           <button

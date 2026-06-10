@@ -1,9 +1,0 @@
-{% load i18n %}
-{% if active_job_count > 0 %}
-<span
-  class="badge nav-job-badge ms-1"
-  title="{% blocktrans count count=active_job_count %}{{ count }} job running{% plural %}{{ count }} jobs running{% endblocktrans %}"
->
-  <span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width:.55rem;height:.55rem;"></span>{{ active_job_count }}
-</span>
-{% endif %}

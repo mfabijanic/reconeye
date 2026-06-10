@@ -1,0 +1,80 @@
+{% load i18n %}
+<span id="notifications-dot" hx-swap-oob="true">{% if show_notification_dot %}<span class="app-notifications-dot"></span>{% endif %}</span>
+<div class="app-notifications-panel" role="status" aria-live="polite">
+  <div class="app-notification-row">
+    <div class="app-notification-icon text-warning">
+      <i class="bi bi-arrow-repeat"></i>
+    </div>
+    <div class="app-notification-content">
+      <div class="app-notification-title">{% trans "Scrape Jobs" %}</div>
+      <div class="app-notification-meta">
+        {% if active_job_count > 0 %}
+          {% blocktrans count count=active_job_count %}{{ count }} active job{% plural %}{{ count }} active jobs{% endblocktrans %}
+        {% else %}
+          {% trans "No active jobs" %}
+        {% endif %}
+      </div>
+    </div>
+    <span class="badge {% if active_job_count > 0 %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ active_job_count }}</span>
+  </div>
+
+  <div class="app-notification-row">
+    <div class="app-notification-icon text-info">
+      <i class="bi bi-cpu"></i>
+    </div>
+    <div class="app-notification-content">
+      <div class="app-notification-title">{% trans "Background Tasks" %}</div>
+      <div class="app-notification-meta">
+        {% if active_task_count > 0 %}
+          {% blocktrans count count=active_task_count %}{{ count }} running task{% plural %}{{ count }} running tasks{% endblocktrans %}
+          {% if top_tasks %}
+            · {% for item in top_tasks %}{{ item.label }}{% if item.count > 1 %} (x{{ item.count }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}{% if extra_task_types > 0 %}, +{{ extra_task_types }}{% endif %}
+          {% endif %}
+        {% else %}
+          {% trans "No active background tasks" %}
+        {% endif %}
+      </div>
+      {% if last_seen_at_dt %}
+        <div class="app-notification-time">{% trans "Last activity" %}: {{ last_seen_at_dt|date:'H:i:s' }}</div>
+      {% endif %}
+    </div>
+    <span class="badge {% if active_task_count > 0 %}text-bg-info{% else %}text-bg-secondary{% endif %}">{{ active_task_count }}</span>
+  </div>
+
+  {% if recent_jobs %}
+    <div class="app-notifications-section-label">{% trans "Recent Results" %}</div>
+    {% for job in recent_jobs %}
+      <div class="app-notification-row">
+        <div class="app-notification-icon {% if job.status == 'FAILED' %}text-danger{% else %}text-success{% endif %}">
+          <i class="bi {% if job.status == 'FAILED' %}bi-x-octagon{% else %}bi-check2-circle{% endif %}"></i>
+        </div>
+        <div class="app-notification-content">
+          <div class="app-notification-title">
+            <span class="app-notification-job-status">
+              {% if job.status == 'FAILED' %}
+                <span class="badge text-bg-danger">{% trans "Failed" %}</span>
+              {% else %}
+                <span class="badge text-bg-success">{% trans "Completed" %}</span>
+              {% endif %}
+            </span>
+            {{ job.source_type }}{% if job.target_country_code %} · {{ job.target_country_code }}{% endif %}
+          </div>
+          <div class="app-notification-meta">
+            {% blocktrans with new_count=job.total_new updated_count=job.total_updated found_count=job.total_found %}New {{ new_count }}, updated {{ updated_count }}, found {{ found_count }}{% endblocktrans %}
+          </div>
+          {% if job.status == 'FAILED' and job.error_message %}
+            <div class="app-notification-time" title="{{ job.error_message }}">{{ job.error_message|truncatechars:96 }}</div>
+          {% elif job.finished_at %}
+            <div class="app-notification-time">{% trans "Finished" %}: {{ job.finished_at|date:'H:i:s' }}</div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if active_job_count == 0 and active_task_count == 0 and not recent_jobs %}
+    <div class="app-notification-empty small text-muted">
+      <i class="bi bi-check2-circle me-1 text-success"></i>{% trans "All quiet. No running activity." %}
+    </div>
+  {% endif %}
+</div>
