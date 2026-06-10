@@ -493,9 +493,14 @@
                   </div>
                   <div class="d-flex flex-column align-items-end gap-1">
                     <span class="badge text-bg-secondary"><i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}</span>
-                    <span class="badge {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
-                      {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
+                    <span class="badge {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'UNAUTHORIZED' %}text-bg-warning{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                      {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'UNAUTHORIZED' %}{% trans "Unauthorized" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
                     </span>
+                    {% if instance.last_sync_status == 'SUCCESS' and instance.last_sync_error %}
+                      <span class="badge text-bg-warning" title="{{ instance.last_sync_error }}">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{% trans "Warning" %}
+                      </span>
+                    {% endif %}
                     <button type="button"
                             class="go2rtc-viewer-copy-btn go2rtc-instance-copy-btn"
                             data-copy-url="{{ instance.base_url }}"

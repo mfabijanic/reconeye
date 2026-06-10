@@ -159,8 +159,28 @@
           </span>
         </strong>
         {% if selected_instance %}
-          <form method="post" action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}">
+          <form method="post"
+                action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
+                hx-post="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
+                hx-target="#go2rtc-manager-workspace"
+                hx-select="#go2rtc-manager-workspace"
+                hx-swap="outerHTML"
+                hx-push-url="true">
             {% csrf_token %}
+            <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="per_page" value="{{ page_size }}">
+            <input type="hidden" name="stream_per_page" value="{{ stream_page_size }}">
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
+            {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+            {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
+            {% if instances_page.number > 1 %}<input type="hidden" name="page" value="{{ instances_page.number }}">{% endif %}
+            {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
+            {% if stream_query %}<input type="hidden" name="stream_q" value="{{ stream_query }}">{% endif %}
+            {% if streams_page and streams_page.number > 1 %}<input type="hidden" name="stream_page" value="{{ streams_page.number }}">{% endif %}
+            {% if compare_from %}<input type="hidden" name="diff_from" value="{{ compare_from.pk }}">{% endif %}
+            {% if compare_to %}<input type="hidden" name="diff_to" value="{{ compare_to.pk }}">{% endif %}
             <button type="submit" class="btn btn-sm btn-outline-info">
               <i class="bi bi-arrow-repeat me-1"></i>{% trans "Sync now" %}
             </button>
@@ -168,7 +188,7 @@
         {% endif %}
       </div>
 
-      <div class="card-body border-bottom py-2">
+      <div class="card-body border-bottom py-2 flex-grow-0">
         <form method="get" action="{% url 'cameras:go2rtc_manager' %}" id="instance-search-form" class="row g-2 align-items-end">
           {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
           {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
@@ -255,7 +275,7 @@
             {% endif %}
             {% for instance in group.instances %}
               <div class="list-group-item {% if selected_instance and selected_instance.pk == instance.pk %}active{% endif %}" data-instance-row="{{ instance.pk }}">
-                <div class="d-flex justify-content-between align-items-center gap-2">
+                <div class="d-flex justify-content-between align-items-start gap-2">
                   <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if instances_page.number > 1 %}&page={{ instances_page.number }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
                     hx-get="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if instances_page.number > 1 %}&page={{ instances_page.number }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
                     hx-target="#go2rtc-manager-workspace"
@@ -279,7 +299,7 @@
                       </small>
                     </div>
                   </a>
-                  <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                  <div class="d-flex align-items-start gap-2 flex-shrink-0">
                     <a href="{% url 'cameras:go2rtc_viewer' %}?instance={{ instance.pk }}&manager_instance={{ instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}"
                        class="btn btn-sm {% if selected_instance and selected_instance.pk == instance.pk %}btn-light{% else %}btn-outline-primary{% endif %}"
                        title="{% trans 'Open in Viewer' %}">
@@ -287,9 +307,14 @@
                     </a>
                     <span class="badge rounded-pill text-nowrap {% if selected_instance and selected_instance.pk == instance.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}" title="{% trans 'Streams' %}">
                       <i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}
-                      <span class="badge text-nowrap {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
-                          {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
+                      <span class="badge text-nowrap {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'UNAUTHORIZED' %}text-bg-warning{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                          {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'UNAUTHORIZED' %}{% trans "Unauthorized" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
                       </span>
+                      {% if instance.last_sync_status == 'SUCCESS' and instance.last_sync_error %}
+                        <span class="badge text-nowrap text-bg-warning" title="{{ instance.last_sync_error }}">
+                          <i class="bi bi-exclamation-triangle me-1"></i>{% trans "Warning" %}
+                        </span>
+                      {% endif %}
                     </span>
                   </div>
                 </div>
@@ -360,7 +385,7 @@
         {% endif %}
       </div>
       {% if selected_instance %}
-        <div class="card-body border-bottom py-2">
+        <div class="card-body border-bottom py-2 flex-grow-0">
           <form method="get" action="{% url 'cameras:go2rtc_manager' %}" class="d-flex flex-wrap gap-2 align-items-center">
             <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
             <input type="hidden" name="sort" value="{{ sort }}">
@@ -397,7 +422,7 @@
           </form>
         </div>
       {% else %}
-        <div class="card-body border-bottom py-2">
+        <div class="card-body border-bottom py-2 flex-grow-0">
           <div class="small text-muted">{% trans "Select an instance to filter and browse streams." %}</div>
         </div>
       {% endif %}

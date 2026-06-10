@@ -830,24 +830,61 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, View):
             },
         )
 
-        stream_count, error = sync_go2rtc_instance(instance)
+        stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
             messages.warning(request, f"Instance saved, but sync failed: {error}")
+        elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
+            messages.warning(request, f"go2rtc instance {'added' if created else 'updated'}. Unauthorized: {warning or 'authentication required.'}")
         else:
             action = "added" if created else "updated"
-            messages.success(request, f"go2rtc instance {action}. Synced {stream_count} streams.")
+            if warning:
+                messages.warning(request, f"go2rtc instance {action}. Synced {stream_count} streams, but warning: {warning}")
+            else:
+                messages.success(request, f"go2rtc instance {action}. Synced {stream_count} streams.")
         return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
 
 
 class SyncGo2RTCInstanceView(LoginRequiredMixin, View):
     def post(self, request, pk: int, *args, **kwargs):
         instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
-        stream_count, error = sync_go2rtc_instance(instance)
+        stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
             messages.error(request, f"Sync failed for {instance.name}: {error}")
+        elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
+            messages.warning(request, f"Sync unauthorized for {instance.name}: {warning or 'authentication required.'}")
         else:
-            messages.success(request, f"Sync completed for {instance.name}. {stream_count} streams available.")
-        return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
+            if warning:
+                messages.warning(request, f"Sync completed for {instance.name}. {stream_count} streams available. Warning: {warning}")
+            else:
+                messages.success(request, f"Sync completed for {instance.name}. {stream_count} streams available.")
+
+        # Preserve current manager UI state after sync (search/filter/pagination).
+        manager_state_keys = (
+            "q",
+            "sort",
+            "per_page",
+            "stream_per_page",
+            "page",
+            "country",
+            "city",
+            "has_geo",
+            "profile",
+            "stream_q",
+            "stream_page",
+            "diff_from",
+            "diff_to",
+            "tab",
+        )
+        redirect_params: dict[str, str] = {
+            "instance": str(instance.pk),
+        }
+        for key in manager_state_keys:
+            value = (request.POST.get(key) or "").strip()
+            if value:
+                redirect_params[key] = value
+
+        manager_url = reverse("cameras:go2rtc_manager")
+        return redirect(f"{manager_url}?{urlencode(redirect_params)}")
 
 
 class Go2RTCImportPreviewView(LoginRequiredMixin, View):

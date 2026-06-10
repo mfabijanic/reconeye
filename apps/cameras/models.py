@@ -132,6 +132,7 @@ class Go2RTCInstance(models.Model):
     class LastSyncStatus(models.TextChoices):
         NEVER = "NEVER", "Never"
         SUCCESS = "SUCCESS", "Success"
+        UNAUTHORIZED = "UNAUTHORIZED", "Unauthorized"
         FAILED = "FAILED", "Failed"
 
     name = models.CharField(max_length=120, unique=True)

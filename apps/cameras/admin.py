@@ -226,6 +226,22 @@ def refresh_go2rtc_geo(modeladmin, request, queryset) -> None:
     )
 
 
+@admin.action(description=_("Sync selected go2rtc instances"))
+def sync_go2rtc_instances(modeladmin, request, queryset) -> None:
+    from apps.cameras.tasks import sync_go2rtc_instance_task
+
+    queued = 0
+    for instance in queryset:
+        sync_go2rtc_instance_task.delay(instance.pk)
+        queued += 1
+
+    messages.success(
+        request,
+        _("Queued sync for %(count)s go2rtc instance(s).")
+        % {"count": queued},
+    )
+
+
 @admin.register(Go2RTCInstance)
 class Go2RTCInstanceAdmin(admin.ModelAdmin):
     list_display = (
@@ -269,7 +285,7 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
         "geo_provider",
         "geo_payload",
     )
-    actions = [reresolve_go2rtc_ips, refresh_go2rtc_geo]
+    actions = [reresolve_go2rtc_ips, refresh_go2rtc_geo, sync_go2rtc_instances]
 
     fieldsets = (
         (None, {

@@ -777,14 +777,14 @@ def fetch_go2rtc_instance_payloads(
     *,
     base_url: str,
     timeout_seconds: float = 5.0,
-) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], str | None, str | None, bool]:
     """Fetch streams and config payloads from a go2rtc instance.
 
-    Returns (streams, config, error_message).
+    Returns (streams, config, error_message, warning_message, is_unauthorized).
     """
     normalized_base = normalize_go2rtc_base_url(base_url)
     if not normalized_base:
-        return [], {}, "go2rtc base URL is empty."
+        return [], {}, "go2rtc base URL is empty.", None, False
 
     streams_url = f"{normalized_base}/api/streams"
     config_url = f"{normalized_base}/api/config"
@@ -833,21 +833,47 @@ def fetch_go2rtc_instance_payloads(
             raise ValueError("go2rtc manager is read-only for remote configuration")
         return client.get(url)
 
-    try:
-        # verify=False: go2rtc instances are frequently served over HTTPS with
-        # self-signed/invalid certificates. Sync must succeed regardless of the
-        # certificate being valid, so TLS verification is intentionally disabled.
-        with httpx.Client(timeout=timeout_seconds, follow_redirects=True, verify=False) as client:
+    streams_payload: Any
+    config_payload: dict[str, Any] = {}
+    warning_message: str | None = None
+    is_unauthorized = False
+
+    # verify=False: go2rtc instances are frequently served over HTTPS with
+    # self-signed/invalid certificates. Sync must succeed regardless of the
+    # certificate being valid, so TLS verification is intentionally disabled.
+    with httpx.Client(timeout=timeout_seconds, follow_redirects=True, verify=False) as client:
+        try:
             streams_resp = _readonly_get(client, streams_url)
             streams_resp.raise_for_status()
             streams_payload = streams_resp.json()
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code == 401:
+                message = f"Unauthorized while fetching go2rtc streams from {normalized_base}."
+                return [], {}, None, message, True
+            logger.warning("go2rtc streams fetch failed base_url=%s error=%s", normalized_base, exc)
+            return [], {}, f"Unable to fetch go2rtc streams from {normalized_base}.", None, False
+        except Exception as exc:
+            logger.warning("go2rtc streams fetch failed base_url=%s error=%s", normalized_base, exc)
+            return [], {}, f"Unable to fetch go2rtc streams from {normalized_base}.", None, False
 
+        try:
             config_resp = _readonly_get(client, config_url)
             config_resp.raise_for_status()
             config_payload = _parse_config_response(config_resp)
-    except Exception as exc:
-        logger.warning("go2rtc manager sync failed base_url=%s error=%s", normalized_base, exc)
-        return [], {}, f"Unable to fetch go2rtc data from {normalized_base}."
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code == 401:
+                is_unauthorized = True
+                warning_message = f"Unauthorized while fetching go2rtc config from {normalized_base}."
+            elif status_code in {403, 404}:
+                warning_message = f"go2rtc config is unavailable at {normalized_base}."
+            else:
+                logger.warning("go2rtc config fetch failed base_url=%s error=%s", normalized_base, exc)
+                return [], {}, f"Unable to fetch go2rtc config from {normalized_base}.", None, False
+        except Exception as exc:
+            logger.warning("go2rtc config fetch failed base_url=%s error=%s", normalized_base, exc)
+            return [], {}, f"Unable to fetch go2rtc config from {normalized_base}.", None, False
 
     streams_obj: dict[str, Any]
     if isinstance(streams_payload, dict) and isinstance(streams_payload.get("streams"), dict):
@@ -872,15 +898,15 @@ def fetch_go2rtc_instance_payloads(
         )
 
     items.sort(key=lambda row: row["stream_name"].lower())
-    return items, (config_payload if isinstance(config_payload, dict) else {}), None
+    return items, (config_payload if isinstance(config_payload, dict) else {}), None, warning_message, is_unauthorized
 
 
-def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
+def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None, str | None]:
     """Sync one go2rtc instance and persist stream/config snapshots.
 
-    Returns (stream_count, error_message).
+    Returns (stream_count, error_message, warning_message).
     """
-    streams, config_payload, error = fetch_go2rtc_instance_payloads(base_url=instance.base_url)
+    streams, config_payload, error, warning, is_unauthorized = fetch_go2rtc_instance_payloads(base_url=instance.base_url)
     now = timezone.now()
 
     # Resolve the host to IP(s) on every sync so auto-grouping stays current
@@ -939,7 +965,14 @@ def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
         instance.last_sync_error = error
         instance.last_synced_at = now
         instance.save(update_fields=["last_sync_status", "last_sync_error", "last_synced_at", "updated_at"])
-        return 0, error
+        return 0, error, None
+
+    if is_unauthorized and not streams:
+        instance.last_sync_status = Go2RTCInstance.LastSyncStatus.UNAUTHORIZED
+        instance.last_sync_error = warning or "Unauthorized while syncing go2rtc instance."
+        instance.last_synced_at = now
+        instance.save(update_fields=["last_sync_status", "last_sync_error", "last_synced_at", "updated_at"])
+        return 0, None, warning
 
     with transaction.atomic():
         previous_snapshot = instance.config_snapshots.order_by("-fetched_at").first()
@@ -1009,11 +1042,14 @@ def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None]:
             change_summary=change_summary,
         )
 
-    instance.last_sync_status = Go2RTCInstance.LastSyncStatus.SUCCESS
-    instance.last_sync_error = ""
+    if is_unauthorized:
+        instance.last_sync_status = Go2RTCInstance.LastSyncStatus.UNAUTHORIZED
+    else:
+        instance.last_sync_status = Go2RTCInstance.LastSyncStatus.SUCCESS
+    instance.last_sync_error = warning or ""
     instance.last_synced_at = now
     instance.save(update_fields=["last_sync_status", "last_sync_error", "last_synced_at", "updated_at"])
-    return len(streams), None
+    return len(streams), None, warning
 
 
 def build_go2rtc_stream_urls(base_url: str, stream_name: str) -> dict[str, str]:

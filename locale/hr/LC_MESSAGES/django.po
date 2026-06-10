@@ -215,6 +215,12 @@ msgstr "Pokrenuto"
 msgid "Success"
 msgstr "Uspješno"
 
+msgid "Unauthorized"
+msgstr "Neautorizirano"
+
+msgid "Warning"
+msgstr "Upozorenje"
+
 msgid "Failed"
 msgstr "Neuspješno"
 

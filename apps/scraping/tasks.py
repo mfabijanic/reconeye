@@ -4,6 +4,8 @@ import logging
 
 from celery import shared_task
 
+from apps.common.celery_activity import track_task_activity
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +64,8 @@ def _run_existing_job(job_id: int, self_task) -> dict:
 def scrape_insecam(self, country_code: str = "") -> dict:
     from apps.cameras.models import SourceType
 
-    return _create_and_run(SourceType.INSECAM, self, target_country_code=country_code.strip().upper())
+    with track_task_activity(scrape_insecam.name, self.request.id or ""):
+        return _create_and_run(SourceType.INSECAM, self, target_country_code=country_code.strip().upper())
 
 
 @shared_task(
@@ -72,7 +75,8 @@ def scrape_insecam(self, country_code: str = "") -> dict:
     default_retry_delay=300,
 )
 def scrape_insecam_job(self, job_id: int) -> dict:
-    return _run_existing_job(job_id, self)
+    with track_task_activity(scrape_insecam_job.name, self.request.id or ""):
+        return _run_existing_job(job_id, self)
 
 
 @shared_task(
@@ -84,11 +88,12 @@ def scrape_insecam_job(self, job_id: int) -> dict:
 def scrape_whatsupcams(self, country_code: str = "") -> dict:
     from apps.cameras.models import SourceType
 
-    return _create_and_run(
-        SourceType.WHATSUPCAMS,
-        self,
-        target_country_code=country_code.strip().upper(),
-    )
+    with track_task_activity(scrape_whatsupcams.name, self.request.id or ""):
+        return _create_and_run(
+            SourceType.WHATSUPCAMS,
+            self,
+            target_country_code=country_code.strip().upper(),
+        )
 
 
 @shared_task(
@@ -98,7 +103,8 @@ def scrape_whatsupcams(self, country_code: str = "") -> dict:
     default_retry_delay=300,
 )
 def scrape_whatsupcams_job(self, job_id: int) -> dict:
-    return _run_existing_job(job_id, self)
+    with track_task_activity(scrape_whatsupcams_job.name, self.request.id or ""):
+        return _run_existing_job(job_id, self)
 
 
 @shared_task(
@@ -110,11 +116,12 @@ def scrape_whatsupcams_job(self, job_id: int) -> dict:
 def scrape_windy(self, country_code: str = "") -> dict:
     from apps.cameras.models import SourceType
 
-    return _create_and_run(
-        SourceType.WINDY,
-        self,
-        target_country_code=country_code.strip().upper(),
-    )
+    with track_task_activity(scrape_windy.name, self.request.id or ""):
+        return _create_and_run(
+            SourceType.WINDY,
+            self,
+            target_country_code=country_code.strip().upper(),
+        )
 
 
 @shared_task(
@@ -124,7 +131,8 @@ def scrape_windy(self, country_code: str = "") -> dict:
     default_retry_delay=300,
 )
 def scrape_windy_job(self, job_id: int) -> dict:
-    return _run_existing_job(job_id, self)
+    with track_task_activity(scrape_windy_job.name, self.request.id or ""):
+        return _run_existing_job(job_id, self)
 
 
 @shared_task(
@@ -136,7 +144,8 @@ def scrape_windy_job(self, job_id: int) -> dict:
 def refresh_geolocation_for_cameras(self, camera_ids: list[int]) -> dict:
     from apps.scraping.services import refresh_geolocation_for_camera_ids
 
-    try:
-        return refresh_geolocation_for_camera_ids(camera_ids or [])
-    except Exception as exc:
-        raise self.retry(exc=exc)
+    with track_task_activity(refresh_geolocation_for_cameras.name, self.request.id or ""):
+        try:
+            return refresh_geolocation_for_camera_ids(camera_ids or [])
+        except Exception as exc:
+            raise self.retry(exc=exc)
