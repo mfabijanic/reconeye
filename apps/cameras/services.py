@@ -211,12 +211,15 @@ def import_go2rtc_instances(
 
     Mirrors ``AddGo2RTCInstanceView`` semantics: ``update_or_create`` keyed on
     ``name``. Invalid rows are recorded in the report but never abort the whole
-    import. When ``sync`` is True, a background sync task is dispatched per
-    upserted instance (async, so large imports do not block the request).
+    import. When ``sync`` is True, imported instances are synced via one
+    background batch task to avoid SQLite write-lock storms on larger imports.
     """
-    from apps.cameras.tasks import sync_go2rtc_instance_task
+    from apps.cameras.tasks import sync_go2rtc_instances_batch_task
 
     report = ImportReport()
+    synced_instance_ids: list[int] = []
+    seen_sync_ids: set[int] = set()
+
     for row in source.iter_rows():
         if not row.is_valid:
             report.skipped += 1
@@ -243,9 +246,13 @@ def import_go2rtc_instances(
             report.updated += 1
             report.updated_names.append(instance.name)
 
-        if sync:
-            sync_go2rtc_instance_task.delay(instance.pk)
-            report.synced_dispatched += 1
+        if sync and instance.pk not in seen_sync_ids:
+            seen_sync_ids.add(instance.pk)
+            synced_instance_ids.append(instance.pk)
+
+    if sync and synced_instance_ids:
+        sync_go2rtc_instances_batch_task.delay(synced_instance_ids)
+        report.synced_dispatched = len(synced_instance_ids)
 
     logger.info(
         "import_go2rtc_instances created=%d updated=%d skipped=%d synced=%d",

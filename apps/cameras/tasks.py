@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from celery import shared_task
+from django.db import OperationalError, connection
+from django.db.transaction import TransactionManagementError
 
 from apps.common.celery_activity import track_task_activity
 
@@ -211,4 +214,86 @@ def sync_go2rtc_instance_task(self, instance_id: int) -> dict:
             "error": error,
             "warning": warning,
             "status": status,
+        }
+
+
+@shared_task(
+    bind=True,
+    name="reconeye.cameras.sync_go2rtc_instances_batch",
+    max_retries=0,
+)
+def sync_go2rtc_instances_batch_task(self, instance_ids: list[int]) -> dict:
+    """Sync imported go2rtc instances sequentially to reduce SQLite lock contention."""
+    from apps.cameras.models import Go2RTCInstance
+    from apps.cameras.services import sync_go2rtc_instance
+
+    with track_task_activity(sync_go2rtc_instances_batch_task.name, self.request.id or ""):
+        synced = 0
+        failed = 0
+        unauthorized = 0
+        warnings = 0
+        lock_retries = 0
+
+        for instance_id in instance_ids or []:
+            for attempt in range(3):
+                try:
+                    instance = Go2RTCInstance.objects.get(pk=instance_id, is_active=True)
+                    _, error, warning = sync_go2rtc_instance(instance)
+
+                    if instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
+                        unauthorized += 1
+                    elif error:
+                        failed += 1
+                    else:
+                        synced += 1
+
+                    if warning:
+                        warnings += 1
+                    break
+                except Go2RTCInstance.DoesNotExist:
+                    logger.warning(
+                        "sync_go2rtc_instances_batch: instance %s not found or inactive",
+                        instance_id,
+                    )
+                    failed += 1
+                    break
+                except (OperationalError, TransactionManagementError) as exc:
+                    if attempt < 2:
+                        lock_retries += 1
+                        try:
+                            connection.close()
+                        except Exception:
+                            pass
+                        time.sleep(0.5 * (attempt + 1))
+                        continue
+                    logger.exception(
+                        "sync_go2rtc_instances_batch: db error for instance=%s",
+                        instance_id,
+                    )
+                    failed += 1
+                    break
+                except Exception:
+                    logger.exception(
+                        "sync_go2rtc_instances_batch: unexpected error for instance=%s",
+                        instance_id,
+                    )
+                    failed += 1
+                    break
+
+        logger.info(
+            "sync_go2rtc_instances_batch: total=%d synced=%d failed=%d unauthorized=%d warnings=%d lock_retries=%d",
+            len(instance_ids or []),
+            synced,
+            failed,
+            unauthorized,
+            warnings,
+            lock_retries,
+        )
+        return {
+            "total": len(instance_ids or []),
+            "synced": synced,
+            "failed": failed,
+            "unauthorized": unauthorized,
+            "warnings": warnings,
+            "lock_retries": lock_retries,
         }

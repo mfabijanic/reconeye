@@ -145,7 +145,10 @@ def geolocate_ip(ip: str) -> dict[str, Any]:
     except Exception as exc:
         logger.warning("GeoIP lookup failed for ip=%s: %s", normalized_ip, exc)
 
-    _store_cache(normalized_ip, result)
+    try:
+        _store_cache(normalized_ip, result)
+    except Exception as exc:
+        logger.warning("GeoIP cache store failed for ip=%s: %s", normalized_ip, exc)
     result.setdefault("from_cache", False)
     return result
 
