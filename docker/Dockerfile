@@ -1,4 +1,4 @@
-FROM python:3.12-slim as base
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
-COPY requirements/prod.txt .
+COPY requirements/ requirements/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r prod.txt
+RUN pip install --no-cache-dir -r requirements/prod.txt
 
 # Copy app
 COPY . .
@@ -20,7 +20,7 @@ COPY . .
 RUN python manage.py collectstatic --noinput --settings=config.settings.prod || true
 
 # ── Production service ────────────────────────────────────────────────────────
-FROM python:3.12-slim as production
+FROM python:3.12-slim AS production
 
 WORKDIR /app
 
@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=base /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=base /usr/local/bin /usr/local/bin
 COPY --from=base /app /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
