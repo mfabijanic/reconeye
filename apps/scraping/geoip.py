@@ -93,7 +93,7 @@ def _store_cache(ip: str, result: dict[str, Any]) -> None:
         item.save()
 
 
-def geolocate_ip(ip: str) -> dict[str, Any]:
+def geolocate_ip(ip: str, *, force_refresh: bool = False) -> dict[str, Any]:
     normalized_ip = _normalize_ip(ip)
     if not normalized_ip or not is_public_ip(normalized_ip):
         return {
@@ -103,9 +103,10 @@ def geolocate_ip(ip: str) -> dict[str, Any]:
             "reason": "not_public_ip",
         }
 
-    cached = _lookup_cache(normalized_ip)
-    if cached is not None:
-        return cached
+    if not force_refresh:
+        cached = _lookup_cache(normalized_ip)
+        if cached is not None:
+            return cached
 
     timeout_seconds = float(getattr(settings, "GEOIP_HTTP_TIMEOUT_SECONDS", 4.0))
     result: dict[str, Any] = {
@@ -153,7 +154,7 @@ def geolocate_ip(ip: str) -> dict[str, Any]:
     return result
 
 
-def geolocate_public_ips(ips: list[str]) -> dict[str, Any]:
+def geolocate_public_ips(ips: list[str], *, force_refresh: bool = False) -> dict[str, Any]:
     normalized_ips = sorted(
         {
             normalized
@@ -170,7 +171,7 @@ def geolocate_public_ips(ips: list[str]) -> dict[str, Any]:
 
     attempted: list[dict[str, Any]] = []
     for ip in normalized_ips:
-        result = geolocate_ip(ip)
+        result = geolocate_ip(ip, force_refresh=force_refresh)
         attempted.append(
             {
                 "ip": str(result.get("ip") or ip),

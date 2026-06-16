@@ -177,7 +177,7 @@ def warm_cache(self) -> dict:
 
     with track_task_activity(warm_cache.name, self.request.id or ""):
         get_country_choices()
-        for src in [None, SourceType.INSECAM, SourceType.WHATSUPCAMS, SourceType.GO2RTC]:
+        for src in [None, SourceType.INSECAM, SourceType.WHATSUPCAMS]:
             get_camera_list(source_type=src, page=1)
 
         # Warm dashboard stats

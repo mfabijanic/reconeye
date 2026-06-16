@@ -882,6 +882,11 @@ def fetch_go2rtc_instance_payloads(
             logger.warning("go2rtc config fetch failed base_url=%s error=%s", normalized_base, exc)
             return [], {}, f"Unable to fetch go2rtc config from {normalized_base}.", None, False
 
+    items = _extract_go2rtc_stream_items(streams_payload)
+    return items, (config_payload if isinstance(config_payload, dict) else {}), None, warning_message, is_unauthorized
+
+
+def _extract_go2rtc_stream_items(streams_payload: Any) -> list[dict[str, Any]]:
     streams_obj: dict[str, Any]
     if isinstance(streams_payload, dict) and isinstance(streams_payload.get("streams"), dict):
         streams_obj = streams_payload["streams"]
@@ -905,7 +910,105 @@ def fetch_go2rtc_instance_payloads(
         )
 
     items.sort(key=lambda row: row["stream_name"].lower())
-    return items, (config_payload if isinstance(config_payload, dict) else {}), None, warning_message, is_unauthorized
+    return items
+
+
+def fetch_go2rtc_live_stream_counters(
+    *,
+    base_url: str,
+    timeout_seconds: float = 2.5,
+) -> tuple[dict[str, dict[str, int]], str | None]:
+    """Fetch live producers/consumers counters from a go2rtc instance.
+
+    Returns (counters_by_stream_name, error_message).
+    """
+    normalized_base = normalize_go2rtc_base_url(base_url)
+    if not normalized_base:
+        return {}, "go2rtc base URL is empty."
+
+    streams_url = f"{normalized_base}/api/streams"
+
+    with httpx.Client(timeout=timeout_seconds, follow_redirects=True, verify=False) as client:
+        try:
+            response = client.get(streams_url)
+            response.raise_for_status()
+            streams_payload = response.json()
+        except Exception as exc:
+            logger.warning(
+                "go2rtc live counters fetch failed base_url=%s error=%s",
+                normalized_base,
+                exc,
+            )
+            return {}, f"Unable to fetch live stream counters from {normalized_base}."
+
+    counters: dict[str, dict[str, int]] = {}
+    for row in _extract_go2rtc_stream_items(streams_payload):
+        stream_name = str(row.get("stream_name") or "").strip()
+        if not stream_name:
+            continue
+        counters[stream_name] = {
+            "producers": int(row.get("producers_count") or 0),
+            "consumers": int(row.get("consumers_count") or 0),
+        }
+
+    return counters, None
+
+
+def refresh_instance_geoip(instance: Go2RTCInstance) -> dict:
+    """Force-refresh GeoIP location for a go2rtc instance.
+
+    Unlike sync_go2rtc_instance, this always performs a GeoIP lookup regardless
+    of whether the IP hash has changed. Only geo fields are updated; sync status
+    and stream data are not touched.
+
+    Returns a dict with keys: found, ip, from_cache, error.
+    """
+    now = timezone.now()
+
+    resolved_ips = resolve_host_ips(instance.host)
+    public_ips = [ip for ip in resolved_ips if ip]
+
+    if not public_ips:
+        return {"found": False, "ip": "", "from_cache": False, "error": "no_public_ips"}
+
+    geo = geolocate_public_ips(public_ips, force_refresh=True)
+    next_ip_hash = public_ip_hash(public_ips)
+
+    geo_fields: dict = {
+        "geo_ip_hash": next_ip_hash,
+        "geo_resolved_at": now,
+        "geo_provider": str(geo.get("provider") or ""),
+        "geo_payload": {
+            "host": instance.host,
+            "resolved_ips": public_ips,
+            "found": bool(geo.get("found")),
+            "result_ip": str(geo.get("ip") or ""),
+            "attempted": geo.get("attempted") or [],
+        },
+    }
+    if geo.get("found"):
+        geo_fields.update(
+            {
+                "geo_country": str(geo.get("country") or ""),
+                "geo_country_code": str(geo.get("country_code") or "").upper()[:2],
+                "geo_region": str(geo.get("region") or ""),
+                "geo_city": str(geo.get("city") or ""),
+                "geo_latitude": geo.get("latitude"),
+                "geo_longitude": geo.get("longitude"),
+            }
+        )
+
+    Go2RTCInstance.objects.filter(pk=instance.pk).update(**geo_fields, updated_at=now)
+    for key, value in geo_fields.items():
+        setattr(instance, key, value)
+    invalidate_go2rtc()
+
+    return {
+        "found": bool(geo.get("found")),
+        "ip": str(geo.get("ip") or ""),
+        "from_cache": bool(geo.get("from_cache")),
+        "error": None,
+    }
 
 
 def sync_go2rtc_instance(instance: Go2RTCInstance) -> tuple[int, str | None, str | None]:
@@ -1141,52 +1244,6 @@ def get_go2rtc_profile_tiles(profile: Go2RTCGridProfile) -> list[dict[str, Any]]
     return tiles
 
 
-def ensure_go2rtc_camera_stream_urls(camera: Camera) -> Camera:
-    """Ensure persisted GO2RTC cameras have full URL set and WebRTC player URL as primary."""
-    if camera.source_type != SourceType.GO2RTC:
-        return camera
-
-    payload = dict(camera.source_payload or {})
-    base_url = normalize_go2rtc_base_url(payload.get("base_url") or None)
-    stream_name = str(payload.get("stream_name") or "").strip()
-
-    if not stream_name:
-        title = (camera.title or "").strip()
-        if title:
-            stream_name = title
-
-    if not base_url or not stream_name:
-        return camera
-
-    urls = build_go2rtc_stream_urls(base_url, stream_name)
-    stream_urls = payload.get("stream_urls") if isinstance(payload.get("stream_urls"), dict) else {}
-    merged_urls = {**stream_urls, **urls}
-    desired_stream_url = urls["webrtc_embed"]
-
-    changed_fields: list[str] = []
-    if payload.get("stream_urls") != merged_urls:
-        payload["stream_urls"] = merged_urls
-        payload.setdefault("provider", "go2rtc")
-        payload["base_url"] = base_url
-        payload["stream_name"] = stream_name
-        camera.source_payload = payload
-        changed_fields.append("source_payload")
-
-    if (camera.stream_url or "") != desired_stream_url:
-        camera.stream_url = desired_stream_url
-        changed_fields.append("stream_url")
-
-    if (camera.page_url or "") != desired_stream_url:
-        camera.page_url = desired_stream_url
-        changed_fields.append("page_url")
-
-    if changed_fields:
-        changed_fields.append("updated_at")
-        camera.save(update_fields=changed_fields)
-
-    return camera
-
-
 def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0) -> tuple[list[dict[str, Any]], str | None]:
     """Fetch available stream names from go2rtc API.
 
@@ -1236,37 +1293,3 @@ def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float 
 
     items.sort(key=lambda row: row["name"].lower())
     return items, None
-
-
-def upsert_go2rtc_camera(*, stream_name: str, title: str = "", base_url: str | None = None) -> tuple[Camera, bool]:
-    normalized_base = normalize_go2rtc_base_url(base_url)
-    clean_stream_name = stream_name.strip()
-    clean_title = title.strip() or clean_stream_name
-    
-    # Build all streaming URLs; use go2rtc WebRTC player page as primary playback URL
-    urls = build_go2rtc_stream_urls(normalized_base, clean_stream_name)
-    stream_url = urls["webrtc_embed"]
-
-    data: dict[str, Any] = {
-        "source_type": SourceType.GO2RTC,
-        "title": clean_title,
-        "country": "",
-        "country_code": "",
-        "city": "",
-        "region": "",
-        "zip_code": "",
-        "timezone": "",
-        "manufacturer": "",
-        "stream_url": stream_url,
-        "preview_image": "",
-        "page_url": stream_url,
-        "is_active": True,
-        "has_partial_metadata": False,
-        "source_payload": {
-            "provider": "go2rtc",
-            "base_url": normalized_base,
-            "stream_name": clean_stream_name,
-            "stream_urls": urls,
-        },
-    }
-    return upsert_camera(data)

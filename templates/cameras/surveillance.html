@@ -538,7 +538,7 @@
     <div class="surveillance-tile" data-camera-id="{{ camera.pk }}" tabindex="0">
       <span class="sv-focus-badge">FOCUS</span>
       <div class="surveillance-tile-header">
-        <a class="surveillance-tile-title" href="{% url 'cameras:detail' camera.pk %}" title="{{ camera.title|default:_('(no title)') }}">
+        <a class="surveillance-tile-title" href="#" title="{{ camera.title|default:_('(no title)') }}" tabindex="-1" onclick="return false;">
           {{ camera.title|default:_('(no title)') }}
         </a>
         <span class="surveillance-remove-wrap">
@@ -551,7 +551,7 @@
         </span>
       </div>
       <div class="surveillance-tile-body">
-        <div hx-get="{% url 'cameras_htmx:player' camera.pk %}?surveillance=1"
+        <div hx-get="{% url 'cameras_htmx:grid_player' camera.pk %}?surveillance=1"
              hx-trigger="load"
              hx-swap="innerHTML"
              class="surveillance-player-slot">

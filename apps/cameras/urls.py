@@ -13,6 +13,11 @@ urlpatterns = [
     path("surveillance/<int:pk>/remove/", views.RemoveGo2RTCCameraView.as_view(), name="surveillance_remove"),
     path("go2rtc-manager/", views.Go2RTCManagerView.as_view(), name="go2rtc_manager"),
     path("go2rtc-viewer/", views.Go2RTCInstanceViewerView.as_view(), name="go2rtc_viewer"),
+    path(
+        "go2rtc-viewer/<int:pk>/live-metrics/",
+        views.Go2RTCViewerLiveMetricsView.as_view(),
+        name="go2rtc_viewer_live_metrics",
+    ),
     path("go2rtc-manager/add/", views.AddGo2RTCInstanceView.as_view(), name="go2rtc_manager_add"),
     path("go2rtc-manager/profiles/add/", views.AddGo2RTCGridProfileView.as_view(), name="go2rtc_profile_add"),
     path("go2rtc-manager/<int:pk>/sync/", views.SyncGo2RTCInstanceView.as_view(), name="go2rtc_manager_sync"),

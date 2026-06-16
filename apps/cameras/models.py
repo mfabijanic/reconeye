@@ -194,6 +194,7 @@ class Go2RTCInstance(models.Model):
     override_latitude = models.FloatField(null=True, blank=True)
     override_longitude = models.FloatField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    is_private = models.BooleanField(default=False, db_index=True)
 
     last_synced_at = models.DateTimeField(null=True, blank=True)
     last_sync_status = models.CharField(

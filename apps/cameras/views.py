@@ -40,9 +40,9 @@ from apps.cameras.services import (
     build_config_diff_rows,
     build_go2rtc_stream_urls,
     build_camera_display_title,
-    ensure_go2rtc_camera_stream_urls,
     extract_camera_stream_id,
     fetch_go2rtc_streams,
+    fetch_go2rtc_live_stream_counters,
     get_camera_map_markers,
     get_country_choices,
     get_go2rtc_country_choices,
@@ -53,7 +53,13 @@ from apps.cameras.services import (
     preview_go2rtc_import,
     sync_go2rtc_instance,
     upsert_go2rtc_grid_item,
-    upsert_go2rtc_camera,
+)
+from apps.cameras.services_grid import (
+    get_surveillance_grid_items_with_adapters,
+    get_or_create_default_private_instance,
+    get_surveillance_profile,
+    remove_go2rtc_grid_item,
+    upsert_go2rtc_grid_item as upsert_grid_item,
 )
 from apps.users.models import UserMapSettings
 
@@ -184,14 +190,19 @@ class Go2RTCCameraGridView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        base_url = normalize_go2rtc_base_url()
-        streams, source_error = fetch_go2rtc_streams(base_url=base_url)
-        selected_cameras = (
-            Camera.objects.filter(source_type=SourceType.GO2RTC, is_active=True)
-            .order_by("title", "id")
-        )
-        selected_cameras = [ensure_go2rtc_camera_stream_urls(camera) for camera in selected_cameras]
-        ctx["go2rtc_base_url"] = base_url
+        
+        # Get surveillance grid items (private instances only)
+        selected_cameras = get_surveillance_grid_items_with_adapters()
+        
+        # Get first private instance for stream listing in add form
+        try:
+            default_instance = get_or_create_default_private_instance()
+            streams, source_error = fetch_go2rtc_streams(base_url=default_instance.base_url)
+        except Exception as e:
+            streams = []
+            source_error = f"Error fetching streams: {str(e)}"
+        
+        ctx["go2rtc_base_url"] = default_instance.base_url if 'default_instance' in locals() else ""
         ctx["go2rtc_streams"] = streams
         ctx["go2rtc_source_error"] = source_error
         ctx["selected_cameras"] = selected_cameras
@@ -210,13 +221,24 @@ class AddGo2RTCCameraView(LoginRequiredMixin, View):
 
         stream_name = form.cleaned_data["stream_name"].strip()
         title = form.cleaned_data["title"].strip()
-        camera, created = upsert_go2rtc_camera(stream_name=stream_name, title=title)
+        
+        # Get or create default private instance
+        instance = get_or_create_default_private_instance()
+        profile = get_surveillance_profile()
+        
+        # Create/update grid item instead of Camera record
+        grid_item, created = upsert_grid_item(
+            instance=instance,
+            stream_name=stream_name,
+            title=title,
+            profile=profile,
+        )
         
         if created:
-            message = f"Added camera: {camera.title}"
+            message = f"Added to surveillance: {grid_item.title}"
             alert_class = "alert-success"
         else:
-            message = f"Updated camera: {camera.title}"
+            message = f"Updated surveillance item: {grid_item.title}"
             alert_class = "alert-info"
         
         success_html = f'<div class="alert {alert_class} alert-dismissible fade show" role="alert">'
@@ -227,10 +249,10 @@ class AddGo2RTCCameraView(LoginRequiredMixin, View):
 
 class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
     def post(self, request, pk: int, *args, **kwargs):
-        camera = get_object_or_404(Camera, pk=pk, source_type=SourceType.GO2RTC)
-        camera.is_active = False
-        camera.save(update_fields=["is_active", "updated_at"])
-        messages.success(request, f"Removed camera: {camera.title or camera.pk}")
+        # pk is now Go2RTCGridItem.pk (not Camera.pk)
+        grid_item = get_object_or_404(Go2RTCGridItem, pk=pk)
+        remove_go2rtc_grid_item(grid_item)
+        messages.success(request, f"Removed from surveillance: {grid_item.title or grid_item.stream_name}")
         return redirect("cameras:surveillance")
 
 
@@ -287,7 +309,7 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         sort_key = self._resolve_sort()
         all_instances = (
-            Go2RTCInstance.objects.filter(is_active=True)
+            Go2RTCInstance.objects.filter(is_active=True, is_private=False)
             .annotate(stream_count=Count("streams"))
             .order_by(*self.SORT_OPTIONS[sort_key])
         )
@@ -637,7 +659,7 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         sort_key = self._resolve_sort()
 
         all_instances_qs = (
-            Go2RTCInstance.objects.filter(is_active=True)
+            Go2RTCInstance.objects.filter(is_active=True, is_private=False)
             .annotate(stream_count=Count("streams"))
             .order_by(*self.SORT_OPTIONS[sort_key])
         )
@@ -809,6 +831,11 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         ctx["viewer_page_start"] = viewer_page_start
         ctx["viewer_page_end"] = viewer_page_end
         ctx["active_tile"] = active_tile
+        ctx["viewer_live_metrics_url"] = (
+            reverse("cameras:go2rtc_viewer_live_metrics", kwargs={"pk": selected_instance.pk})
+            if selected_instance is not None
+            else ""
+        )
 
         manager_back_params: dict[str, str] = {}
         manager_to_back_key = {
@@ -834,6 +861,22 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         ctx["manager_state_items"] = list(manager_state_params.items())
         ctx["manager_back_query"] = urlencode(manager_back_params)
         return ctx
+
+
+class Go2RTCViewerLiveMetricsView(LoginRequiredMixin, View):
+    """Read-only endpoint with live producers/consumers for viewer tiles."""
+
+    def get(self, request, pk: int, *args, **kwargs):
+        instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        counters, error = fetch_go2rtc_live_stream_counters(base_url=instance.base_url)
+        payload = {
+            "ok": error is None,
+            "instance_id": instance.pk,
+            "counters": counters,
+        }
+        if error:
+            payload["error"] = error
+        return JsonResponse(payload)
 
 
 class AddGo2RTCInstanceView(LoginRequiredMixin, View):
@@ -1338,9 +1381,28 @@ class HtmxUnifiedPlayerView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        camera = ctx["camera"]
-        if camera.source_type == SourceType.GO2RTC:
-            camera = ensure_go2rtc_camera_stream_urls(camera)
-            ctx["camera"] = camera
         ctx["surveillance_mode"] = _to_bool_flag(self.request.GET.get("surveillance"))
         return ctx
+
+
+class HtmxGridItemPlayerView(LoginRequiredMixin, View):
+    """Render the go2rtc iframe player for a Go2RTCGridItem (surveillance grid)."""
+
+    def get(self, request, pk: int) -> HttpResponse:
+        from apps.cameras.services import build_go2rtc_stream_urls as _build_urls
+        from apps.cameras.services_grid import GridItemAdapter
+
+        grid_item = get_object_or_404(
+            Go2RTCGridItem.objects.select_related("instance"),
+            pk=pk,
+            is_active=True,
+        )
+        urls = _build_urls(grid_item.instance.base_url, grid_item.stream_name)
+        adapter = GridItemAdapter(grid_item, stream_urls=urls)
+        ctx = {
+            "camera": adapter,
+            "surveillance_mode": _to_bool_flag(request.GET.get("surveillance")),
+        }
+        return HttpResponse(
+            render_to_string("htmx/cameras/_player.html", ctx, request=request)
+        )

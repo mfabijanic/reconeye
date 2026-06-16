@@ -212,17 +212,26 @@ def reresolve_go2rtc_ips(modeladmin, request, queryset) -> None:
 
 @admin.action(description=_("Refresh GeoIP location"))
 def refresh_go2rtc_geo(modeladmin, request, queryset) -> None:
-    from apps.cameras.services import sync_go2rtc_instance
+    from apps.cameras.services import refresh_instance_geoip
 
-    processed = 0
+    found = 0
+    no_public_ip = 0
+    geoip_miss = 0
     for instance in queryset:
-        sync_go2rtc_instance(instance)
-        processed += 1
+        result = refresh_instance_geoip(instance)
+        if result.get("found"):
+            found += 1
+        elif result.get("error") == "no_public_ips":
+            no_public_ip += 1
+        else:
+            geoip_miss += 1
 
     messages.success(
         request,
-        _("GeoIP refresh completed for %(count)s instance(s).")
-        % {"count": processed},
+        _(
+            "GeoIP refresh completed: %(found)s located, %(no_public_ip)s without public IPs, %(geoip_miss)s public IPs without GeoIP match."
+        )
+        % {"found": found, "no_public_ip": no_public_ip, "geoip_miss": geoip_miss},
     )
 
 
@@ -247,6 +256,7 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "group_label",
+        "is_private",
         "effective_location",
         "scheme",
         "host",
@@ -256,9 +266,11 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
         "is_active",
         "last_sync_status",
         "last_synced_at",
+        "created_at",
     )
     list_filter = (
         "is_active",
+        "is_private",
         "last_sync_status",
         "scheme",
         "group_label",
@@ -285,6 +297,7 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
         "geo_provider",
         "geo_payload",
     )
+    ordering = ("-created_at", "-id")
     actions = [reresolve_go2rtc_ips, refresh_go2rtc_geo, sync_go2rtc_instances]
 
     fieldsets = (
@@ -297,6 +310,7 @@ class Go2RTCInstanceAdmin(admin.ModelAdmin):
                 "path",
                 "group_label",
                 "is_active",
+                "is_private",
             )
         }),
         (_("Auto GeoIP"), {

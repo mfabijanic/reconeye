@@ -44,9 +44,6 @@ def get_dashboard_stats(*, force: bool = False) -> dict[str, Any]:
     wuc_total = Camera.objects.filter(
         is_active=True, source_type=SourceType.WHATSUPCAMS
     ).count()
-    go2rtc_total = Camera.objects.filter(
-        is_active=True, source_type=SourceType.GO2RTC
-    ).count()
 
     stats = {
         "total": total,
@@ -56,7 +53,6 @@ def get_dashboard_stats(*, force: bool = False) -> dict[str, Any]:
         "active_jobs": active_jobs,
         "insecam_total": insecam_total,
         "wuc_total": wuc_total,
-        "go2rtc_total": go2rtc_total,
     }
     cache.set(key, stats, TTL_WARM if force else TTL_DASHBOARD)
     return stats

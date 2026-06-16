@@ -10,6 +10,7 @@ app_name = "cameras_htmx"
 urlpatterns = [
     path("", views.HtmxCameraListView.as_view(), name="htmx_list"),
     path("<int:pk>/player/", views.HtmxUnifiedPlayerView.as_view(), name="player"),
+    path("<int:pk>/grid-player/", views.HtmxGridItemPlayerView.as_view(), name="grid_player"),
     path("map-panel/<int:pk>/", views.HtmxCameraMapPanelView.as_view(), name="map_panel"),
     path("<int:pk>/check-stream/", views.HtmxCameraCheckStreamView.as_view(), name="check_stream"),
 ]

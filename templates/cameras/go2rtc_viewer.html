@@ -653,7 +653,10 @@
             </div>
           </div>
         {% else %}
-          <div id="go2rtc-viewer-grid" class="go2rtc-viewer-grid grid-{{ viewer_size }}" data-visible-count="{{ viewer_tiles|length }}">
+          <div id="go2rtc-viewer-grid"
+               class="go2rtc-viewer-grid grid-{{ viewer_size }}"
+               data-visible-count="{{ viewer_tiles|length }}"
+               data-live-metrics-url="{{ viewer_live_metrics_url }}">
             {% for tile in viewer_tiles %}
               <article class="go2rtc-viewer-tile" tabindex="0" data-copy-url="{{ tile.webrtc_embed_url }}" data-stream-name="{{ tile.stream_name }}">
                 <div class="go2rtc-viewer-tile-header">
@@ -666,8 +669,12 @@
                   </button>
                 </div>
                 <div class="go2rtc-viewer-tile-footer">
-                  <span class="go2rtc-viewer-chip">{% trans "Producers" %}: {{ tile.producers_count }}</span>
-                  <span class="go2rtc-viewer-chip">{% trans "Consumers" %}: {{ tile.consumers_count }}</span>
+                  <span class="go2rtc-viewer-chip">
+                    {% trans "Producers" %}: <span class="go2rtc-live-producers" data-stream-name="{{ tile.stream_name }}">...</span>
+                  </span>
+                  <span class="go2rtc-viewer-chip">
+                    {% trans "Consumers" %}: <span class="go2rtc-live-consumers" data-stream-name="{{ tile.stream_name }}">...</span>
+                  </span>
                 </div>
                 {% include "cameras/_unified_player.html" with go2rtc_src=tile.webrtc_embed_url|default:tile.viewer_url title=tile.title loading="eager" wrapper_class="" iframe_class="go2rtc-iframe go2rtc-iframe--surveillance" %}
               </article>
@@ -764,6 +771,7 @@
     const helpDialog = document.getElementById("go2rtc-viewer-help-dialog");
     const helpCloseBtn = document.getElementById("go2rtc-viewer-help-close");
     const activeInstanceLink = document.querySelector(".go2rtc-instance-link.active");
+    const liveMetricsUrl = (grid && grid.dataset.liveMetricsUrl) ? grid.dataset.liveMetricsUrl : "";
     const sidebarScrollStorageKey = "reconeye:go2rtc_viewer:sidebar_scroll_top";
     const queryParams = new URLSearchParams(window.location.search);
     const prefetchMode = (queryParams.get("viewer_prefetch") || "").trim().toLowerCase();
@@ -958,6 +966,66 @@
       if (Number.isNaN(current) || Number.isNaN(max)) return;
       const next = Math.max(1, Math.min(max, current + delta));
       if (next !== current) navigateViewerPage(next);
+    };
+
+    const setLiveCounterFallback = (value) => {
+      if (!grid) return;
+      grid.querySelectorAll(".go2rtc-live-producers").forEach((node) => {
+        node.textContent = value;
+      });
+      grid.querySelectorAll(".go2rtc-live-consumers").forEach((node) => {
+        node.textContent = value;
+      });
+    };
+
+    const applyLiveCounters = (counters) => {
+      if (!grid || !counters || typeof counters !== "object") return;
+      grid.querySelectorAll(".go2rtc-live-producers").forEach((node) => {
+        const streamName = (node.dataset.streamName || "").trim();
+        const row = streamName ? counters[streamName] : null;
+        const value = row && Number.isFinite(row.producers) ? row.producers : "n/a";
+        node.textContent = String(value);
+      });
+      grid.querySelectorAll(".go2rtc-live-consumers").forEach((node) => {
+        const streamName = (node.dataset.streamName || "").trim();
+        const row = streamName ? counters[streamName] : null;
+        const value = row && Number.isFinite(row.consumers) ? row.consumers : "n/a";
+        node.textContent = String(value);
+      });
+    };
+
+    const refreshLiveCounters = async () => {
+      if (!liveMetricsUrl || !grid) return;
+
+      const controller = ("AbortController" in window) ? new AbortController() : null;
+      const timeoutId = window.setTimeout(() => {
+        if (controller) controller.abort();
+      }, 2500);
+
+      try {
+        const response = await fetch(liveMetricsUrl, {
+          method: "GET",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "ReconEyeViewerLiveMetrics",
+          },
+          signal: controller ? controller.signal : undefined,
+        });
+        if (!response.ok) {
+          setLiveCounterFallback("n/a");
+          return;
+        }
+        const payload = await response.json();
+        if (!payload || payload.ok !== true) {
+          setLiveCounterFallback("n/a");
+          return;
+        }
+        applyLiveCounters(payload.counters || {});
+      } catch (_) {
+        setLiveCounterFallback("n/a");
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
     };
 
     if (copyActiveBtn) {
@@ -1177,6 +1245,16 @@
     }
 
     if (grid) {
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(() => {
+          refreshLiveCounters();
+        }, { timeout: 900 });
+      } else {
+        window.setTimeout(() => {
+          refreshLiveCounters();
+        }, 0);
+      }
+
       window.setTimeout(() => {
         const tiles = getTiles();
         if (tiles.length) focusTile(0);
