@@ -262,74 +262,7 @@
 
       <div class="card-body p-0">
         <div id="go2rtc-instance-list" class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
-          {% for group in grouped_instances %}
-            {% if group_view %}
-              <div class="list-group-item bg-body-secondary py-1 px-3 small text-uppercase fw-semibold text-muted">
-                <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
-                <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
-                {% if group.auto %}
-                  <span class="badge text-bg-info ms-1" title="{% trans 'Auto-grouped by shared IP address' %}">
-                    <i class="bi bi-magic me-1"></i>{% trans "auto IP" %}
-                  </span>
-                {% endif %}
-              </div>
-            {% endif %}
-            {% for instance in group.instances %}
-              <div class="list-group-item {% if selected_instance and selected_instance.pk == instance.pk %}active{% endif %}" data-instance-row="{{ instance.pk }}">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                  <a href="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if instances_page.number > 1 %}&page={{ instances_page.number }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
-                    hx-get="{% url 'cameras:go2rtc_manager' %}?instance={{ instance.pk }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if instances_page.number > 1 %}&page={{ instances_page.number }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
-                    hx-target="#go2rtc-manager-workspace"
-                    hx-select="#go2rtc-manager-workspace"
-                    hx-swap="outerHTML"
-                    hx-push-url="true"
-                    class="text-decoration-none d-block flex-grow-1 me-2 {% if selected_instance and selected_instance.pk == instance.pk %}text-reset{% else %}text-body{% endif %}">
-                    <div class="text-truncate">
-                      <div class="d-flex align-items-center gap-2 text-truncate">
-                        <strong class="text-truncate">{{ instance.name }}</strong>
-                        {% if instance.country_flag %}
-                          <span title="{{ instance.effective_country|default:'' }}">{{ instance.country_flag }}</span>
-                        {% endif %}
-                        {% if instance.effective_country_code %}
-                          <span class="badge text-bg-light border">{{ instance.effective_country_code }}</span>
-                        {% endif %}
-                      </div>
-                      <small class="d-block text-truncate {% if selected_instance and selected_instance.pk == instance.pk %}text-white-50{% else %}text-muted{% endif %}">
-                        <code class="{% if selected_instance and selected_instance.pk == instance.pk %}text-white-50{% endif %}">{{ instance.base_url }}</code>
-                        &middot; {% if instance.last_synced_at %}{{ instance.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
-                      </small>
-                    </div>
-                  </a>
-                  <div class="d-flex align-items-start gap-2 flex-shrink-0">
-                    <a href="{% url 'cameras:go2rtc_viewer' %}?instance={{ instance.pk }}&manager_instance={{ instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}"
-                       class="btn btn-sm {% if selected_instance and selected_instance.pk == instance.pk %}btn-light{% else %}btn-outline-primary{% endif %}"
-                       title="{% trans 'Open in Viewer' %}">
-                      <i class="bi bi-play-btn me-1"></i>{% trans "Viewer" %}
-                    </a>
-                    <span class="badge rounded-pill text-nowrap {% if selected_instance and selected_instance.pk == instance.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}" title="{% trans 'Streams' %}">
-                      <i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}
-                      <span class="badge text-nowrap {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'UNAUTHORIZED' %}text-bg-warning{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
-                          {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'UNAUTHORIZED' %}{% trans "Unauthorized" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
-                      </span>
-                      {% if instance.last_sync_status == 'SUCCESS' and instance.last_sync_error %}
-                        <span class="badge text-nowrap text-bg-warning" title="{{ instance.last_sync_error }}">
-                          <i class="bi bi-exclamation-triangle me-1"></i>{% trans "Warning" %}
-                        </span>
-                      {% endif %}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            {% endfor %}
-          {% empty %}
-            <div class="list-group-item px-3 py-4 text-center text-muted">
-              {% if search_query %}
-                {% trans "No instances match your search." %}
-              {% else %}
-                {% trans "No go2rtc instances yet." %}
-              {% endif %}
-            </div>
-          {% endfor %}
+          {% include "cameras/_go2rtc_instance_menu_list.html" with menu_mode="manager" %}
         </div>
       </div>
 

@@ -422,6 +422,11 @@
               <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="{% trans 'Sort instances' %}">
                 <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
                 <option value="group" {% if sort == 'group' %}selected{% endif %}>{% trans "Group / FQDN" %}</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>{% trans "Name (A–Z)" %}</option>
+                <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>{% trans "Name (Z–A)" %}</option>
+                <option value="status" {% if sort == 'status' %}selected{% endif %}>{% trans "Sync status" %}</option>
+                <option value="streams_desc" {% if sort == 'streams_desc' %}selected{% endif %}>{% trans "Streams (high→low)" %}</option>
+                <option value="streams_asc" {% if sort == 'streams_asc' %}selected{% endif %}>{% trans "Streams (low→high)" %}</option>
               </select>
             </div>
             <div class="col-12">
@@ -459,72 +464,7 @@
       </div>
 
       <div class="go2rtc-viewer-sidebar-list">
-        {% if grouped_instances %}
-          {% for group in grouped_instances %}
-            {% if group_view %}
-              <div class="go2rtc-viewer-group px-3 py-2 small text-uppercase fw-semibold text-muted">
-                <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
-                <span class="badge text-bg-light ms-1">{{ group.instances|length }}</span>
-                {% if group.auto %}
-                  <span class="badge text-bg-info ms-1">{% trans "auto IP" %}</span>
-                {% endif %}
-              </div>
-            {% endif %}
-            {% for instance in group.instances %}
-                <a href="?instance={{ instance.pk }}{% if instance_query %}&q={{ instance_query|urlencode }}{% endif %}&sort={{ sort }}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}&instance_page={{ instance_page.number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&viewer_page=1&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}"
-                 class="go2rtc-instance-link{% if selected_instance and selected_instance.pk == instance.pk %} active{% endif %}">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                  <div class="text-truncate">
-                    <div class="d-flex align-items-center gap-2 text-truncate">
-                      <div class="fw-semibold text-truncate">{{ instance.name }}</div>
-                      {% if instance.country_flag %}
-                        <span title="{{ instance.effective_country|default:'' }}">{{ instance.country_flag }}</span>
-                      {% endif %}
-                      {% if instance.effective_country_code %}
-                        <span class="badge text-bg-light border">{{ instance.effective_country_code }}</span>
-                      {% endif %}
-                    </div>
-                    <div class="small text-muted text-truncate"><code>{{ instance.base_url }}</code></div>
-                    {% if instance.effective_country or instance.effective_city %}
-                      <div class="small text-muted text-truncate mt-1">
-                        <i class="bi bi-geo-alt me-1"></i>
-                        {% if instance.effective_country %}{{ instance.effective_country }}{% endif %}
-                        {% if instance.effective_city %}
-                          {% if instance.effective_country %}&middot;{% endif %}
-                          {{ instance.effective_city }}
-                        {% endif %}
-                      </div>
-                    {% endif %}
-                    <div class="small text-muted mt-1">
-                      {% if instance.last_synced_at %}{{ instance.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
-                    </div>
-                  </div>
-                  <div class="d-flex flex-column align-items-end gap-1">
-                    <span class="badge text-bg-secondary"><i class="bi bi-camera-video me-1"></i>{{ instance.stream_count }}</span>
-                    <span class="badge {% if instance.last_sync_status == 'SUCCESS' %}text-bg-success{% elif instance.last_sync_status == 'UNAUTHORIZED' %}text-bg-warning{% elif instance.last_sync_status == 'FAILED' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
-                      {% if instance.last_sync_status == 'SUCCESS' %}{% trans "Success" %}{% elif instance.last_sync_status == 'UNAUTHORIZED' %}{% trans "Unauthorized" %}{% elif instance.last_sync_status == 'FAILED' %}{% trans "Failed" %}{% else %}{% trans "Never" %}{% endif %}
-                    </span>
-                    {% if instance.last_sync_status == 'SUCCESS' and instance.last_sync_error %}
-                      <span class="badge text-bg-warning" title="{{ instance.last_sync_error }}">
-                        <i class="bi bi-exclamation-triangle me-1"></i>{% trans "Warning" %}
-                      </span>
-                    {% endif %}
-                    <button type="button"
-                            class="go2rtc-viewer-copy-btn go2rtc-instance-copy-btn"
-                            data-copy-url="{{ instance.base_url }}"
-                            aria-label="{% trans 'Copy instance URL' %}">
-                      <i class="bi bi-clipboard"></i>
-                    </button>
-                  </div>
-                </div>
-              </a>
-            {% endfor %}
-          {% endfor %}
-        {% elif instance_total %}
-          <div class="p-4 text-center text-muted">{% trans "No instances match your search." %}</div>
-        {% else %}
-          <div class="p-4 text-center text-muted">{% trans "No go2rtc instances yet." %}</div>
-        {% endif %}
+        {% include "cameras/_go2rtc_instance_menu_list.html" with menu_mode="viewer" %}
       </div>
 
       {% if instance_page and instance_page.paginator.num_pages > 1 %}

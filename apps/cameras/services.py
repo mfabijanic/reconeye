@@ -7,6 +7,7 @@ import hashlib
 import ipaddress
 import json
 import socket
+from functools import cmp_to_key
 from dataclasses import dataclass, field
 from urllib.parse import quote
 from typing import TYPE_CHECKING, Any
@@ -41,6 +42,12 @@ WUC_STREAM_ID_PREFIXES = ("ba_", "do_", "es_", "gr_", "hr_", "ie_", "it_", "mk_"
 GO2RTC_READ_ONLY_METHODS = {"GET"}
 # How long DNS resolution is allowed to block during a sync (seconds).
 DNS_RESOLUTION_TIMEOUT = 3.0
+GO2RTC_STATUS_SORT_ORDER = {
+    Go2RTCInstance.LastSyncStatus.FAILED: 0,
+    Go2RTCInstance.LastSyncStatus.UNAUTHORIZED: 1,
+    Go2RTCInstance.LastSyncStatus.NEVER: 2,
+    Go2RTCInstance.LastSyncStatus.SUCCESS: 3,
+}
 
 
 def resolve_host_ips(host: str, *, timeout: float = DNS_RESOLUTION_TIMEOUT) -> list[str]:
@@ -174,6 +181,188 @@ def group_go2rtc_instances(instances: list[Go2RTCInstance]) -> list[dict[str, An
 
     groups.sort(key=lambda g: (g["label"] or "").lower())
     return groups
+
+
+def sort_go2rtc_instance_groups(
+    instances: list[Go2RTCInstance],
+    *,
+    sort_key: str,
+) -> list[dict[str, Any]]:
+    """Group and sort go2rtc instances with groups as the primary entity.
+
+    The returned structure matches ``group_go2rtc_instances()``, but ordering is
+    driven by the chosen sort mode at the group level first and then within
+    each group.
+    """
+    groups = group_go2rtc_instances(instances)
+    for group in groups:
+        group["instances"] = sorted(
+            list(group["instances"]),
+            key=cmp_to_key(lambda left, right: _compare_go2rtc_instances(left, right, sort_key)),
+        )
+    return sorted(
+        groups,
+        key=cmp_to_key(lambda left, right: _compare_go2rtc_groups(left, right, sort_key)),
+    )
+
+
+def find_go2rtc_group_page(
+    groups: list[dict[str, Any]],
+    *,
+    selected_instance_id: int | None,
+    page_size: int,
+) -> int:
+    """Return the 1-based page containing the selected instance's group."""
+    if not groups or not selected_instance_id or page_size <= 0:
+        return 1
+
+    for index, group in enumerate(groups):
+        if any(instance.pk == selected_instance_id for instance in group["instances"]):
+            return (index // page_size) + 1
+    return 1
+
+
+def flatten_go2rtc_group_page(groups: list[dict[str, Any]]) -> list[Go2RTCInstance]:
+    """Flatten a grouped page back into an instance list."""
+    instances: list[Go2RTCInstance] = []
+    for group in groups:
+        instances.extend(group["instances"])
+    return instances
+
+
+def _group_label_key(group: dict[str, Any]) -> str:
+    return str(group.get("label") or "").lower()
+
+
+def _instance_name_key(instance: Go2RTCInstance) -> str:
+    return (instance.name or "").lower()
+
+
+def _instance_stream_count(instance: Go2RTCInstance) -> int:
+    value = getattr(instance, "stream_count", 0)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _instance_created_key(instance: Go2RTCInstance) -> float:
+    created_at = getattr(instance, "created_at", None)
+    if created_at is None:
+        return 0.0
+    return created_at.timestamp()
+
+
+def _instance_status_rank(instance: Go2RTCInstance) -> int:
+    status = getattr(instance, "last_sync_status", Go2RTCInstance.LastSyncStatus.NEVER)
+    return GO2RTC_STATUS_SORT_ORDER.get(status, GO2RTC_STATUS_SORT_ORDER[Go2RTCInstance.LastSyncStatus.NEVER])
+
+
+def _group_max_stream_count(group: dict[str, Any]) -> int:
+    instances = group.get("instances") or []
+    return max((_instance_stream_count(instance) for instance in instances), default=0)
+
+
+def _group_total_stream_count(group: dict[str, Any]) -> int:
+    return sum(_instance_stream_count(instance) for instance in group.get("instances") or [])
+
+
+def _group_newest_created_key(group: dict[str, Any]) -> float:
+    instances = group.get("instances") or []
+    return max((_instance_created_key(instance) for instance in instances), default=0.0)
+
+
+def _group_worst_status_rank(group: dict[str, Any]) -> int:
+    instances = group.get("instances") or []
+    return min((_instance_status_rank(instance) for instance in instances), default=GO2RTC_STATUS_SORT_ORDER[Go2RTCInstance.LastSyncStatus.NEVER])
+
+
+def _compare_values(left: Any, right: Any) -> int:
+    if left < right:
+        return -1
+    if left > right:
+        return 1
+    return 0
+
+
+def _compare_go2rtc_instances(
+    left: Go2RTCInstance,
+    right: Go2RTCInstance,
+    sort_key: str,
+) -> int:
+    if sort_key == "newest":
+        return _compare_sort_tuples(
+            (-_instance_created_key(left), -left.pk),
+            (-_instance_created_key(right), -right.pk),
+        )
+    if sort_key == "name_desc":
+        return _compare_sort_tuples(
+            (_invert_text_key(_instance_name_key(left)), left.pk),
+            (_invert_text_key(_instance_name_key(right)), right.pk),
+        )
+    if sort_key == "streams_desc":
+        return _compare_sort_tuples(
+            (-_instance_stream_count(left), _instance_name_key(left), left.pk),
+            (-_instance_stream_count(right), _instance_name_key(right), right.pk),
+        )
+    if sort_key == "streams_asc":
+        return _compare_sort_tuples(
+            (_instance_stream_count(left), _instance_name_key(left), left.pk),
+            (_instance_stream_count(right), _instance_name_key(right), right.pk),
+        )
+    if sort_key == "status":
+        return _compare_sort_tuples(
+            (_instance_status_rank(left), _instance_name_key(left), left.pk),
+            (_instance_status_rank(right), _instance_name_key(right), right.pk),
+        )
+    return _compare_sort_tuples(
+        (_instance_name_key(left), left.pk),
+        (_instance_name_key(right), right.pk),
+    )
+
+
+def _compare_go2rtc_groups(left: dict[str, Any], right: dict[str, Any], sort_key: str) -> int:
+    if sort_key == "newest":
+        return _compare_sort_tuples(
+            (-_group_newest_created_key(left), _group_label_key(left)),
+            (-_group_newest_created_key(right), _group_label_key(right)),
+        )
+    if sort_key == "name_desc":
+        return _compare_sort_tuples(
+            (_invert_text_key(_group_label_key(left)),),
+            (_invert_text_key(_group_label_key(right)),),
+        )
+    if sort_key == "streams_desc":
+        return _compare_sort_tuples(
+            (-_group_max_stream_count(left), -_group_total_stream_count(left), _group_label_key(left)),
+            (-_group_max_stream_count(right), -_group_total_stream_count(right), _group_label_key(right)),
+        )
+    if sort_key == "streams_asc":
+        return _compare_sort_tuples(
+            (_group_max_stream_count(left), _group_total_stream_count(left), _group_label_key(left)),
+            (_group_max_stream_count(right), _group_total_stream_count(right), _group_label_key(right)),
+        )
+    if sort_key == "status":
+        return _compare_sort_tuples(
+            (_group_worst_status_rank(left), _group_label_key(left), -_group_newest_created_key(left)),
+            (_group_worst_status_rank(right), _group_label_key(right), -_group_newest_created_key(right)),
+        )
+    return _compare_sort_tuples(
+        (_group_label_key(left),),
+        (_group_label_key(right),),
+    )
+
+
+def _compare_sort_tuples(left: tuple[Any, ...], right: tuple[Any, ...]) -> int:
+    for left_part, right_part in zip(left, right):
+        result = _compare_values(left_part, right_part)
+        if result:
+            return result
+    return 0
+
+
+def _invert_text_key(value: str) -> tuple[int, ...]:
+    return tuple(-ord(char) for char in value)
 
 
 @dataclass

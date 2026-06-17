@@ -41,16 +41,18 @@ from apps.cameras.services import (
     build_go2rtc_stream_urls,
     build_camera_display_title,
     extract_camera_stream_id,
+    find_go2rtc_group_page,
     fetch_go2rtc_streams,
     fetch_go2rtc_live_stream_counters,
+    flatten_go2rtc_group_page,
     get_camera_map_markers,
     get_country_choices,
     get_go2rtc_country_choices,
     get_go2rtc_profile_tiles,
-    group_go2rtc_instances,
     import_go2rtc_instances,
     normalize_go2rtc_base_url,
     preview_go2rtc_import,
+    sort_go2rtc_instance_groups,
     sync_go2rtc_instance,
     upsert_go2rtc_grid_item,
 )
@@ -308,10 +310,8 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         sort_key = self._resolve_sort()
-        all_instances = (
-            Go2RTCInstance.objects.filter(is_active=True, is_private=False)
-            .annotate(stream_count=Count("streams"))
-            .order_by(*self.SORT_OPTIONS[sort_key])
+        all_instances = Go2RTCInstance.objects.filter(is_active=True, is_private=False).annotate(
+            stream_count=Count("streams")
         )
 
         # Free-text search across instance name, host, base URL and group label.
@@ -361,11 +361,29 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
                 )
             )
 
-        # Paginate the (possibly filtered) instance list so very large fleets
-        # (hundreds of instances) stay responsive.
+        # Sort and paginate the grouped instance list so the sidebar is driven
+        # by logical groups first, then instances within each group.
         page_size = self._resolve_page_size()
-        paginator = Paginator(instances, page_size)
+        selected_id = self.request.GET.get("instance")
+        try:
+            selected_instance_id = int(selected_id) if selected_id else None
+        except (TypeError, ValueError):
+            selected_instance_id = None
+
+        grouped_instances_all = sort_go2rtc_instance_groups(
+            list(instances),
+            sort_key=sort_key,
+        )
+        paginator = Paginator(grouped_instances_all, page_size)
         page_number = self.request.GET.get("page")
+        if not page_number and selected_instance_id is not None:
+            page_number = str(
+                find_go2rtc_group_page(
+                    grouped_instances_all,
+                    selected_instance_id=selected_instance_id,
+                    page_size=page_size,
+                )
+            )
         try:
             instances_page = paginator.page(page_number)
         except PageNotAnInteger:
@@ -373,34 +391,17 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         except EmptyPage:
             instances_page = paginator.page(paginator.num_pages)
 
-        # Group the instances on the current page by their logical group/FQDN,
-        # but only when grouping is the active sort. For name/stream-count sorts
-        # we keep a single flat list so the chosen ordering is preserved.
-        group_view = sort_key == "group"
-        if group_view:
-            # Auto/semi-automatic grouping: manual group_label wins, otherwise
-            # instances whose resolved IP sets overlap (shared IP, incl. a single
-            # FQDN resolving to several IPs) are merged; host string is the final
-            # fallback for not-yet-resolved instances.
-            grouped_instances_list = group_go2rtc_instances(list(instances_page))
-        else:
-            grouped_instances_list = (
-                [{"label": "", "instances": list(instances_page)}]
-                if instances_page.object_list
-                else []
-            )
+        grouped_instances_list = list(instances_page.object_list)
+        current_page_instances = flatten_go2rtc_group_page(grouped_instances_list)
+        group_view = True
 
         # Resolve the selected instance against the full (unpaginated) set so a
         # deep-linked ?instance=<pk> still works regardless of the active page.
         selected_instance = None
-        selected_id = self.request.GET.get("instance")
-        if selected_id:
-            try:
-                selected_instance = all_instances.filter(pk=int(selected_id)).first()
-            except (TypeError, ValueError):
-                selected_instance = None
+        if selected_instance_id is not None:
+            selected_instance = all_instances.filter(pk=selected_instance_id).first()
         if selected_instance is None:
-            selected_instance = instances_page.object_list[0] if instances_page.object_list else None
+            selected_instance = current_page_instances[0] if current_page_instances else None
 
         streams_qs = Go2RTCStream.objects.none()
         latest_config = None
@@ -488,12 +489,13 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
                 elif len(snapshots) == 1:
                     compare_to = snapshots[0]
 
-        ctx["instances"] = instances_page
+        ctx["instances"] = current_page_instances
         ctx["instances_page"] = instances_page
         ctx["grouped_instances"] = grouped_instances_list
         ctx["group_view"] = group_view
         ctx["instance_total"] = all_instances.count()
-        ctx["instance_filtered_total"] = paginator.count
+        ctx["instance_filtered_total"] = len(grouped_instances_all and flatten_go2rtc_group_page(grouped_instances_all) or [])
+        ctx["instance_group_total"] = len(grouped_instances_all)
         ctx["search_query"] = search_query
         ctx["country_choices"] = get_go2rtc_country_choices()
         ctx["selected_country"] = country_filter
@@ -566,8 +568,13 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
     SIDEBAR_MODES = {"pinned", "auto"}
     DEFAULT_SIDEBAR_MODE = "pinned"
     SORT_OPTIONS = {
-        "newest": ("-created_at", "-id"),
-        "group": ("group_label", "name", "pk"),
+        "newest": "newest",
+        "group": "group",
+        "name": "name",
+        "name_desc": "name_desc",
+        "streams_desc": "streams_desc",
+        "streams_asc": "streams_asc",
+        "status": "status",
     }
     DEFAULT_SORT = "newest"
 
@@ -658,10 +665,8 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         instance_page_size = self._resolve_instance_page_size()
         sort_key = self._resolve_sort()
 
-        all_instances_qs = (
-            Go2RTCInstance.objects.filter(is_active=True, is_private=False)
-            .annotate(stream_count=Count("streams"))
-            .order_by(*self.SORT_OPTIONS[sort_key])
+        all_instances_qs = Go2RTCInstance.objects.filter(is_active=True, is_private=False).annotate(
+            stream_count=Count("streams")
         )
         instance_total = all_instances_qs.count()
 
@@ -689,38 +694,25 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
             if selected_id is not None:
                 selected_instance = all_instances_qs.filter(pk=selected_id).first()
 
-        instance_paginator = Paginator(filtered_instances_qs, instance_page_size)
+        grouped_instances_all = sort_go2rtc_instance_groups(
+            list(filtered_instances_qs),
+            sort_key=sort_key,
+        )
+        instance_paginator = Paginator(grouped_instances_all, instance_page_size)
         resolved_instance_page = self.request.GET.get("instance_page")
 
         # Keep deep links stable: if an instance is selected and the client did
         # not force a sidebar page, automatically open the page containing it.
         if not resolved_instance_page and selected_instance is not None:
-            selected_in_filtered = filtered_instances_qs.filter(
-                pk=selected_instance.pk
-            ).exists()
+            selected_in_filtered = filtered_instances_qs.filter(pk=selected_instance.pk).exists()
             if selected_in_filtered:
-                if sort_key == "group":
-                    leading_count = filtered_instances_qs.filter(
-                        Q(group_label__lt=selected_instance.group_label)
-                        | (
-                            Q(group_label=selected_instance.group_label)
-                            & Q(name__lt=selected_instance.name)
-                        )
-                        | (
-                            Q(group_label=selected_instance.group_label)
-                            & Q(name=selected_instance.name)
-                            & Q(pk__lt=selected_instance.pk)
-                        )
-                    ).count()
-                else:
-                    leading_count = filtered_instances_qs.filter(
-                        Q(created_at__gt=selected_instance.created_at)
-                        | (
-                            Q(created_at=selected_instance.created_at)
-                            & Q(pk__gt=selected_instance.pk)
-                        )
-                    ).count()
-                resolved_instance_page = str((leading_count // instance_page_size) + 1)
+                resolved_instance_page = str(
+                    find_go2rtc_group_page(
+                        grouped_instances_all,
+                        selected_instance_id=selected_instance.pk,
+                        page_size=instance_page_size,
+                    )
+                )
 
         try:
             instance_page = instance_paginator.page(resolved_instance_page)
@@ -729,12 +721,9 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         except EmptyPage:
             instance_page = instance_paginator.page(instance_paginator.num_pages)
 
-        instances = list(instance_page.object_list)
-        group_view = sort_key == "group"
-        if group_view:
-            grouped_instances = group_go2rtc_instances(instances) if instances else []
-        else:
-            grouped_instances = [{"label": "", "instances": instances}] if instances else []
+        grouped_instances = list(instance_page.object_list)
+        instances = flatten_go2rtc_group_page(grouped_instances)
+        group_view = True
 
         if selected_instance is None and instances:
             selected_instance = instances[0]
