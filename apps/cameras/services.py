@@ -200,6 +200,35 @@ def sort_go2rtc_instance_groups(
             list(group["instances"]),
             key=cmp_to_key(lambda left, right: _compare_go2rtc_instances(left, right, sort_key)),
         )
+
+    # For stream-count sorting, keep each group contiguous but choose group
+    # order by the first member that would appear in the global instance order.
+    if sort_key in {"streams_desc", "streams_asc"}:
+        ranked_instances = sorted(
+            [instance for group in groups for instance in group["instances"]],
+            key=cmp_to_key(lambda left, right: _compare_go2rtc_instances(left, right, sort_key)),
+        )
+        rank_by_pk: dict[int, int] = {}
+        for rank, instance in enumerate(ranked_instances):
+            if instance.pk is not None and instance.pk not in rank_by_pk:
+                rank_by_pk[instance.pk] = rank
+
+        fallback_rank = len(ranked_instances) + 1
+
+        def group_anchor_rank(group: dict[str, Any]) -> int:
+            member_ranks = [
+                rank_by_pk.get(instance.pk, fallback_rank)
+                for instance in group.get("instances") or []
+            ]
+            if not member_ranks:
+                return fallback_rank
+            return min(member_ranks)
+
+        return sorted(
+            groups,
+            key=lambda group: (group_anchor_rank(group), _group_label_key(group)),
+        )
+
     return sorted(
         groups,
         key=cmp_to_key(lambda left, right: _compare_go2rtc_groups(left, right, sort_key)),

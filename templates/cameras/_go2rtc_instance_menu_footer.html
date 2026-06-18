@@ -1,0 +1,112 @@
+{% load i18n %}
+{% if menu_mode == 'manager' %}
+  {% if instances_page and instances_page.paginator.num_pages > 1 %}
+    <div class="card-footer d-flex align-items-center justify-content-between gap-2 flex-wrap py-2">
+      {% if instances_page.has_previous %}
+        <a class="btn btn-sm btn-outline-secondary"
+          href="?page={{ instances_page.previous_page_number }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+          hx-get="?page={{ instances_page.previous_page_number }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+          hx-target="#go2rtc-manager-workspace"
+          hx-select="#go2rtc-manager-workspace"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+      {% endif %}
+
+      <span class="small text-muted">
+        {% blocktrans with current=instances_page.number total=instances_page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktrans %}
+      </span>
+
+      {% if instances_page.has_next %}
+        <a class="btn btn-sm btn-outline-secondary"
+          href="?page={{ instances_page.next_page_number }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+          hx-get="?page={{ instances_page.next_page_number }}&sort={{ sort }}&per_page={{ page_size }}&stream_per_page={{ stream_page_size }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_country %}&country={{ selected_country|urlencode }}{% endif %}{% if selected_city %}&city={{ selected_city|urlencode }}{% endif %}{% if selected_has_geo %}&has_geo=1{% endif %}{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}{% if selected_profile %}&profile={{ selected_profile.pk }}{% endif %}"
+          hx-target="#go2rtc-manager-workspace"
+          hx-select="#go2rtc-manager-workspace"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+      {% endif %}
+
+      <form method="get" action="{% url 'cameras:go2rtc_manager' %}" class="d-flex align-items-center gap-1 ms-auto"
+            hx-get="{% url 'cameras:go2rtc_manager' %}"
+            hx-target="#go2rtc-manager-workspace"
+            hx-select="#go2rtc-manager-workspace"
+            hx-swap="outerHTML"
+            hx-push-url="true">
+        {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <input type="hidden" name="per_page" value="{{ page_size }}">
+        <input type="hidden" name="stream_per_page" value="{{ stream_page_size }}">
+        {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+        {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
+        {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+        {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
+        {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
+        <input type="number"
+               name="page"
+               min="1"
+               max="{{ instances_page.paginator.num_pages }}"
+               value="{{ instances_page.number }}"
+               class="form-control form-control-sm"
+               style="width: 5.5rem;"
+               aria-label="{% trans 'Go to page' %}">
+      </form>
+    </div>
+  {% endif %}
+{% else %}
+  {% if instance_page and instance_page.paginator.num_pages > 1 %}
+    <div class="go2rtc-viewer-sidebar-meta d-flex align-items-center justify-content-between gap-2 flex-wrap">
+      {% if instance_page.has_previous %}
+        <a class="btn btn-sm btn-outline-secondary"
+          href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.previous_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+      {% endif %}
+
+      <span class="small text-muted">
+        {% blocktrans with current=instance_page.number total=instance_page.paginator.num_pages %}Page {{ current }} / {{ total }}{% endblocktrans %}
+      </span>
+
+      {% if instance_page.has_next %}
+        <a class="btn btn-sm btn-outline-secondary"
+          href="?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}{% if instance_query %}q={{ instance_query|urlencode }}&{% endif %}sort={{ sort }}&{% if selected_country %}country={{ selected_country|urlencode }}&{% endif %}{% if selected_city %}city={{ selected_city|urlencode }}&{% endif %}{% if selected_has_geo %}has_geo=1&{% endif %}instance_page={{ instance_page.next_page_number }}&instance_per_page={{ instance_page_size }}&viewer_size={{ viewer_size }}&sidebar={{ sidebar_mode }}{% if manager_state_query %}&{{ manager_state_query }}{% endif %}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+      {% endif %}
+
+      <form method="get" action="{% url 'cameras:go2rtc_viewer' %}" class="d-flex align-items-center gap-1 ms-auto">
+        {% if selected_instance %}<input type="hidden" name="instance" value="{{ selected_instance.pk }}">{% endif %}
+        {% if instance_query %}<input type="hidden" name="q" value="{{ instance_query }}">{% endif %}
+        <input type="hidden" name="sort" value="{{ sort }}">
+        {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
+        {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+        {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
+        {% for state_key, state_value in manager_state_items %}
+          <input type="hidden" name="{{ state_key }}" value="{{ state_value }}">
+        {% endfor %}
+        <input type="hidden" name="viewer_size" value="{{ viewer_size }}">
+        <input type="hidden" name="sidebar" value="{{ sidebar_mode }}">
+        <input type="hidden" name="instance_per_page" value="{{ instance_page_size }}">
+        <input type="number"
+               name="instance_page"
+               min="1"
+               max="{{ instance_page.paginator.num_pages }}"
+               value="{{ instance_page.number }}"
+               class="form-control form-control-sm"
+               style="width: 5rem;"
+               aria-label="{% trans 'Go to page' %}">
+      </form>
+    </div>
+  {% endif %}
+{% endif %}
