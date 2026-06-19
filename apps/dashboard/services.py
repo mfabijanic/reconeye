@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from django.db.models import Count
+
 from apps.common.cache import TTL_DASHBOARD, TTL_WARM, versioned_key, DOMAIN_DASHBOARD
 
 logger = logging.getLogger(__name__)
@@ -28,9 +30,23 @@ def get_dashboard_stats(*, force: bool = False) -> dict[str, Any]:
         Camera.objects.filter(is_active=True)
         .exclude(country="")
         .values("country")
-        .annotate(count=__import__("django.db.models", fromlist=["Count"]).Count("id"))
+        .annotate(count=Count("id"))
         .order_by("-count")[:10]
     )
+
+    by_source = [
+        {
+            "source_type": row["source_type"],
+            "label": SourceType(row["source_type"]).label
+            if row["source_type"] in SourceType.values
+            else row["source_type"],
+            "count": row["count"],
+        }
+        for row in Camera.objects.filter(is_active=True)
+        .values("source_type")
+        .annotate(count=Count("id"))
+        .order_by("source_type")
+    ]
 
     active_jobs = list(
         ScrapeJob.objects.filter(status__in=[ScrapeJobStatus.PENDING, ScrapeJobStatus.RUNNING])
@@ -38,21 +54,13 @@ def get_dashboard_stats(*, force: bool = False) -> dict[str, Any]:
         .order_by("-created_at")[:5]
     )
 
-    insecam_total = Camera.objects.filter(
-        is_active=True, source_type=SourceType.INSECAM
-    ).count()
-    wuc_total = Camera.objects.filter(
-        is_active=True, source_type=SourceType.WHATSUPCAMS
-    ).count()
-
     stats = {
         "total": total,
         "online": online,
         "offline": offline,
         "by_country": by_country,
+        "by_source": by_source,
         "active_jobs": active_jobs,
-        "insecam_total": insecam_total,
-        "wuc_total": wuc_total,
     }
     cache.set(key, stats, TTL_WARM if force else TTL_DASHBOARD)
     return stats

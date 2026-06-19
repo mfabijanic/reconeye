@@ -1,6 +1,6 @@
 # ReconEye
 
-Django application for IP camera discovery and monitoring.
+Django application for IP camera monitoring.
 
 <p align="center">
    <img src="static/hero-map.png" alt="ReconEye map hero" width="100%" />

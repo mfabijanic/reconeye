@@ -2,20 +2,30 @@
 {% load i18n %}
 {% block title %}{{ camera }} — ReconEye{% endblock %}
 
+{% block page_title %}
+  <span class="d-inline-flex align-items-center gap-2">
+    <i class="bi bi-camera-video text-info"></i>
+    <span>{{ display_title }}</span>
+  </span>
+{% endblock %}
+
+{% block topbar_actions %}
+  <button type="button"
+    class="btn btn-sm btn-outline-info"
+    hx-get="{% url 'cameras_htmx:player' camera.pk %}"
+    hx-target="#camera-player"
+    hx-swap="innerHTML"
+    title="{% trans 'Refresh player' %}">
+    <i class="bi bi-arrow-clockwise me-1"></i>{% trans "Refresh player" %}
+  </button>
+  <a href="{% url 'cameras:list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>{% trans "Back" %}
+  </a>
+{% endblock %}
+
 {% block content %}
 <div class="row" data-camera-id="{{ camera.pk }}">
   <div class="col-md-12">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-      <h5 class="mb-0"><i class="bi bi-camera-video me-2 text-info"></i>{{ display_title }}</h5>
-      <button type="button"
-        class="btn btn-sm btn-outline-info"
-        hx-get="{% url 'cameras_htmx:player' camera.pk %}"
-        hx-target="#camera-player"
-        hx-swap="innerHTML"
-        title="{% trans 'Refresh player' %}">
-        <i class="bi bi-arrow-clockwise me-1"></i>{% trans "Refresh player" %}
-      </button>
-    </div>
     <div id="camera-player"
       hx-get="{% url 'cameras_htmx:player' camera.pk %}"
       hx-trigger="load"
@@ -67,9 +77,6 @@
       <tr><th>{% trans "Last checked" %}</th><td>{{ camera.last_checked|date:"d.m.Y H:i:s"|default:"—" }}</td></tr>
       <tr><th>{% trans "Created" %}</th><td>{{ camera.created_at|date:"d.m.Y H:i" }}</td></tr>
     </table>
-    <a href="{% url 'cameras:list' %}" class="btn btn-sm btn-outline-secondary mt-2">
-      <i class="bi bi-arrow-left me-1"></i>{% trans "Back" %}
-    </a>
   </div>
 </div>
 {% endblock %}

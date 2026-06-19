@@ -3,6 +3,28 @@
 
 {% block title %}{% trans "go2rtc Viewer" %} — ReconEye{% endblock %}
 
+{% block page_title %}
+<span class="d-inline-flex align-items-center gap-2">
+  <i class="bi bi-play-btn text-info"></i>
+  <span>{% trans "go2rtc Viewer" %}</span>
+</span>
+{% endblock %}
+
+{% block topbar_actions %}
+<button id="viewer-prefetch-toggle"
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        title="{% trans 'Toggle HTML prefetch for neighbouring pages' %}">
+  <i class="bi bi-lightning-charge me-1"></i><span id="viewer-prefetch-label">{% trans "Prefetch" %}</span>
+</button>
+<a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% elif selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
+  <i class="bi bi-arrow-left me-1"></i>{% trans "Open Manager" %}
+</a>
+<a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-display me-1"></i>{% trans "Open Surveillance" %}
+</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
   body.go2rtc-viewer-page {
@@ -34,6 +56,18 @@
     padding: .55rem .85rem;
     background: rgba(13,17,23,.86);
     border-bottom: 1px solid var(--app-border);
+  }
+  .go2rtc-viewer-topbar .fw-semibold,
+  .go2rtc-viewer-sidebar-header .fw-semibold,
+  .go2rtc-viewer-stage-header .fw-semibold,
+  #go2rtc-viewer-help-title,
+  .go2rtc-viewer-help-card .h6 {
+    font-size: var(--font-role-card-title);
+  }
+  .go2rtc-viewer-sidebar-meta,
+  .go2rtc-viewer-topbar .small,
+  .go2rtc-viewer-stage-header .small {
+    font-size: var(--font-role-meta);
   }
   .go2rtc-viewer-shell {
     display: grid;
@@ -358,22 +392,13 @@
 <div class="go2rtc-viewer-layout">
   <div class="go2rtc-viewer-topbar">
     <div>
-      <div class="fw-semibold"><i class="bi bi-play-btn me-1 text-info"></i>{% trans "go2rtc Viewer" %}</div>
-      <div class="text-muted small">{% trans "Live playback by instance" %}</div>
+      <div class="fw-semibold">{% trans "Live playback by instance" %}</div>
+      {% if selected_instance %}
+      <div class="text-muted small">{{ selected_instance.name }}</div>
+      {% endif %}
     </div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-      <button id="viewer-prefetch-toggle"
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              title="{% trans 'Toggle HTML prefetch for neighbouring pages' %}">
-        <i class="bi bi-lightning-charge me-1"></i><span id="viewer-prefetch-label">{% trans "Prefetch" %}</span>
-      </button>
-      <a href="{% url 'cameras:go2rtc_manager' %}{% if manager_back_query %}?{{ manager_back_query }}{% elif selected_instance %}?instance={{ selected_instance.pk }}{% endif %}" class="btn btn-sm btn-outline-info">
-        <i class="bi bi-arrow-left me-1"></i>{% trans "Open Manager" %}
-      </a>
-      <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-display me-1"></i>{% trans "Open Surveillance" %}
-      </a>
+    <div class="d-flex align-items-center gap-2 flex-wrap text-muted small">
+      <span>{% trans "Use keyboard for quick navigation" %}</span>
     </div>
   </div>
 

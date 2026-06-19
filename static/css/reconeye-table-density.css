@@ -1,0 +1,28 @@
+.app-table--compact {
+  font-size: 0.78rem;
+}
+
+.app-table--compact th,
+.app-table--compact td {
+  padding: 0.2rem 0.35rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.app-table--compact tbody tr {
+  height: 30px;
+}
+
+.app-table--compact .badge {
+  font-size: 0.66rem;
+  padding: 0.2em 0.4em;
+}
+
+.app-table--compact .btn {
+  line-height: 1.1;
+}
+
+.app-table--compact .progress {
+  margin-bottom: 0;
+}

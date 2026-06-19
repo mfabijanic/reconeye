@@ -1,6 +1,6 @@
 {% load i18n %}
 <div class="table-responsive">
-  <table class="table table-hover table-sm align-middle">
+  <table class="table table-hover table-sm align-middle app-table--compact">
     <thead class="table-dark">
       <tr>
         <th>#</th>
@@ -63,7 +63,8 @@
     {% if page_obj.has_previous %}
       <li class="page-item">
         <a class="page-link"
-           hx-get="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country }}{% endif %}"
+           href="{% url 'cameras:list' %}?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online|urlencode }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country|urlencode }}{% endif %}"
+           hx-get="{% url 'cameras_htmx:htmx_list' %}?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online|urlencode }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country|urlencode }}{% endif %}"
            hx-target="#camera-table">&laquo;</a>
       </li>
     {% endif %}
@@ -73,7 +74,8 @@
     {% if page_obj.has_next %}
       <li class="page-item">
         <a class="page-link"
-           hx-get="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country }}{% endif %}"
+           href="{% url 'cameras:list' %}?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online|urlencode }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country|urlencode }}{% endif %}"
+           hx-get="{% url 'cameras_htmx:htmx_list' %}?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.country %}&country={{ request.GET.country|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}{% if request.GET.online %}&online={{ request.GET.online|urlencode }}{% endif %}{% if request.GET.geo_fallback_country %}&geo_fallback_country={{ request.GET.geo_fallback_country|urlencode }}{% endif %}"
            hx-target="#camera-table">&raquo;</a>
       </li>
     {% endif %}

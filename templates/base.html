@@ -1,544 +1,672 @@
-{% load i18n %}
+{% load i18n static %}
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="dark" data-camera-style="subtle" data-navbar-text-mode="full">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ReconEye{% endblock %}</title>
-  <script>
-    (function () {
-      const THEME_KEY = "reconeye-theme";
-      const CAMERA_STYLE_KEY = "reconeye-camera-style";
-      let theme = null;
-      let cameraStyle = null;
-      try {
-        theme = localStorage.getItem(THEME_KEY);
-        cameraStyle = localStorage.getItem(CAMERA_STYLE_KEY);
-      } catch (e) {
-        theme = null;
-        cameraStyle = null;
-      }
-      if (theme !== "light" && theme !== "dark") {
-        theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-      if (!["subtle", "neon", "max-cyber"].includes(cameraStyle)) {
-        cameraStyle = "subtle";
-      }
-      document.documentElement.setAttribute("data-bs-theme", theme);
-      document.documentElement.setAttribute("data-theme", theme);
-      document.documentElement.setAttribute("data-camera-style", cameraStyle);
-    })();
-  </script>
   <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
     crossorigin="anonymous"
-  />
+  >
   <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-  />
+  >
+  <link rel="stylesheet" href="{% static 'css/reconeye-table-density.css' %}">
   {% block extra_css %}{% endblock %}
   <style>
+    :root {
+      --sidebar-width: 14.5rem;
+      --sidebar-collapsed-width: 3.35rem;
+      --sidebar-active-width: var(--sidebar-width);
+      --topbar-height: 2.75rem;
+
+      --font-scale: 1;
+      --font-size-2xs: calc(.64rem * var(--font-scale));
+      --font-size-xs: calc(.72rem * var(--font-scale));
+      --font-size-sm: calc(.77rem * var(--font-scale));
+      --font-size-md: calc(.84rem * var(--font-scale));
+      --font-size-lg: calc(.88rem * var(--font-scale));
+      --font-size-xl: calc(.9rem * var(--font-scale));
+
+      --font-role-shell: var(--font-size-md);
+      --font-role-menu-item: var(--font-size-md);
+      --font-role-page-title: var(--font-size-xl);
+      --font-role-nav-item: var(--font-size-lg);
+      --font-role-card-title: var(--font-size-lg);
+      --font-role-meta: var(--font-size-sm);
+      --font-role-label: var(--font-size-md);
+      --font-role-section-label: var(--font-size-2xs);
+    }
     html[data-bs-theme="dark"] {
       --app-bg: #0d1117;
       --app-text: #e6edf3;
       --app-surface: #161b22;
       --app-border: #30363d;
-      --app-link: #58a6ff;
-      --app-link-hover: #79c0ff;
       --app-neon: #00ff9c;
-      --app-neon-soft: rgba(0, 255, 156, 0.35);
     }
     html[data-bs-theme="light"] {
       --app-bg: #f8fafc;
       --app-text: #0f172a;
       --app-surface: #ffffff;
       --app-border: #d0d7de;
-      --app-link: #0969da;
-      --app-link-hover: #1f6feb;
       --app-neon: #00b86b;
-      --app-neon-soft: rgba(0, 184, 107, 0.35);
     }
-    html[data-camera-style="subtle"] {
-      --camera-frame-border-width: 1px;
-      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 58%, var(--app-border));
-      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 8%, transparent);
-      --camera-frame-glow: 0 0 8px -10px var(--app-neon-soft);
-      --camera-frame-focus-outline-width: 1px;
-      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 72%, white 28%);
-      --camera-frame-focus-glow: 0 0 10px -10px var(--app-neon-soft);
-      --camera-frame-fullscreen-border-width: 1px;
-      --camera-frame-fullscreen-glow: 0 0 22px -4px var(--app-neon-soft);
+    body {
+      background: var(--app-bg);
+      color: var(--app-text);
     }
-    html[data-camera-style="neon"] {
-      --camera-frame-border-width: 1px;
-      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 74%, var(--app-border));
-      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 14%, transparent);
-      --camera-frame-glow: 0 0 14px -8px var(--app-neon-soft);
-      --camera-frame-focus-outline-width: 1px;
-      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 86%, white 14%);
-      --camera-frame-focus-glow: 0 0 16px -8px var(--app-neon-soft);
-      --camera-frame-fullscreen-border-width: 1px;
-      --camera-frame-fullscreen-glow: 0 0 28px -4px var(--app-neon-soft);
+    .app-shell {
+      min-height: calc(100vh - var(--topbar-height));
     }
-    html[data-camera-style="max-cyber"] {
-      --camera-frame-border-width: 1px;
-      --camera-frame-border-color: color-mix(in srgb, var(--app-neon) 92%, var(--app-border));
-      --camera-frame-inset: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 22%, transparent);
-      --camera-frame-glow: 0 0 18px -6px var(--app-neon-soft);
-      --camera-frame-focus-outline-width: 1px;
-      --camera-frame-focus-outline-color: color-mix(in srgb, var(--app-neon) 95%, white 5%);
-      --camera-frame-focus-glow: 0 0 20px -7px var(--app-neon-soft);
-      --camera-frame-fullscreen-border-width: 2px;
-      --camera-frame-fullscreen-glow: 0 0 34px -3px var(--app-neon-soft);
+    .app-sidebar {
+      font-size: var(--font-role-shell);
+      --bs-offcanvas-width: var(--sidebar-width);
+      background: var(--app-surface);
+      border-right: 1px solid var(--app-border);
     }
-    body { background-color: var(--app-bg); color: var(--app-text); }
-    .navbar-brand { font-weight: 700; letter-spacing: 1px; }
-    .stat-card { border: 1px solid var(--app-border); background: var(--app-surface); }
-    .badge-online  { background-color: #238636; }
-    .badge-offline { background-color: #da3633; }
-    .progress-bar  { transition: width 0.4s ease; }
-    a { color: var(--app-link); }
-    a:hover { color: var(--app-link-hover); }
-    .table { --bs-table-bg: var(--app-surface); --bs-table-border-color: var(--app-border); }
-    .app-toast-stack {
-      position: fixed;
-      top: 0.9rem;
-      left: 50%;
-      z-index: 1085;
-      width: min(92vw, 760px);
-      transform: translateX(-50%);
-      pointer-events: none;
+    .app-sidebar .offcanvas-body {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0;
+      overflow: visible;
     }
-    .app-toast-stack .alert {
-      pointer-events: auto;
+    .app-sidebar-scroll {
+      display: flex;
+      flex-direction: column;
+      font-size: var(--font-role-shell);
+      flex: 1 1 auto;
+      gap: .75rem;
+      padding: .75rem;
+      overflow-y: auto;
     }
-    .app-navbar {
-      background: var(--app-surface) !important;
-      border-color: var(--app-border) !important;
-      transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+    .app-sidebar-footer {
+      flex: 0 0 auto;
+      padding: .75rem;
+      font-size: var(--font-role-shell);
+      display: grid;
+      gap: .5rem;
     }
-    .app-notifications-menu {
-      min-width: min(92vw, 25rem);
-      max-width: min(92vw, 25rem);
+    .app-sidebar-footer:empty {
+      display: none;
+    }
+    .app-sidebar-brand {
+      color: var(--app-text);
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: .03em;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .25rem .4rem;
+    }
+    .app-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      min-width: 0;
+      flex: 0 0 auto;
+    }
+    .app-topbar-brand {
+      font-size: var(--font-role-shell);
+      color: var(--app-text);
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: .03em;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .app-topbar-actions .btn,
+    .app-topbar-menu .dropdown-item,
+    .app-topbar-menu .small {
+      font-size: var(--font-role-menu-item);
+    }
+    .app-topbar-brand:hover {
+      color: var(--app-text);
+    }
+    .app-sidebar-heading {
+      color: var(--bs-secondary-color);
+      font-size: var(--font-role-section-label);
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .15rem .45rem;
+    }
+    .app-sidebar-nav {
+      display: grid;
+      gap: .2rem;
+    }
+    .app-sidebar-link {
+      color: var(--app-text);
+      text-decoration: none;
+      border-radius: .55rem;
+      padding: .45rem .58rem;
+      font-size: var(--font-role-shell);
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+    }
+    .app-sidebar-link:hover {
+      background: color-mix(in srgb, var(--app-neon) 10%, transparent);
+      color: var(--app-text);
+    }
+    .app-sidebar-link.active {
+      background: color-mix(in srgb, var(--app-neon) 15%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-neon) 30%, var(--app-border));
+    }
+    .app-sidebar-controls {
+      display: flex;
+      gap: .35rem;
+    }
+    .app-sidebar-utility-btn {
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app-sidebar-spacer {
+      flex: 1 1 auto;
+    }
+    .app-sidebar-style-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: .45rem;
+    }
+    .app-sidebar-utility-btn.active {
+      border-color: color-mix(in srgb, var(--app-neon) 68%, var(--app-border));
+      background: color-mix(in srgb, var(--app-neon) 16%, transparent);
+      color: var(--app-text);
+    }
+    .app-sidebar-top #text-mode-toggle {
+      border-color: color-mix(in srgb, var(--app-neon) 35%, var(--app-border));
+    }
+    .app-sidebar-popover {
+      width: min(22rem, calc(100vw - 2rem));
+      max-height: min(70vh, 28rem);
+      overflow: auto;
       border: 1px solid var(--app-border);
-      background: color-mix(in srgb, var(--app-surface) 92%, transparent);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, .16);
-      padding: .5rem;
-    }
-    .app-notifications-toggle {
-      position: relative;
+      background: var(--app-surface);
+      color: var(--app-text);
     }
     .app-notifications-dot {
       position: absolute;
       top: .2rem;
       right: .2rem;
-      width: .5rem;
-      height: .5rem;
+      width: .45rem;
+      height: .45rem;
       border-radius: 999px;
       background: color-mix(in srgb, var(--app-neon) 88%, white 12%);
       box-shadow: 0 0 0 2px var(--app-surface);
+      pointer-events: none;
     }
     .app-notifications-panel {
       display: grid;
       gap: .45rem;
     }
     .app-notifications-section-label {
-      padding: .15rem .15rem 0;
       color: var(--bs-secondary-color);
-      font-size: .73rem;
-      font-weight: 600;
-      letter-spacing: .06em;
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      letter-spacing: .08em;
       text-transform: uppercase;
+      padding-top: .2rem;
     }
     .app-notification-row {
       display: grid;
-      grid-template-columns: 1.25rem 1fr auto;
-      gap: .65rem;
-      align-items: center;
+      grid-template-columns: 1.1rem minmax(0, 1fr) auto;
+      gap: .55rem;
+      align-items: start;
       border: 1px solid var(--app-border);
       border-radius: .55rem;
-      padding: .5rem .6rem;
-      background: color-mix(in srgb, var(--app-surface) 86%, transparent);
+      background: color-mix(in srgb, var(--app-surface) 94%, transparent);
+      padding: .45rem .55rem;
     }
     .app-notification-icon {
-      font-size: .95rem;
-      text-align: center;
+      line-height: 1;
+      padding-top: .1rem;
     }
     .app-notification-title {
+      font-size: var(--font-role-shell);
       font-weight: 600;
-      line-height: 1.2;
-    }
-    .app-notification-meta {
-      color: var(--bs-secondary-color);
-      font-size: .84rem;
       line-height: 1.25;
     }
+    .app-notification-meta,
     .app-notification-time {
-      margin-top: .2rem;
+      font-size: var(--font-role-meta);
+      line-height: 1.3;
       color: var(--bs-secondary-color);
-      font-size: .75rem;
-      line-height: 1.2;
+    }
+    .app-notification-time {
+      margin-top: .15rem;
     }
     .app-notification-empty {
-      border-top: 1px dashed var(--app-border);
-      margin-top: .1rem;
-      padding-top: .45rem;
+      border: 1px dashed var(--app-border);
+      border-radius: .55rem;
+      padding: .5rem .6rem;
+      background: color-mix(in srgb, var(--app-surface) 92%, transparent);
     }
     .app-notification-job-status {
       display: inline-flex;
       align-items: center;
-      gap: .35rem;
-      margin-right: .35rem;
+      margin-right: .3rem;
     }
-    .app-notifications-footer {
-      border-top: 1px solid var(--app-border);
-      margin-top: .45rem;
-      padding-top: .45rem;
-    }
-    body {
-      --app-navbar-height: 4.25rem;
-      --app-chrome-reveal-zone: 24px;
-    }
-    .app-page-chrome {
-      transition: transform .12s ease, opacity .12s ease;
-    }
-    body.chrome-autohide-enabled {
-      --app-navbar-height: 0rem;
-    }
-    body.chrome-autohide-enabled .app-navbar {
+    .app-flash-messages {
       position: fixed;
-      top: 0;
+      top: calc(var(--topbar-height) + .5rem);
       left: 0;
       right: 0;
-      z-index: 1040;
-      margin-bottom: 0 !important;
-    }
-    body.chrome-autohide-enabled main.container-fluid {
-      margin-top: 0 !important;
-    }
-    body.chrome-autohide-enabled.chrome-hidden .app-navbar {
-      transform: translateY(-100%);
-      opacity: 0;
+      z-index: 1014;
       pointer-events: none;
-      box-shadow: none !important;
+      padding: 0 1rem;
     }
-    body.chrome-autohide-enabled.chrome-hidden .app-page-chrome[data-autohide="true"] {
-      transform: translateY(-100%);
-      opacity: 0;
-      pointer-events: none;
+    .app-flash-messages-inner {
+      display: grid;
+      gap: .5rem;
+      max-width: 100%;
     }
-    body.chrome-autohide-enabled::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: var(--app-chrome-reveal-zone);
-      z-index: 1045;
-      background: transparent;
+    .app-flash-messages .alert {
+      margin-bottom: 0;
       pointer-events: auto;
-      cursor: default;
+      box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .18);
     }
-    .camera-style-select {
-      min-width: 7.75rem;
+    .app-sidebar-panel {
+      border: 1px solid var(--app-border);
+      border-radius: .6rem;
+      background: color-mix(in srgb, var(--app-surface) 94%, transparent);
+      padding: .6rem;
     }
-    .camera-frame {
-      border: var(--camera-frame-border-width) solid var(--camera-frame-border-color) !important;
-      box-shadow: var(--camera-frame-inset), var(--camera-frame-glow);
-      transition: box-shadow .2s ease, border-color .2s ease;
+    .app-sidebar-panel-toggle[aria-expanded="true"] .panel-chevron {
+      transform: rotate(180deg);
     }
-    .camera-frame:focus {
-      outline: none;
-      box-shadow: var(--camera-frame-inset), var(--camera-frame-glow);
+    .app-sidebar-panel-toggle .panel-chevron {
+      transition: transform .18s ease;
     }
-    .camera-frame:focus-visible {
-      outline: var(--camera-frame-focus-outline-width) solid var(--camera-frame-focus-outline-color);
-      outline-offset: 1px;
-      box-shadow: var(--camera-frame-inset), var(--camera-frame-focus-glow);
+    .app-topbar {
+      height: var(--topbar-height);
+      position: sticky;
+      top: 0;
+      z-index: 1015;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      padding: 0 .9rem;
+      border-bottom: 1px solid var(--app-border);
+      background: color-mix(in srgb, var(--app-surface) 92%, transparent);
+      backdrop-filter: blur(8px);
     }
-    .camera-frame:fullscreen,
-    .camera-frame:-webkit-full-screen {
-      border: var(--camera-frame-fullscreen-border-width) solid var(--app-neon) !important;
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-neon) 35%, transparent),
-                  var(--camera-frame-fullscreen-glow);
-      background: #000;
-      filter: saturate(1.05) contrast(1.03);
+    .app-topbar-title {
+      min-width: 0;
+      flex: 1 1 auto;
+      font-size: var(--font-role-page-title);
+      font-weight: 600;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      justify-content: flex-start;
+      overflow: hidden;
     }
-
+    .app-topbar-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: .4rem;
+      min-width: 0;
+    }
+    .app-topbar-right {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      min-width: 0;
+      flex: 0 0 auto;
+    }
+    .app-topbar-utils {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      margin-left: .25rem;
+      padding-left: .45rem;
+      border-left: 1px solid var(--app-border);
+    }
+    .app-topbar-icon-btn {
+      position: relative;
+      width: 1.95rem;
+      height: 1.95rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: .5rem;
+    }
+    .app-topbar-menu {
+      width: min(24rem, calc(100vw - 1rem));
+      max-height: min(70vh, 30rem);
+      overflow: auto;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      color: var(--app-text);
+    }
+    .app-topbar-menu .dropdown-item {
+      font-size: var(--font-role-menu-item);
+    }
+    .nav-tabs .nav-link {
+      font-size: var(--font-role-nav-item);
+    }
+    .card-header {
+      font-size: var(--font-role-card-title);
+    }
+    .accordion-button {
+      font-size: var(--font-role-card-title);
+    }
+    .form-label {
+      font-size: var(--font-role-label);
+    }
+    .table {
+      font-size: var(--font-role-shell);
+    }
+    .table th {
+      font-size: var(--font-role-label);
+      font-weight: 500;
+    }
+    .table td {
+      font-size: var(--font-role-shell);
+    }
+    .table .small {
+      font-size: var(--font-role-meta);
+    }
+    .table-sm {
+      font-size: var(--font-role-shell);
+    }
+    .form-control,
+    .form-select,
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="url"],
+    input[type="tel"],
+    textarea,
+    select {
+      font-size: var(--font-role-shell);
+    }
+    .form-control::placeholder,
+    input::placeholder,
+    textarea::placeholder {
+      font-size: var(--font-role-shell);
+    }
+    .input-group-text,
+    .btn {
+      font-size: var(--font-role-shell);
+    }
+    .form-text,
+    .form-check-label {
+      font-size: var(--font-role-meta);
+    }
+    .app-main {
+      min-width: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+    }
     @media (min-width: 992px) {
-      .navbar-nav-utils {
-        border-left: 1px solid var(--app-border);
-        margin-left: 1rem;
+      .app-topbar {
+        display: grid;
+        grid-template-columns: var(--sidebar-active-width) minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0;
+        padding-left: 0;
+        padding-right: .9rem;
+      }
+      .app-topbar-left {
+        min-width: 0;
+        padding: 0 .75rem;
+        border-right: 1px solid var(--app-border);
+      }
+      .app-topbar-title {
         padding-left: 1rem;
-        gap: .5rem;
-        align-items: center;
+        padding-right: 1rem;
       }
-      .navbar-nav-utils .nav-item {
-        margin: 0 !important;
+      .app-shell {
+        display: flex;
       }
-      .navbar-nav-utils #theme-toggle {
-        width: 2.15rem;
-        height: 2.15rem;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+      .app-sidebar.offcanvas-lg {
+        position: sticky;
+        top: 0;
+        height: calc(100vh - var(--topbar-height));
+        display: flex !important;
+        visibility: visible !important;
+        transform: none;
+        flex: 0 0 var(--sidebar-width);
+        width: var(--sidebar-width);
       }
-      .navbar-nav-utils #theme-toggle i {
-        line-height: 1;
-      }
-      .navbar-nav-utils .camera-style-select {
-        width: 7.75rem;
-      }
-      /* Icon-only mode for entire navbar */
-      html[data-navbar-text-mode="icons-only"] .navbar-nav .nav-text,
-      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #camera-style-label,
-      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils .nav-link > .icon-text {
+      .app-sidebar .offcanvas-header {
         display: none;
       }
-      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #camera-style-select {
-        width: auto;
+      html[data-navbar-text-mode="icons-only"] .app-sidebar.offcanvas-lg {
+        flex-basis: var(--sidebar-collapsed-width);
+        width: var(--sidebar-collapsed-width);
       }
-      html[data-navbar-text-mode="icons-only"] .navbar-nav-utils #text-mode-toggle {
-        opacity: 1;
-        font-weight: 500;
+      html[data-navbar-text-mode="icons-only"] {
+        --sidebar-active-width: var(--sidebar-collapsed-width);
       }
-      html[data-navbar-text-mode="icons-text"] .navbar-nav-utils #text-mode-toggle {
-        opacity: 0.55;
-        font-weight: 400;
+      html[data-navbar-text-mode="icons-only"] .app-sidebar .nav-text,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar .sidebar-brand-text,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar .app-sidebar-heading,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar .icon-text,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar #camera-style-label,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar #camera-style-select {
+        display: none;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-link,
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-controls {
+        justify-content: center;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-footer .btn {
+        justify-content: center !important;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-link {
+        padding: .5rem;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-utility-btn {
+        width: 1.8rem;
+        height: 1.8rem;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-topbar {
+        padding-right: .75rem;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-topbar-brand .sidebar-brand-text {
+        display: none;
       }
     }
-    /* Collapsed navbar: divider + row layout for utility controls */
     @media (max-width: 991.98px) {
-      .navbar-nav-utils {
-        border-top: 1px solid var(--app-border);
-        margin-top: .5rem;
-        padding-top: .5rem;
-        flex-direction: row !important;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: .5rem;
+      .app-topbar {
+        padding-left: .75rem;
+        padding-right: .75rem;
       }
-      .navbar-nav-utils .nav-item {
-        margin: 0 !important;
+      .app-topbar-title {
+        margin-left: 0;
       }
-      .camera-style-select {
-        max-width: 130px;
-      }
-      body.chrome-autohide-enabled.chrome-hidden .app-navbar {
-        transform: translateY(-100%);
-      }
-      body.chrome-autohide-enabled.chrome-hidden .app-page-chrome[data-autohide="true"] {
-        transform: translateY(-100%);
+      .app-topbar-brand .sidebar-brand-text {
+        display: inline;
       }
     }
   </style>
 </head>
 <body>
 
-{% if user.is_authenticated %}
-<nav class="navbar navbar-expand-lg border-bottom mb-4 app-navbar" id="main-navbar">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="{% url 'dashboard:index' %}">
-      <i class="bi bi-eye-fill text-info me-1"></i>ReconEye
-    </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
+<header class="app-topbar{% if not user.is_authenticated %} d-none{% endif %}">
+  <div class="app-topbar-left">
+    <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="{% trans 'Open navigation' %}">
+      <i class="bi bi-list"></i>
     </button>
-    <div class="collapse navbar-collapse" id="navbarMain">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}"
-             href="{% url 'dashboard:index' %}"
-             title="{% trans 'Dashboard' %}">
-            <i class="bi bi-speedometer2 me-1"></i><span class="nav-text">{% trans "Dashboard" %}</span>
+    <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn d-none d-lg-inline-flex" id="text-mode-toggle" type="button" aria-label="Toggle sidebar collapse" title="Toggle sidebar collapse">
+      <i class="bi bi-layout-sidebar-inset"></i>
+    </button>
+    <a class="app-topbar-brand" href="{% url 'dashboard:index' %}">
+      <i class="bi bi-eye-fill text-info"></i>
+      <span class="sidebar-brand-text">ReconEye</span>
+    </a>
+  </div>
+  <div class="app-topbar-title">{% block page_title %}{% endblock %}</div>
+  <div class="app-topbar-right">
+    <div class="app-topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    <div class="app-topbar-utils">
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary app-topbar-icon-btn" type="button" id="notificationsToggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="outside" aria-expanded="false" aria-label="{% trans 'Notifications' %}">
+          <i class="bi bi-bell"></i>
+          <span id="notifications-dot"></span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end app-topbar-menu p-2" aria-labelledby="notificationsToggle">
+          <div class="small text-muted text-uppercase mb-2 px-1">{% trans "Notifications" %}</div>
+          <div id="nav-notifications-panel" class="px-1 pb-1" hx-get="{% url 'common_htmx:nav_notifications' %}" hx-trigger="load, every 8s" hx-swap="innerHTML">
+            <div class="small text-muted">{% trans "Loading notifications..." %}</div>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary app-topbar-icon-btn" type="button" id="userMenuToggle" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="{% trans 'User menu' %}">
+          <i class="bi bi-person-circle"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end app-topbar-menu p-2" aria-labelledby="userMenuToggle">
+          <li><a class="dropdown-item rounded" href="{% url 'users:settings' %}"><i class="bi bi-sliders me-1"></i>{% trans "Settings" %}</a></li>
+          {% if user.is_staff %}
+          <li><a class="dropdown-item rounded" href="{% url 'common:admin_hub' %}"><i class="bi bi-shield-lock me-1"></i>{% trans "Admin" %}</a></li>
+          {% endif %}
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'users:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item rounded text-danger"><i class="bi bi-box-arrow-right me-1"></i>{% trans "Logout" %}</button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="{% if user.is_authenticated %}app-shell{% endif %}">
+  {% if user.is_authenticated %}
+  <aside class="offcanvas-lg offcanvas-start app-sidebar" tabindex="-1" id="appSidebar" aria-labelledby="appSidebarLabel">
+    <div class="offcanvas-header border-bottom">
+      <a class="d-flex align-items-center gap-2 text-decoration-none" id="appSidebarLabel" href="{% url 'dashboard:index' %}">
+        <i class="bi bi-eye-fill text-info fs-5"></i>
+        <span class="fw-bold sidebar-brand-text">ReconEye</span>
+      </a>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="{% trans 'Close' %}"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="app-sidebar-scroll">
+      <nav class="app-sidebar-nav">
+        <a class="app-sidebar-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}">
+          <i class="bi bi-speedometer2"></i><span class="nav-text">{% trans "Dashboard" %}</span>
+        </a>
+      </nav>
+
+      <div>
+        <div class="app-sidebar-heading">{% trans "Cameras" %}</div>
+        <nav class="app-sidebar-nav">
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}" href="{% url 'cameras:list' %}">
+            <i class="bi bi-list-ul"></i><span class="nav-text">{% trans "List" %}</span>
           </a>
-        </li>
-        <li class="nav-item dropdown">
-          <a
-            id="camerasMenuToggle"
-            class="nav-link dropdown-toggle {% if request.resolver_match.app_name == 'cameras' %}active{% endif %}"
-            href="#"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-            title="{% trans 'Cameras' %}"
-          >
-            <i class="bi bi-camera-video me-1"></i><span class="nav-text">{% trans "Cameras" %}</span>
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}" href="{% url 'cameras:map' %}">
+            <i class="bi bi-geo-alt"></i><span class="nav-text">{% trans "Map" %}</span>
           </a>
-          <ul class="dropdown-menu" aria-labelledby="camerasMenuToggle">
-            <li>
-              <a class="dropdown-item {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}" href="{% url 'cameras:list' %}">
-                <i class="bi bi-list-ul me-1"></i>{% trans "List" %}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item {% if request.resolver_match.url_name == 'map' %}active{% endif %}" href="{% url 'cameras:map' %}">
-                <i class="bi bi-geo-alt me-1"></i>{% trans "Map" %}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}" href="{% url 'cameras:surveillance' %}">
-                <i class="bi bi-display me-1"></i>{% trans "Surveillance" %}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item {% if request.resolver_match.url_name == 'go2rtc_manager' %}active{% endif %}" href="{% url 'cameras:go2rtc_manager' %}">
-                <i class="bi bi-hdd-network me-1"></i>{% trans "go2rtc Manager" %}
-              </a>
-            </li>
-          </ul>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}"
-             href="{% url 'scraping:job_list' %}"
-             title="{% trans 'Scrape Jobs' %}">
-            <i class="bi bi-arrow-repeat me-1"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span>
+          {% if app_capabilities.surveillance %}
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}" href="{% url 'cameras:surveillance' %}">
+            <i class="bi bi-display"></i><span class="nav-text">{% trans "Surveillance" %}</span>
           </a>
-        </li>
-        {% if user.is_staff %}
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'admin:index' %}"
-             title="{% trans 'Admin' %}">
-            <i class="bi bi-gear me-1"></i><span class="nav-text">{% trans "Admin" %}</span>
+          {% endif %}
+          {% if app_capabilities.go2rtc_manager %}
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'go2rtc_manager' or request.resolver_match.url_name == 'go2rtc_viewer' or request.resolver_match.url_name == 'go2rtc_profile_grid' %}active{% endif %}" href="{% url 'cameras:go2rtc_manager' %}">
+            <i class="bi bi-hdd-network"></i><span class="nav-text">{% trans "go2rtc Manager" %}</span>
           </a>
-        </li>
-        {% endif %}
-      </ul>
-      <ul class="navbar-nav navbar-nav-utils ms-lg-auto">
-        <li class="nav-item d-flex align-items-center">
-          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle theme">
-            <i class="bi bi-moon-stars" id="theme-toggle-icon"></i>
-          </button>
-        </li>
-        <li class="nav-item d-flex align-items-center">
-          <i class="bi bi-radioactive text-success me-1 small" aria-hidden="true"></i>
-          <label id="camera-style-label" class="form-label small me-1 mb-0">{% trans "Style" %}:</label>
-          <select class="form-select form-select-sm camera-style-select" id="camera-style-select" aria-label="{% trans 'Camera frame profile' %}" title="{% trans 'Camera frame profile' %}">
+          {% endif %}
+        </nav>
+      </div>
+
+      <div>
+        <div class="app-sidebar-heading">{% trans "Operations" %}</div>
+        <nav class="app-sidebar-nav">
+          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}" href="{% url 'scraping:job_list' %}">
+            <i class="bi bi-arrow-repeat"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span>
+          </a>
+          {% if user.is_staff %}
+          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'common' and request.resolver_match.url_name == 'admin_hub' %}active{% endif %}" href="{% url 'common:admin_hub' %}">
+            <i class="bi bi-shield-lock"></i><span class="nav-text">{% trans "Admin" %}</span>
+          </a>
+          {% endif %}
+        </nav>
+      </div>
+
+      <div>
+        <div class="app-sidebar-heading">{% trans "Display" %}</div>
+        <div class="app-sidebar-controls">
+          <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn" id="theme-toggle" type="button" aria-label="Toggle color theme"><i class="bi bi-moon-stars" id="theme-toggle-icon"></i></button>
+        </div>
+        <div class="app-sidebar-style-row mt-2">
+          <label id="camera-style-label" class="small text-muted mb-0" for="camera-style-select">{% trans "Style" %}</label>
+          <select class="form-select form-select-sm" id="camera-style-select" aria-label="{% trans 'Camera frame profile' %}">
             <option value="subtle">{% trans "Subtle" %}</option>
             <option value="neon">Neon</option>
             <option value="max-cyber">{% trans "Max Cyber" %}</option>
           </select>
-        </li>
-        <li class="nav-item d-flex align-items-center">
-          <button class="btn btn-sm btn-outline-secondary" id="text-mode-toggle" type="button" aria-label="Toggle text mode in navbar" title="Toggle icons/text mode">
-            <i class="bi bi-type"></i>
-          </button>
-        </li>
-        <li class="nav-item d-flex align-items-center">
-          <button class="btn btn-sm btn-outline-secondary" id="chrome-autohide-toggle" type="button" aria-label="Toggle auto-hide mode" title="Toggle auto-hide mode">
-            <i class="bi bi-arrows-collapse" id="chrome-autohide-icon"></i>
-          </button>
-        </li>
-        <li class="nav-item dropdown d-flex align-items-center">
-          <button
-            class="btn btn-sm btn-outline-secondary app-notifications-toggle"
-            type="button"
-            id="notificationsToggle"
-            data-bs-toggle="dropdown"
-            data-bs-display="static"
-            data-bs-auto-close="outside"
-            aria-expanded="false"
-            aria-label="{% trans 'Open notifications' %}"
-            title="{% trans 'Notifications' %}"
-          >
-            <i class="bi bi-bell"></i>
-            <span id="notifications-dot"></span>
-          </button>
-          <div class="dropdown-menu dropdown-menu-end app-notifications-menu" aria-labelledby="notificationsToggle">
-            <div class="d-flex align-items-center justify-content-between px-1 pb-1">
-              <span class="small fw-semibold text-body-secondary text-uppercase">{% trans "Notifications" %}</span>
-            </div>
-            <div
-              id="nav-notifications-panel"
-              hx-get="{% url 'common_htmx:nav_notifications' %}"
-              hx-trigger="load, every 8s"
-              hx-swap="innerHTML"
-            >
-              <div class="app-notifications-panel">
-                <div class="app-notification-row">
-                  <div class="app-notification-icon text-secondary"><i class="bi bi-hourglass-split"></i></div>
-                  <div class="app-notification-content">
-                    <div class="app-notification-title">{% trans "Loading notifications..." %}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="app-notifications-footer px-1">
-              <a class="small text-decoration-none" href="{% url 'scraping:job_list' %}">
-                <i class="bi bi-box-arrow-up-right me-1"></i>{% trans "Open Scrape Jobs" %}
-              </a>
-            </div>
-          </div>
-        </li>
-        <li class="nav-item dropdown d-flex align-items-center">
-          <button
-            class="nav-link dropdown-toggle btn btn-link p-0 border-0 text-decoration-none"
-            type="button"
-            id="userMenuToggle"
-            data-bs-toggle="dropdown"
-            data-bs-display="static"
-            aria-expanded="false"
-          >
-            <i class="bi bi-person-circle me-1"></i><span class="icon-text">{{ user.username }}</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userMenuToggle">
-            <li>
-              <a class="dropdown-item" href="{% url 'users:settings' %}">
-                <i class="bi bi-sliders me-1"></i>{% trans "Settings" %}
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <form method="post" action="{% url 'users:logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="dropdown-item">
-                  <i class="bi bi-box-arrow-right me-1"></i>{% trans "Logout" %}
-                </button>
-              </form>
-            </li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
-{% endif %}
-
-{% if messages %}
-  <div class="app-toast-stack" aria-live="polite" aria-atomic="true">
-    {% for message in messages %}
-      <div
-        class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show shadow-lg mb-2"
-        role="alert"
-        {% if message.tags == 'success' or message.tags == 'info' %}data-auto-dismiss="1"{% endif %}
-      >
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
       </div>
-    {% endfor %}
+
+      <div class="app-sidebar-spacer"></div>
+      </div>
+
+      <div class="app-sidebar-footer"></div>
+    </div>
+  </aside>
+  {% endif %}
+
+  <div class="{% if user.is_authenticated %}app-main{% endif %}">
+    {% if messages %}
+    <div class="app-flash-messages">
+      <div class="app-flash-messages-inner">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <main class="container-fluid px-4 py-3">
+      {% block content %}{% endblock %}
+    </main>
   </div>
-{% endif %}
-
-<main class="container-fluid px-4">
-
-  {% block content %}{% endblock %}
-</main>
+</div>
 
 <script
   src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
   integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
   crossorigin="anonymous"
 ></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <script>
-  // Expose Django CSRF token to JavaScript (safe - not a secret, just anti-CSRF)
   window._csrfToken = "{{ csrf_token }}";
-  // Configure HTMX to send Django CSRF token on all mutating requests
   document.addEventListener("htmx:configRequest", (event) => {
     const method = (event.detail.verb || "").toUpperCase();
     if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
@@ -546,909 +674,122 @@
     }
   });
 </script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const THEME_KEY = "reconeye-theme";
-    const CAMERA_STYLE_KEY = "reconeye-camera-style";
-    const NAVBAR_TEXT_MODE_KEY = "reconeye-navbar-text-mode";
-    const CHROME_AUTOHIDE_KEY = "reconeye-chrome-autohide";
-    const root = document.documentElement;
-    const themeToggleBtn = document.getElementById("theme-toggle");
-    const themeToggleIcon = document.getElementById("theme-toggle-icon");
-    const cameraStyleSelect = document.getElementById("camera-style-select");
-    const textModeToggleBtn = document.getElementById("text-mode-toggle");
-    const chromeAutohideToggleBtn = document.getElementById("chrome-autohide-toggle");
-    const chromeAutohideIcon = document.getElementById("chrome-autohide-icon");
-    const mainNavbar = document.getElementById("main-navbar");
-    const toastAlerts = Array.from(document.querySelectorAll(".app-toast-stack [data-auto-dismiss='1']"));
-    const cameraStyleOrder = ["subtle", "neon", "max-cyber"];
-    let chromeAutohideEnabled = false;
-    let chromeHideTimeout = null;
-
-    toastAlerts.forEach((alert) => {
-      window.setTimeout(() => {
-        const bsAlert = window.bootstrap && window.bootstrap.Alert ? window.bootstrap.Alert.getOrCreateInstance(alert) : null;
-        if (bsAlert) {
-          bsAlert.close();
-          return;
-        }
-        alert.classList.remove("show");
-        window.setTimeout(() => alert.remove(), 150);
-      }, 4500);
-    });
-
-    const clearChromeHideTimeout = () => {
-      if (chromeHideTimeout) {
-        window.clearTimeout(chromeHideTimeout);
-        chromeHideTimeout = null;
-      }
-    };
-
-    const setChromeVisibility = (visible) => {
-      document.body.classList.toggle("chrome-hidden", !visible);
-    };
-
-    const scheduleChromeHide = (delay = 900) => {
-      clearChromeHideTimeout();
-      if (!chromeAutohideEnabled || document.body.classList.contains("surveillance-edit-mode")) {
-        setChromeVisibility(true);
-        return;
-      }
-      chromeHideTimeout = window.setTimeout(() => {
-        if (window.scrollY <= 8) {
-          setChromeVisibility(false);
-        }
-      }, delay);
-    };
-
-    const updateChromeAutohideButton = (enabled) => {
-      if (!chromeAutohideToggleBtn) {
-        return;
-      }
-      chromeAutohideToggleBtn.classList.toggle("btn-outline-secondary", !enabled);
-      chromeAutohideToggleBtn.classList.toggle("btn-outline-info", enabled);
-      chromeAutohideToggleBtn.classList.toggle("active", enabled);
-      chromeAutohideToggleBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
-      chromeAutohideToggleBtn.setAttribute("title", enabled ? "Disable auto-hide mode" : "Enable auto-hide mode");
-      if (chromeAutohideIcon) {
-        chromeAutohideIcon.className = enabled ? "bi bi-arrows-expand" : "bi bi-arrows-collapse";
-      }
-    };
-
-    const applyChromeAutohide = (enabled, { persist = true } = {}) => {
-      chromeAutohideEnabled = Boolean(enabled);
-      document.body.classList.toggle("chrome-autohide-enabled", chromeAutohideEnabled);
-      document.body.dataset.chromeAutohide = chromeAutohideEnabled ? "1" : "0";
-      updateChromeAutohideButton(chromeAutohideEnabled);
-      if (persist) {
-        try {
-          localStorage.setItem(CHROME_AUTOHIDE_KEY, chromeAutohideEnabled ? "1" : "0");
-        } catch (e) {
-          // Ignore storage errors.
-        }
-      }
-      setChromeVisibility(true);
-      scheduleChromeHide(chromeAutohideEnabled ? 800 : 0);
-      document.dispatchEvent(new CustomEvent("reconeye:chrome-autohide-change", {
-        detail: { enabled: chromeAutohideEnabled }
-      }));
-    };
-
-    const applyTheme = (theme, { persist = true } = {}) => {
-      if (theme !== "light" && theme !== "dark") {
-        return;
-      }
-      root.setAttribute("data-bs-theme", theme);
-      root.setAttribute("data-theme", theme);
-      if (persist) {
-        try {
-          localStorage.setItem(THEME_KEY, theme);
-        } catch (e) {
-          // Ignore storage errors.
-        }
-      }
-
-      if (themeToggleIcon) {
-        themeToggleIcon.classList.toggle("bi-moon-stars", theme === "dark");
-        themeToggleIcon.classList.toggle("bi-sun", theme === "light");
-      }
-
-      if (mainNavbar) {
-        mainNavbar.classList.toggle("navbar-dark", theme === "dark");
-        mainNavbar.classList.toggle("navbar-light", theme === "light");
-      }
-
-      const dropdownToggle = document.getElementById("userMenuToggle");
-      const dropdownMenu = dropdownToggle ? dropdownToggle.nextElementSibling : null;
-      if (dropdownMenu) {
-        dropdownMenu.classList.toggle("dropdown-menu-dark", theme === "dark");
-      }
-    };
-
-    const currentTheme = root.getAttribute("data-bs-theme") || "dark";
-    applyTheme(currentTheme, { persist: false });
-
-    const applyCameraStyle = (style, { persist = true } = {}) => {
-      const normalized = cameraStyleOrder.includes(style) ? style : "subtle";
-      root.setAttribute("data-camera-style", normalized);
-      if (persist) {
-        try {
-          localStorage.setItem(CAMERA_STYLE_KEY, normalized);
-        } catch (e) {
-          // Ignore storage errors.
-        }
-      }
-      if (cameraStyleSelect) {
-        cameraStyleSelect.value = normalized;
-      }
-    };
-
-    const applyNavbarTextMode = (mode, { persist = true } = {}) => {
-      const normalized = mode === "icons-only" ? "icons-only" : "icons-text";
-      root.setAttribute("data-navbar-text-mode", normalized);
-      if (persist) {
-        try {
-          localStorage.setItem(NAVBAR_TEXT_MODE_KEY, normalized);
-        } catch (e) {
-          // Ignore storage errors.
-        }
-      }
-    };
-
-    applyCameraStyle(root.getAttribute("data-camera-style") || "subtle", { persist: false });
-
-    // Initialize navbar text mode from localStorage
-    try {
-      const savedMode = localStorage.getItem(NAVBAR_TEXT_MODE_KEY);
-      if (savedMode === "icons-only" || savedMode === "icons-text") {
-        applyNavbarTextMode(savedMode, { persist: false });
-      } else {
-        applyNavbarTextMode("icons-text", { persist: false });
-      }
-    } catch (e) {
-      applyNavbarTextMode("icons-text", { persist: false });
-    }
-
-    try {
-      applyChromeAutohide(localStorage.getItem(CHROME_AUTOHIDE_KEY) === "1", { persist: false });
-    } catch (e) {
-      applyChromeAutohide(false, { persist: false });
-    }
-
-    if (themeToggleBtn) {
-      themeToggleBtn.addEventListener("click", () => {
-        const nextTheme = (root.getAttribute("data-bs-theme") || "dark") === "dark" ? "light" : "dark";
-        applyTheme(nextTheme);
-      });
-    }
-
-    if (cameraStyleSelect) {
-      cameraStyleSelect.addEventListener("change", (event) => {
-        applyCameraStyle(event.target.value || "subtle");
-      });
-    }
-
-    if (textModeToggleBtn) {
-      textModeToggleBtn.addEventListener("click", () => {
-        const currentMode = root.getAttribute("data-navbar-text-mode") || "icons-text";
-        const nextMode = currentMode === "icons-text" ? "icons-only" : "icons-text";
-        applyNavbarTextMode(nextMode);
-      });
-    }
-
-    if (chromeAutohideToggleBtn) {
-      chromeAutohideToggleBtn.addEventListener("click", () => {
-        applyChromeAutohide(!chromeAutohideEnabled);
-      });
-    }
-
-    document.addEventListener("reconeye:set-chrome-autohide", (event) => {
-      const enabled = Boolean(event.detail && event.detail.enabled);
-      const persist = !(event.detail && event.detail.persist === false);
-      applyChromeAutohide(enabled, { persist });
-    });
-
-    document.addEventListener("mousemove", (event) => {
-      if (!chromeAutohideEnabled) {
-        return;
-      }
-      // Show chrome when mouse is at the very top (24px reveal zone)
-      if (event.clientY <= 24) {
-        setChromeVisibility(true);
-        scheduleChromeHide(1200);
-      }
-    });
-
-    document.addEventListener("focusin", () => {
-      if (!chromeAutohideEnabled) {
-        return;
-      }
-      setChromeVisibility(true);
-      scheduleChromeHide(1400);
-    });
-
-    window.addEventListener("scroll", () => {
-      if (!chromeAutohideEnabled) {
-        return;
-      }
-      if (window.scrollY > 8) {
-        clearChromeHideTimeout();
-        setChromeVisibility(true);
-      } else {
-        scheduleChromeHide(900);
-      }
-    }, { passive: true });
-
-    // Fallback for navbar collapse when Bootstrap JS is unavailable.
-    if (!(window.bootstrap && window.bootstrap.Collapse)) {
-      const navToggler = document.querySelector(".navbar-toggler[data-bs-target='#navbarMain']");
-      const navCollapse = document.getElementById("navbarMain");
-      if (navToggler && navCollapse) {
-        navToggler.addEventListener("click", () => {
-          const willOpen = !navCollapse.classList.contains("show");
-          navCollapse.classList.toggle("show", willOpen);
-          navToggler.setAttribute("aria-expanded", willOpen ? "true" : "false");
-        });
-      }
-    }
-
-    const camerasToggle = document.getElementById("camerasMenuToggle");
-    const camerasMenu = camerasToggle ? camerasToggle.nextElementSibling : null;
-    const canHover = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    if (camerasToggle && camerasMenu && canHover && window.bootstrap && window.bootstrap.Dropdown) {
-      const camerasDropdown = window.bootstrap.Dropdown.getOrCreateInstance(camerasToggle);
-      const camerasNavItem = camerasToggle.closest(".dropdown");
-      let hideTimer = null;
-
-      const clearHideTimer = () => {
-        if (hideTimer) {
-          window.clearTimeout(hideTimer);
-          hideTimer = null;
-        }
-      };
-
-      const showCamerasMenu = () => {
-        clearHideTimer();
-        camerasDropdown.show();
-      };
-
-      const hideCamerasMenu = () => {
-        clearHideTimer();
-        hideTimer = window.setTimeout(() => {
-          camerasDropdown.hide();
-        }, 120);
-      };
-
-      if (camerasNavItem) {
-        camerasNavItem.addEventListener("mouseenter", showCamerasMenu);
-        camerasNavItem.addEventListener("mouseleave", hideCamerasMenu);
-      }
-      camerasMenu.addEventListener("mouseenter", clearHideTimer);
-      camerasMenu.addEventListener("mouseleave", hideCamerasMenu);
-      camerasToggle.addEventListener("focus", showCamerasMenu);
-    }
-
-    const userToggle = document.getElementById("userMenuToggle");
-    if (!userToggle) {
-      return;
-    }
-    const userMenu = userToggle.nextElementSibling;
-    if (!userMenu) {
-      return;
-    }
-
-    if (window.bootstrap && window.bootstrap.Dropdown) {
-      if (!window.bootstrap.Dropdown.getInstance(userToggle)) {
-        new window.bootstrap.Dropdown(userToggle);
-      }
-      return;
-    }
-
-    const closeMenu = () => {
-      userMenu.classList.remove("show");
-      userToggle.setAttribute("aria-expanded", "false");
-    };
-
-    userToggle.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const willOpen = !userMenu.classList.contains("show");
-      userMenu.classList.toggle("show", willOpen);
-      userToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    });
-
-    document.addEventListener("click", (event) => {
-      if (!userMenu.contains(event.target) && !userToggle.contains(event.target)) {
-        closeMenu();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeMenu();
-      }
-    });
-  });
-
   (() => {
     const HLS_INSTANCE_KEY = "__reconeyeHlsInstance";
-    const HLS_WATCHDOG_KEY = "__reconeyeHlsWatchdog";
-    const ACTIVE_PLAYER_KEY = "__reconeyeActivePlayer";
 
-    function setActivePlayer(element) {
-      if (!element) {
-        return;
-      }
-      window[ACTIVE_PLAYER_KEY] = element;
-    }
-
-    function getActivePlayer() {
-      const active = window[ACTIVE_PLAYER_KEY];
-      if (active && active.isConnected) {
-        return active;
-      }
-      const scoped = document.querySelector("#camera-panel video.js-hls-player, #camera-panel iframe.js-iframe-player");
-      if (scoped) {
-        return scoped;
-      }
-      return document.querySelector("video.js-hls-player, iframe.js-iframe-player");
-    }
-
-    function shouldIgnoreHotkey(event) {
-      if (!event) {
-        return true;
-      }
-      if (event.defaultPrevented) {
-        return true;
-      }
-      const target = event.target;
-      if (!target) {
-        return false;
-      }
-      if (target.isContentEditable) {
-        return true;
-      }
-      const tag = (target.tagName || "").toLowerCase();
-      return tag === "input" || tag === "textarea" || tag === "select";
-    }
-
-    function focusPlayer(video) {
-      if (!video) {
-        return;
-      }
-      window.requestAnimationFrame(() => {
-        try {
-          video.focus({ preventScroll: true });
-        } catch (error) {
-          video.focus();
-        }
-      });
-    }
-
-    function focusPreview(img) {
-      if (!img) {
-        return;
-      }
-      window.requestAnimationFrame(() => {
-        try {
-          img.focus({ preventScroll: true });
-        } catch (error) {
-          img.focus();
-        }
-      });
-    }
-
-    function attemptAutoplay(video) {
-      if (!video) {
-        return;
-      }
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(() => {
-        });
-      }
-    }
-
-    function isFullscreenActiveFor(element) {
-      if (!element) {
-        return false;
-      }
-      return document.fullscreenElement === element || document.webkitFullscreenElement === element;
-    }
-
-    function exitFullscreen() {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-    }
-
-    function toggleFullscreen(element) {
-      if (!element) {
-        return;
-      }
-      if (isFullscreenActiveFor(element)) {
-        exitFullscreen();
-        return;
-      }
-      if (element.requestFullscreen) {
-        element.requestFullscreen();
-      } else if (element.webkitRequestFullscreen) {
-        element.webkitRequestFullscreen();
-      } else if (element.webkitEnterFullscreen) {
-        element.webkitEnterFullscreen();
-      }
-    }
-
-    function bindPlayerKeyboard(video) {
-      if (!video || video.dataset.hlsKeyboardBound === "true") {
-        return;
-      }
-      video.dataset.hlsKeyboardBound = "true";
-      video.addEventListener("pointerdown", () => setActivePlayer(video));
-      video.addEventListener("focus", () => setActivePlayer(video));
-      video.addEventListener("keydown", (event) => {
-        const key = (event.key || "").toLowerCase();
-        if (video.dataset.disablePause === "true" && (key === " " || key === "spacebar" || key === "k")) {
-          event.preventDefault();
-          attemptAutoplay(video);
-          return;
-        }
-        if (event.key && event.key.toLowerCase() === "f") {
-          event.preventDefault();
-          toggleFullscreen(video);
-        }
-      });
-      video.addEventListener("dblclick", () => {
-        toggleFullscreen(video);
-      });
-    }
-
-    function bindPauseGuard(video) {
-      if (!video || video.dataset.pauseGuardBound === "true" || video.dataset.disablePause !== "true") {
-        return;
-      }
-      video.dataset.pauseGuardBound = "true";
-
-      let resumeTimer = null;
-      const resumeIfNeeded = () => {
-        if (document.hidden || video.ended || !video.paused) {
-          return;
-        }
-        attemptAutoplay(video);
-      };
-
-      // Intercept direct clicks on the video surface so they don't toggle pause.
-      video.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        window.requestAnimationFrame(() => {
-          resumeIfNeeded();
-        });
-      }, true);
-
-      video.addEventListener("pause", () => {
-        if (resumeTimer) {
-          window.clearTimeout(resumeTimer);
-        }
-        resumeTimer = window.setTimeout(() => {
-          resumeIfNeeded();
-        }, 80);
-      });
-
-      video.addEventListener("stalled", () => {
-        window.setTimeout(() => {
-          resumeIfNeeded();
-        }, 120);
-      });
-
-      video.addEventListener("waiting", () => {
-        window.setTimeout(() => {
-          resumeIfNeeded();
-        }, 120);
-      });
-    }
-
-    function bindIframeKeyboard(iframe) {
-      if (!iframe || iframe.dataset.iframeKeyboardBound === "true") {
-        return;
-      }
-      iframe.dataset.iframeKeyboardBound = "true";
-      iframe.addEventListener("pointerdown", () => setActivePlayer(iframe));
-      iframe.addEventListener("focus", () => setActivePlayer(iframe));
-
-      iframe.addEventListener("keydown", (event) => {
-        const key = (event.key || "").toLowerCase();
-        if (key === "f") {
-          event.preventDefault();
-          toggleFullscreen(iframe);
-        }
-      });
-
-      iframe.addEventListener("dblclick", () => {
-        toggleFullscreen(iframe);
-      });
-    }
-
-    function initIframePlayers(container = document) {
+    const initIframePlayers = (container = document) => {
       const scope = container instanceof Element || container instanceof Document ? container : document;
       const iframes = scope.querySelectorAll("iframe.js-iframe-player");
       iframes.forEach((iframe) => {
-        bindIframeKeyboard(iframe);
+        if (iframe.dataset.playerReady === "1") {
+          return;
+        }
+        iframe.dataset.playerReady = "1";
+        iframe.setAttribute("tabindex", iframe.getAttribute("tabindex") || "0");
       });
-    }
+    };
 
-    function bindPreviewImageKeyboard(img) {
-      if (!img || img.dataset.previewKeyboardBound === "true") {
-        return;
-      }
-      img.dataset.previewKeyboardBound = "true";
-      focusPreview(img);
-      img.addEventListener("keydown", (event) => {
-        if (event.key && event.key.toLowerCase() === "f") {
-          event.preventDefault();
-          toggleFullscreenImage(img);
-        }
-      });
-      img.addEventListener("dblclick", () => {
-        toggleFullscreenImage(img);
-      });
-    }
-
-    function toggleFullscreenImage(img) {
-      if (!img) {
-        return;
-      }
-      if (isFullscreenActiveFor(img)) {
-        exitFullscreen();
-        return;
-      }
-      if (img.requestFullscreen) {
-        img.requestFullscreen({ navigationUI: "hide" });
-      } else if (img.webkitRequestFullscreen) {
-        img.webkitRequestFullscreen();
-      }
-    }
-
-    function triggerStreamCheck(video) {
-      const cameraId = video.dataset.cameraId;
-      if (!cameraId) {
-        return;
-      }
-      // Find the status badge in the same data-camera-id container as the video,
-      // so this works on both the detail page and the map panel.
-      const container = video.closest("[data-camera-id]") || document;
-      const badge = container.querySelector("#camera-status-badge") ||
-                    document.getElementById("camera-status-badge");
-      const checkUrl = "/htmx/cameras/" + cameraId + "/check-stream/";
-      fetch(checkUrl, {
-        method: "POST",
-        headers: { "X-CSRFToken": window._csrfToken || "" },
-        credentials: "same-origin",
-      })
-        .then((r) => r.text())
-        .then((html) => {
-          if (!badge) {
-            return;
-          }
-          const tmp = document.createElement("span");
-          tmp.innerHTML = html.trim();
-          const newEl = tmp.firstElementChild;
-          if (newEl) {
-            badge.replaceWith(newEl);
-            if (window.htmx) {
-              window.htmx.process(newEl);
-            }
-          }
-        })
-        .catch(() => {});
-    }
-
-    function destroyHls(video) {
-      const watchdog = video && video[HLS_WATCHDOG_KEY];
-      if (watchdog) {
-        if (watchdog.intervalId) {
-          window.clearInterval(watchdog.intervalId);
-        }
-        if (Array.isArray(watchdog.cleanups)) {
-          watchdog.cleanups.forEach((fn) => {
-            try { fn(); } catch (_) {}
-          });
-        }
-      }
-      const existing = video && video[HLS_INSTANCE_KEY];
-      if (existing && typeof existing.destroy === "function") {
-        existing.destroy();
-      }
-      if (video) {
-        video[HLS_INSTANCE_KEY] = null;
-        video[HLS_WATCHDOG_KEY] = null;
-      }
-    }
-
-    function setupHlsWatchdog(video, restartPlayback) {
-      if (!video || typeof restartPlayback !== "function") {
-        return;
-      }
-      const existing = video[HLS_WATCHDOG_KEY];
-      if (existing && existing.intervalId) {
-        window.clearInterval(existing.intervalId);
-      }
-      if (existing && Array.isArray(existing.cleanups)) {
-        existing.cleanups.forEach((fn) => {
-          try { fn(); } catch (_) {}
-        });
-      }
-
-      const state = {
-        lastProgressAt: Date.now(),
-        lastCurrentTime: Number(video.currentTime || 0),
-        restartCount: 0,
-        lastRestartAt: 0,
-        intervalId: null,
-        cleanups: [],
-      };
-
-      const markProgress = () => {
-        const now = Date.now();
-        const t = Number(video.currentTime || 0);
-        if (Math.abs(t - state.lastCurrentTime) > 0.05) {
-          state.lastCurrentTime = t;
-          state.lastProgressAt = now;
-          state.restartCount = 0;
-        } else if (!video.paused) {
-          state.lastProgressAt = now;
-        }
-      };
-
-      const markAttempting = () => {
-        if (!video.paused) {
-          state.lastProgressAt = Date.now();
-        }
-      };
-
-      const onTimeupdate = () => markProgress();
-      const onPlaying = () => markProgress();
-      const onLoadedData = () => markProgress();
-      const onWaiting = () => markAttempting();
-      const onStalled = () => markAttempting();
-
-      video.addEventListener("timeupdate", onTimeupdate);
-      video.addEventListener("playing", onPlaying);
-      video.addEventListener("loadeddata", onLoadedData);
-      video.addEventListener("waiting", onWaiting);
-      video.addEventListener("stalled", onStalled);
-
-      state.cleanups.push(() => video.removeEventListener("timeupdate", onTimeupdate));
-      state.cleanups.push(() => video.removeEventListener("playing", onPlaying));
-      state.cleanups.push(() => video.removeEventListener("loadeddata", onLoadedData));
-      state.cleanups.push(() => video.removeEventListener("waiting", onWaiting));
-      state.cleanups.push(() => video.removeEventListener("stalled", onStalled));
-
-      const STUCK_AFTER_MS = 25000;
-      const CHECK_EVERY_MS = 5000;
-      const RESTART_COOLDOWN_MS = 8000;
-      const MAX_RESTARTS = 3;
-
-      state.intervalId = window.setInterval(() => {
-        if (document.hidden) {
-          return;
-        }
-        if (!video.isConnected) {
-          return;
-        }
-        if (video.ended) {
-          return;
-        }
-        if (video.paused) {
-          return;
-        }
-        const now = Date.now();
-        if (now - state.lastProgressAt < STUCK_AFTER_MS) {
-          return;
-        }
-        if (now - state.lastRestartAt < RESTART_COOLDOWN_MS) {
-          return;
-        }
-        if (state.restartCount >= MAX_RESTARTS) {
-          triggerStreamCheck(video);
-          return;
-        }
-
-        state.restartCount += 1;
-        state.lastRestartAt = now;
-        restartPlayback();
-      }, CHECK_EVERY_MS);
-
-      video[HLS_WATCHDOG_KEY] = state;
-    }
-
-    function initHlsPlayers(container = document) {
+    const initHlsPlayers = (container = document) => {
       const scope = container instanceof Element || container instanceof Document ? container : document;
-      const players = scope.querySelectorAll("video.js-hls-player[data-hls-src]");
-      players.forEach((video) => {
+      const videos = scope.querySelectorAll("video.js-hls-player[data-hls-src]");
+      videos.forEach((video) => {
         const src = video.dataset.hlsSrc;
-        if (!src || video.dataset.hlsInitialized === "true") {
+        if (!src || video.dataset.hlsInitialized === "1") {
           return;
         }
 
-        destroyHls(video);
-
-        const canUseNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
-        if (canUseNativeHls) {
+        if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = src;
-          video.dataset.hlsInitialized = "true";
-          bindPlayerKeyboard(video);
-          bindPauseGuard(video);
-          video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
-          attemptAutoplay(video);
-          focusPlayer(video);
-          setActivePlayer(video);
+          video.dataset.hlsInitialized = "1";
           return;
         }
 
         if (window.Hls && window.Hls.isSupported()) {
-          const restartPlayback = () => {
-            destroyHls(video);
-            video.dataset.hlsInitialized = "false";
-            window.setTimeout(() => {
-              initHlsPlayers(video.parentElement || document);
-            }, 250);
-          };
-          const hls = new window.Hls({
-            enableWorker: true,
-            lowLatencyMode: false,
-          });
+          const hls = new window.Hls({ enableWorker: true, lowLatencyMode: false });
           hls.loadSource(src);
           hls.attachMedia(video);
-          hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-            attemptAutoplay(video);
-            focusPlayer(video);
-            setActivePlayer(video);
-          });
-          let networkErrorCount = 0;
-          let mediaErrorCount = 0;
-          hls.on(window.Hls.Events.ERROR, (event, data) => {
-            if (!data || !data.fatal) {
-              return;
-            }
-            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-              networkErrorCount += 1;
-              if (networkErrorCount <= 2) {
-                hls.startLoad();
-                return;
-              }
-              // 3+ consecutive network failures — stream is likely truly offline
-              triggerStreamCheck(video);
-            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              mediaErrorCount += 1;
-              if (mediaErrorCount <= 1) {
-                hls.recoverMediaError();
-                return;
-              }
-              // 2+ media errors — segments missing or corrupted
-              triggerStreamCheck(video);
-            } else {
-              // Other fatal errors
-              triggerStreamCheck(video);
-            }
-            restartPlayback();
-          });
           video[HLS_INSTANCE_KEY] = hls;
-          video.dataset.hlsInitialized = "true";
-          bindPlayerKeyboard(video);
-          bindPauseGuard(video);
-          setupHlsWatchdog(video, restartPlayback);
-          return;
+          video.dataset.hlsInitialized = "1";
         }
-
-        const fallback = document.createElement("div");
-        setActivePlayer(video);
-        fallback.className = "alert alert-warning py-2 px-3 small mt-2";
-        fallback.textContent = "This browser cannot play HLS streams inline. Use the stream link instead.";
-        video.insertAdjacentElement("afterend", fallback);
       });
-
-      // Initialize go2rtc MSE players
-      const go2rtcPlayers = scope.querySelectorAll("video.js-go2rtc-player[data-mse-src]");
-      go2rtcPlayers.forEach((video) => {
-        const mseUrl = video.dataset.mseSrc;
-        if (!mseUrl || video.dataset.go2rtcInitialized === "true") {
-          return;
-        }
-        video.dataset.go2rtcInitialized = "true";
-
-        if (window.MediaSource) {
-          const mediaSource = new MediaSource();
-          video.src = URL.createObjectURL(mediaSource);
-          
-          mediaSource.addEventListener("sourceopen", async () => {
-            try {
-              const response = await fetch(mseUrl);
-              const buffer = await response.arrayBuffer();
-              const sourceBuffer = mediaSource.addSourceBuffer("video/mp4; codecs=\"avc1.4d401f\"");
-              sourceBuffer.appendBuffer(buffer);
-              if (!mediaSource.sourceBuffers.length) {
-                mediaSource.endOfStream();
-              }
-            } catch (err) {
-              console.error("MSE player error:", err);
-            }
-          }, { once: true });
-        } else {
-          // Fallback to HLS if MSE not available
-          const hlsUrl = mseUrl.replace("/stream.mse", "/stream.m3u8");
-          if (window.Hls && window.Hls.isSupported()) {
-            const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
-            hls.loadSource(hlsUrl);
-            hls.attachMedia(video);
-            video[HLS_INSTANCE_KEY] = hls;
-          } else {
-            video.src = hlsUrl;
-          }
-        }
-
-        bindPlayerKeyboard(video);
-        bindPauseGuard(video);
-        video.addEventListener("loadedmetadata", () => attemptAutoplay(video), { once: true });
-        attemptAutoplay(video);
-        focusPlayer(video);
-        setActivePlayer(video);
-      });
-
-      // Initialize fullscreen keyboard for preview images
-      const previewImages = scope.querySelectorAll("img.preview[src]");
-      previewImages.forEach((img) => {
-        bindPreviewImageKeyboard(img);
-      });
-    }
+    };
 
     document.addEventListener("DOMContentLoaded", () => {
       initHlsPlayers(document);
       initIframePlayers(document);
     });
 
-    document.addEventListener("keydown", (event) => {
-      if (shouldIgnoreHotkey(event)) {
-        return;
-      }
-      const key = (event.key || "").toLowerCase();
-      if (key !== "f") {
-        return;
-      }
-      // Surveillance page handles its own f-key fullscreen per focused tile.
-      // Yield to its handler to avoid toggling the wrong element.
-      if (document.body.classList.contains("surveillance-page")) {
-        return;
-      }
-      const player = getActivePlayer();
-      if (!player) {
-        return;
-      }
-      event.preventDefault();
-      toggleFullscreen(player);
-    });
-
     document.body.addEventListener("htmx:afterSwap", (event) => {
-      initHlsPlayers(event.target);
-      initIframePlayers(event.target);
-    });
-    document.body.addEventListener("htmx:beforeSwap", (event) => {
-      const scope = event.target instanceof Element ? event.target : null;
-      if (!scope) {
-        return;
-      }
-      scope.querySelectorAll("video.js-hls-player").forEach((video) => {
-        destroyHls(video);
-        video.dataset.hlsInitialized = "false";
-      });
+      const target = event?.detail?.target || event.target;
+      initHlsPlayers(target || document);
+      initIframePlayers(target || document);
     });
 
     window.ReconEye = window.ReconEye || {};
-    window.ReconEye.initIframePlayers = initIframePlayers;
     window.ReconEye.initHlsPlayers = initHlsPlayers;
+    window.ReconEye.initIframePlayers = initIframePlayers;
+  })();
+</script>
+<script>
+  (() => {
+    const html = document.documentElement;
+
+    const setTheme = (theme) => {
+      html.setAttribute("data-bs-theme", theme);
+      localStorage.setItem("theme", theme);
+    };
+    const setTextMode = (mode) => {
+      html.setAttribute("data-navbar-text-mode", mode);
+      localStorage.setItem("navbarTextMode", mode);
+    };
+    const setCameraStyle = (style) => {
+      html.setAttribute("data-camera-style", style);
+      localStorage.setItem("cameraStyle", style);
+    };
+
+    const syncControlState = () => {
+      const theme = html.getAttribute("data-bs-theme") || "dark";
+      const mode = html.getAttribute("data-navbar-text-mode") || "full";
+      const themeBtn = document.getElementById("theme-toggle");
+      const textModeBtn = document.getElementById("text-mode-toggle");
+      const themeIcon = document.getElementById("theme-toggle-icon");
+      const textModeIcon = textModeBtn?.querySelector("i");
+
+      if (themeBtn) {
+        themeBtn.classList.toggle("active", theme === "dark");
+      }
+      if (themeIcon) {
+        themeIcon.className = theme === "dark" ? "bi bi-moon-stars" : "bi bi-sun";
+      }
+      if (textModeBtn) {
+        textModeBtn.classList.toggle("active", mode === "icons-only");
+        textModeBtn.setAttribute("aria-pressed", mode === "icons-only" ? "true" : "false");
+        if (textModeIcon) {
+          textModeIcon.className = mode === "icons-only" ? "bi bi-layout-sidebar" : "bi bi-layout-sidebar-inset";
+        }
+      }
+    };
+
+    setTheme(localStorage.getItem("theme") || "dark");
+    setTextMode(localStorage.getItem("navbarTextMode") || "full");
+    setCameraStyle(localStorage.getItem("cameraStyle") || "subtle");
+
+    document.getElementById("theme-toggle")?.addEventListener("click", () => {
+      setTheme(html.getAttribute("data-bs-theme") === "dark" ? "light" : "dark");
+    });
+    document.getElementById("text-mode-toggle")?.addEventListener("click", () => {
+      setTextMode(html.getAttribute("data-navbar-text-mode") === "full" ? "icons-only" : "full");
+      syncControlState();
+    });
+    document.getElementById("camera-style-select")?.addEventListener("change", (event) => {
+      setCameraStyle(event.target.value);
+    });
+    const styleSelect = document.getElementById("camera-style-select");
+    if (styleSelect) {
+      styleSelect.value = html.getAttribute("data-camera-style") || "subtle";
+    }
+    syncControlState();
   })();
 </script>
 {% block extra_js %}{% endblock %}

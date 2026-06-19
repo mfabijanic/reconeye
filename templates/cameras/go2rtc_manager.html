@@ -2,26 +2,60 @@
 {% load i18n %}
 {% block title %}{% trans "go2rtc Manager" %} — ReconEye{% endblock %}
 
-{% block content %}
-<div class="row g-3">
-  <div class="col-12">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <h4 class="mb-0">
-        <i class="bi bi-hdd-network me-2 text-info"></i>{% trans "go2rtc Manager" %}
-      </h4>
-      <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'cameras:go2rtc_viewer' %}{% if selected_instance %}?instance={{ selected_instance.pk }}&manager_instance={{ selected_instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-primary">
-          <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
-        </a>
-        <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
-          <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
-        </a>
-      </div>
-    </div>
-  </div>
+{% block page_title %}
+  <span class="d-inline-flex align-items-center gap-2">
+    <i class="bi bi-hdd-network text-info"></i>
+    <span>{% trans "go2rtc Manager" %}</span>
+  </span>
+{% endblock %}
 
+{% block topbar_actions %}
+  <a href="{% url 'cameras:go2rtc_viewer' %}{% if selected_instance %}?instance={{ selected_instance.pk }}&manager_instance={{ selected_instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
+  </a>
+  <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
+    <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
+  </a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .go2rtc-manager-tabs .nav-link {
+    font-size: var(--font-role-nav-item);
+  }
+
+  .go2rtc-manager-page .card-header,
+  .go2rtc-manager-page .card-header strong {
+    font-size: var(--font-role-card-title);
+  }
+
+  .go2rtc-manager-page .table {
+    font-size: var(--font-role-shell);
+  }
+
+  .go2rtc-manager-page .table th {
+    font-size: var(--font-role-label);
+  }
+
+  .go2rtc-manager-page .go2rtc-latest-config-summary,
+  .go2rtc-manager-page .go2rtc-latest-config-summary code,
+  .go2rtc-manager-page .go2rtc-latest-config-json {
+    font-family: var(--bs-font-monospace);
+    font-size: var(--font-role-meta);
+  }
+
+  .go2rtc-manager-page .go2rtc-latest-config-json {
+    max-height: 320px;
+    overflow: auto;
+    margin-bottom: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 go2rtc-manager-page">
   <div class="col-12">
-    <ul class="nav nav-tabs" role="tablist">
+    <ul class="nav nav-tabs go2rtc-manager-tabs" role="tablist">
       <li class="nav-item" role="presentation">
         <a class="nav-link {% if active_tab != 'import' %}active{% endif %}"
            href="{% url 'cameras:go2rtc_manager' %}">
@@ -445,7 +479,7 @@
         </div>
         <div class="card-body">
           {% if latest_config %}
-              <div class="mb-3 small">
+              <div class="mb-3 go2rtc-latest-config-summary">
                 <div><strong>{% trans "Hash" %}:</strong> <code>{{ latest_config.config_hash }}</code></div>
                 <div class="mt-1">
                   <strong>{% trans "Diff" %}:</strong>
@@ -460,7 +494,7 @@
                 {% blocktrans with kb=latest_config_size|filesizeformat %}The config snapshot is large ({{ kb }}) and is not rendered here to keep the page responsive. Use the hash and diff summary above, or inspect it in the Django admin.{% endblocktrans %}
               </div>
             {% else %}
-              <pre class="small mb-0" style="max-height: 320px; overflow:auto;">{{ latest_config.config_payload|pprint }}</pre>
+              <pre class="go2rtc-latest-config-json">{{ latest_config.config_payload|pprint }}</pre>
             {% endif %}
           {% else %}
             <span class="text-muted">{% trans "No config snapshot available yet." %}</span>

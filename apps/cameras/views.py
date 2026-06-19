@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -18,6 +19,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
+from apps.common.audit import log_audit_event
+from apps.common.authz import CapabilityRequiredMixin, ROLE_OPERATOR, RoleRequiredMixin
 from apps.cameras.forms import (
     Go2RTCBulkAddForm,
     Go2RTCCameraForm,
@@ -64,6 +67,11 @@ from apps.cameras.services_grid import (
     upsert_go2rtc_grid_item as upsert_grid_item,
 )
 from apps.users.models import UserMapSettings
+
+
+logger = logging.getLogger(__name__)
+
+CAMERA_LIST_PAGE_SIZE = 25
 
 
 def _to_bool_flag(value: str | None) -> bool:
@@ -143,7 +151,7 @@ class CameraListView(LoginRequiredMixin, ListView):
     model = Camera
     template_name = "cameras/list.html"
     context_object_name = "cameras"
-    paginate_by = 50
+    paginate_by = CAMERA_LIST_PAGE_SIZE
 
     def get_queryset(self):
         qs = Camera.objects.filter(is_active=True).order_by("-created_at")
@@ -187,8 +195,9 @@ class CameraDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class Go2RTCCameraGridView(LoginRequiredMixin, TemplateView):
+class Go2RTCCameraGridView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateView):
     template_name = "cameras/surveillance.html"
+    required_capability = "surveillance"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -212,7 +221,10 @@ class Go2RTCCameraGridView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class AddGo2RTCCameraView(LoginRequiredMixin, View):
+class AddGo2RTCCameraView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "surveillance"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, *args, **kwargs):
         form = Go2RTCCameraForm(request.POST)
         if not form.is_valid():
@@ -242,6 +254,20 @@ class AddGo2RTCCameraView(LoginRequiredMixin, View):
         else:
             message = f"Updated surveillance item: {grid_item.title}"
             alert_class = "alert-info"
+
+        log_audit_event(
+            request=request,
+            action="create" if created else "update",
+            target=grid_item,
+            after_state={
+                "profile_id": grid_item.profile_id,
+                "instance_id": grid_item.instance_id,
+                "stream_name": grid_item.stream_name,
+                "title": grid_item.title,
+                "is_active": grid_item.is_active,
+            },
+            metadata={"operation": "surveillance_upsert"},
+        )
         
         success_html = f'<div class="alert {alert_class} alert-dismissible fade show" role="alert">'
         success_html += message
@@ -249,17 +275,36 @@ class AddGo2RTCCameraView(LoginRequiredMixin, View):
         return HttpResponse(success_html)
 
 
-class RemoveGo2RTCCameraView(LoginRequiredMixin, View):
+class RemoveGo2RTCCameraView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "surveillance"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, pk: int, *args, **kwargs):
         # pk is now Go2RTCGridItem.pk (not Camera.pk)
         grid_item = get_object_or_404(Go2RTCGridItem, pk=pk)
+        before_state = {
+            "profile_id": grid_item.profile_id,
+            "instance_id": grid_item.instance_id,
+            "stream_name": grid_item.stream_name,
+            "title": grid_item.title,
+            "is_active": grid_item.is_active,
+        }
         remove_go2rtc_grid_item(grid_item)
+        log_audit_event(
+            request=request,
+            action="delete",
+            target=grid_item,
+            before_state=before_state,
+            after_state={**before_state, "is_active": False},
+            metadata={"operation": "surveillance_remove"},
+        )
         messages.success(request, f"Removed from surveillance: {grid_item.title or grid_item.stream_name}")
         return redirect("cameras:surveillance")
 
 
-class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
+class Go2RTCManagerView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateView):
     template_name = "cameras/go2rtc_manager.html"
+    required_capability = "go2rtc_manager"
 
     PAGE_SIZE_CHOICES = (5, 10, 25, 50, 100)
     DEFAULT_PAGE_SIZE = 5
@@ -558,7 +603,8 @@ class Go2RTCManagerView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
+class Go2RTCInstanceViewerView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateView):
+    required_capability = "go2rtc_manager"
     template_name = "cameras/go2rtc_viewer.html"
 
     VIEWER_SIZE_CHOICES = (4, 6)
@@ -852,8 +898,9 @@ class Go2RTCInstanceViewerView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class Go2RTCViewerLiveMetricsView(LoginRequiredMixin, View):
+class Go2RTCViewerLiveMetricsView(LoginRequiredMixin, CapabilityRequiredMixin, View):
     """Read-only endpoint with live producers/consumers for viewer tiles."""
+    required_capability = "go2rtc_manager"
 
     def get(self, request, pk: int, *args, **kwargs):
         instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
@@ -868,7 +915,10 @@ class Go2RTCViewerLiveMetricsView(LoginRequiredMixin, View):
         return JsonResponse(payload)
 
 
-class AddGo2RTCInstanceView(LoginRequiredMixin, View):
+class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, *args, **kwargs):
         form = Go2RTCInstanceForm(request.POST)
         if not form.is_valid():
@@ -876,6 +926,18 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, View):
             return redirect("cameras:go2rtc_manager")
 
         clean = form.cleaned_data
+        existing_instance = Go2RTCInstance.objects.filter(name=clean["name"].strip()).first()
+        before_state = None
+        if existing_instance is not None:
+            before_state = {
+                "scheme": existing_instance.scheme,
+                "host": existing_instance.host,
+                "port": existing_instance.port,
+                "path": existing_instance.path,
+                "group_label": existing_instance.group_label,
+                "is_active": existing_instance.is_active,
+            }
+
         instance, created = Go2RTCInstance.objects.update_or_create(
             name=clean["name"].strip(),
             defaults={
@@ -899,12 +961,36 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, View):
                 messages.warning(request, f"go2rtc instance {action}. Synced {stream_count} streams, but warning: {warning}")
             else:
                 messages.success(request, f"go2rtc instance {action}. Synced {stream_count} streams.")
+        log_audit_event(
+            request=request,
+            action="create" if created else "update",
+            target=instance,
+            before_state=before_state,
+            after_state={
+                "scheme": instance.scheme,
+                "host": instance.host,
+                "port": instance.port,
+                "path": instance.path,
+                "group_label": instance.group_label,
+                "is_active": instance.is_active,
+                "last_sync_status": instance.last_sync_status,
+            },
+            metadata={"operation": "go2rtc_instance_upsert", "stream_count": stream_count, "warning": warning or "", "error": error or ""},
+        )
         return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
 
 
-class SyncGo2RTCInstanceView(LoginRequiredMixin, View):
+class SyncGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, pk: int, *args, **kwargs):
         instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        before_state = {
+            "last_sync_status": instance.last_sync_status,
+            "last_sync_error": instance.last_sync_error,
+            "last_synced_at": instance.last_synced_at.isoformat() if instance.last_synced_at else None,
+        }
         stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
             messages.error(request, f"Sync failed for {instance.name}: {error}")
@@ -942,10 +1028,25 @@ class SyncGo2RTCInstanceView(LoginRequiredMixin, View):
                 redirect_params[key] = value
 
         manager_url = reverse("cameras:go2rtc_manager")
+        log_audit_event(
+            request=request,
+            action="execute",
+            target=instance,
+            before_state=before_state,
+            after_state={
+                "last_sync_status": instance.last_sync_status,
+                "last_sync_error": instance.last_sync_error,
+                "last_synced_at": instance.last_synced_at.isoformat() if instance.last_synced_at else None,
+            },
+            metadata={"operation": "go2rtc_sync", "stream_count": stream_count, "warning": warning or "", "error": error or ""},
+        )
         return redirect(f"{manager_url}?{urlencode(redirect_params)}")
 
 
-class Go2RTCImportPreviewView(LoginRequiredMixin, View):
+class Go2RTCImportPreviewView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     """Dry-run: parse the submitted CSV and render a preview table.
 
     Writes nothing. The exact payload is re-serialized (base64) into the
@@ -992,7 +1093,10 @@ class Go2RTCImportPreviewView(LoginRequiredMixin, View):
         return HttpResponse(html)
 
 
-class Go2RTCImportConfirmView(LoginRequiredMixin, View):
+class Go2RTCImportConfirmView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     """Commit: upsert instances from the previewed CSV and dispatch async sync."""
 
     def post(self, request, *args, **kwargs):
@@ -1012,6 +1116,18 @@ class Go2RTCImportConfirmView(LoginRequiredMixin, View):
             return redirect(import_url)
 
         report = import_go2rtc_instances(CsvInstanceImportSource(csv_bytes), sync=True)
+        log_audit_event(
+            request=request,
+            action="execute",
+            target_label="go2rtc import",
+            after_state={
+                "created": report.created,
+                "updated": report.updated,
+                "skipped": report.skipped,
+                "synced_dispatched": report.synced_dispatched,
+            },
+            metadata={"operation": "go2rtc_import_confirm"},
+        )
         messages.success(
             request,
             (
@@ -1023,7 +1139,10 @@ class Go2RTCImportConfirmView(LoginRequiredMixin, View):
         return redirect(import_url)
 
 
-class BulkAddGo2RTCStreamsView(LoginRequiredMixin, View):
+class BulkAddGo2RTCStreamsView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, pk: int, *args, **kwargs):
         instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
         streams_qs = instance.streams.order_by("stream_name")
@@ -1067,12 +1186,28 @@ class BulkAddGo2RTCStreamsView(LoginRequiredMixin, View):
             request,
             f"Added to profile {profile.name}: {created_count} new, {updated_count} updated.",
         )
+        log_audit_event(
+            request=request,
+            action="update",
+            target=profile,
+            after_state={
+                "profile_id": profile.pk,
+                "instance_id": instance.pk,
+                "selected_streams": selected,
+                "created_count": created_count,
+                "updated_count": updated_count,
+            },
+            metadata={"operation": "go2rtc_bulk_add_streams"},
+        )
         return redirect(
             f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}&profile={profile.pk}"
         )
 
 
-class AddGo2RTCGridProfileView(LoginRequiredMixin, View):
+class AddGo2RTCGridProfileView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, *args, **kwargs):
         form = Go2RTCGridProfileForm(request.POST)
         if not form.is_valid():
@@ -1080,6 +1215,14 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, View):
             return redirect("cameras:go2rtc_manager")
 
         clean = form.cleaned_data
+        existing_profile = Go2RTCGridProfile.objects.filter(name=clean["name"].strip()).first()
+        before_state = None
+        if existing_profile is not None:
+            before_state = {
+                "description": existing_profile.description,
+                "is_active": existing_profile.is_active,
+            }
+
         profile, created = Go2RTCGridProfile.objects.update_or_create(
             name=clean["name"].strip(),
             defaults={
@@ -1087,12 +1230,24 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, View):
                 "is_active": True,
             },
         )
+        log_audit_event(
+            request=request,
+            action="create" if created else "update",
+            target=profile,
+            before_state=before_state,
+            after_state={
+                "description": profile.description,
+                "is_active": profile.is_active,
+            },
+            metadata={"operation": "go2rtc_profile_upsert"},
+        )
         messages.success(request, f"Profile {'created' if created else 'updated'}: {profile.name}")
         return redirect(f"{reverse('cameras:go2rtc_manager')}?profile={profile.pk}")
 
 
-class Go2RTCProfileGridView(LoginRequiredMixin, TemplateView):
+class Go2RTCProfileGridView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateView):
     template_name = "cameras/go2rtc_profile_grid.html"
+    required_capability = "go2rtc_manager"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1104,11 +1259,29 @@ class Go2RTCProfileGridView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class RemoveGo2RTCProfileItemView(LoginRequiredMixin, View):
+class RemoveGo2RTCProfileItemView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
+    required_capability = "go2rtc_manager"
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, pk: int, *args, **kwargs):
         item = get_object_or_404(Go2RTCGridItem, pk=pk, is_active=True)
+        before_state = {
+            "profile_id": item.profile_id,
+            "instance_id": item.instance_id,
+            "stream_name": item.stream_name,
+            "title": item.title,
+            "is_active": item.is_active,
+        }
         item.is_active = False
         item.save(update_fields=["is_active", "updated_at"])
+        log_audit_event(
+            request=request,
+            action="delete",
+            target=item,
+            before_state=before_state,
+            after_state={**before_state, "is_active": False},
+            metadata={"operation": "go2rtc_profile_item_remove"},
+        )
         messages.success(request, f"Removed stream from profile {item.profile.name}: {item.title or item.stream_name}")
         return redirect(reverse("cameras:go2rtc_profile_grid", kwargs={"pk": item.profile_id}))
 
@@ -1354,7 +1527,7 @@ class HtmxCameraListView(LoginRequiredMixin, ListView):
     model = Camera
     template_name = "htmx/cameras/_camera_table.html"
     context_object_name = "cameras"
-    paginate_by = 50
+    paginate_by = CAMERA_LIST_PAGE_SIZE
 
     def get_queryset(self):
         qs = Camera.objects.filter(is_active=True).order_by("-created_at")

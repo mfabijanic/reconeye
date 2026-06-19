@@ -2,17 +2,21 @@
 {% load i18n %}
 {% block title %}{% trans "Cameras" %} — ReconEye{% endblock %}
 
-{% block content %}
-<div class="row mb-3 align-items-center">
-  <div class="col"><h4><i class="bi bi-camera-video me-2 text-info"></i>{% trans "Cameras" %}</h4></div>
-  <div class="col-auto d-flex align-items-center gap-2">
-    <a href="{% url 'cameras:map' %}" class="btn btn-sm btn-outline-info">
-      <i class="bi bi-geo-alt me-1"></i>{% trans "Open map" %}
-    </a>
-    <span class="text-muted small">{{ paginator.count }} {% trans "total" %}</span>
-  </div>
-</div>
+{% block page_title %}
+<span class="d-inline-flex align-items-center gap-2">
+  <i class="bi bi-list-ul text-info"></i>
+  <span>{% trans "List" %}</span>
+</span>
+{% endblock %}
 
+{% block topbar_actions %}
+<a href="{% url 'cameras:map' %}" class="btn btn-sm btn-outline-info">
+  <i class="bi bi-geo-alt me-1"></i>{% trans "Open map" %}
+</a>
+<span class="badge text-bg-secondary">{{ paginator.count }} {% trans "total" %}</span>
+{% endblock %}
+
+{% block content %}
 {# Filters — HTMX submits to partial endpoint #}
 <form class="row g-2 mb-3" hx-get="{% url 'cameras_htmx:htmx_list' %}" hx-target="#camera-table" hx-trigger="change">
   <div class="col-md-3">

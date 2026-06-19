@@ -26,8 +26,8 @@
   </div>
 </div>
 
-{% if stats.by_country %}
 <div class="row mt-0">
+  {% if stats.by_country %}
   <div class="col-md-6">
     <div class="card stat-card p-3">
       <h6 class="text-muted mb-2">{% trans "Top Countries" %}</h6>
@@ -39,18 +39,18 @@
       {% endfor %}
     </div>
   </div>
-  <div class="col-md-6">
+  {% endif %}
+  <div class="{% if stats.by_country %}col-md-6{% else %}col-12{% endif %}">
     <div class="card stat-card p-3">
       <h6 class="text-muted mb-2">{% trans "By Source" %}</h6>
-      <div class="d-flex justify-content-between mb-1">
-        <span class="small">Insecam</span>
-        <span class="badge bg-primary">{{ stats.insecam_total }}</span>
+      {% for item in stats.by_source %}
+      <div class="d-flex justify-content-between{% if not forloop.last %} mb-1{% endif %}">
+        <span class="small">{{ item.label }}</span>
+        <span class="badge bg-primary">{{ item.count }}</span>
       </div>
-      <div class="d-flex justify-content-between">
-        <span class="small">WhatsUpCams</span>
-        <span class="badge bg-purple" style="background:#7c3aed!important">{{ stats.wuc_total }}</span>
-      </div>
+      {% empty %}
+      <div class="small text-muted">{% trans "No active sources yet." %}</div>
+      {% endfor %}
     </div>
   </div>
 </div>
-{% endif %}

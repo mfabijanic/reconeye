@@ -2,14 +2,20 @@
 {% load i18n %}
 {% block title %}{% trans "Settings" %} — ReconEye{% endblock %}
 
-{% block content %}
-<div class="row mb-3 align-items-center">
-  <div class="col">
-    <h4><i class="bi bi-sliders me-2 text-info"></i>{% trans "Settings" %}</h4>
-  </div>
-</div>
+{% block page_title %}
+  <span class="d-inline-flex align-items-center gap-2">
+    <i class="bi bi-sliders text-info"></i>
+    <span>{% trans "Settings" %}</span>
+  </span>
+{% endblock %}
 
-<div class="row g-3">
+{% block extra_css %}
+<style>
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 settings-page">
   <div class="col-lg-8">
     <div class="card bg-dark border-secondary">
       <div class="card-body">

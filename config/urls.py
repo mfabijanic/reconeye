@@ -17,6 +17,7 @@ urlpatterns = [
     path("cameras/", include("apps.cameras.urls", namespace="cameras")),
     path("scraping/", include("apps.scraping.urls", namespace="scraping")),
     path("dashboard/", include("apps.dashboard.urls", namespace="dashboard")),
+    path("ops/", include("apps.common.urls", namespace="common")),
     # HTMX partial endpoints
     path("htmx/cameras/", include("apps.cameras.htmx_urls", namespace="cameras_htmx")),
     path("htmx/scraping/", include("apps.scraping.htmx_urls", namespace="scraping_htmx")),

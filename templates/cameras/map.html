@@ -2,6 +2,26 @@
 {% load i18n %}
 {% block title %}{% trans "Camera Map" %} — ReconEye{% endblock %}
 
+{% block page_title %}
+<span class="d-inline-flex align-items-center gap-2">
+  <i class="bi bi-geo-alt-fill text-info"></i>
+  <span>{% trans "Map" %}</span>
+</span>
+{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" id="fit-map" class="btn btn-sm btn-outline-info">
+  <i class="bi bi-bounding-box-circles me-1"></i>{% trans "Fit markers" %}
+</button>
+<button type="button" id="locate-me" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-crosshair me-1"></i>{% trans "Locate me" %}
+</button>
+<button type="button" id="map-help-btn" class="btn btn-sm btn-outline-secondary" aria-haspopup="dialog" aria-controls="map-help-overlay" aria-expanded="false">
+  <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
+</button>
+<span class="badge text-bg-secondary"><span id="map-count">0</span> {% trans "on map" %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <link
   rel="stylesheet"
@@ -220,30 +240,33 @@
   html[data-bs-theme="light"] .suggestion-item:hover {
     background-color: #f0f1f3;
   }
+  /* ── Map player fullscreen ───────────────────────────────────────── */
+  .stream-player:fullscreen,
+  .stream-player:-webkit-full-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .stream-player:fullscreen video,
+  .stream-player:fullscreen iframe,
+  .stream-player:fullscreen img,
+  .stream-player:-webkit-full-screen video,
+  .stream-player:-webkit-full-screen iframe,
+  .stream-player:-webkit-full-screen img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+    object-position: center center;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row mb-3 align-items-center">
-  <div class="col">
-    <h4><i class="bi bi-geo-alt-fill me-2 text-info"></i>{% trans "Camera Map" %}</h4>
-  </div>
-  <div class="col-auto map-controls">
-    <button type="button" id="fit-map" class="btn btn-sm btn-outline-info">
-      <i class="bi bi-bounding-box-circles me-1"></i>{% trans "Fit markers" %}
-    </button>
-    <button type="button" id="locate-me" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-crosshair me-1"></i>{% trans "Locate me" %}
-    </button>
-    <button type="button" id="map-help-btn" class="btn btn-sm btn-outline-secondary" aria-haspopup="dialog" aria-controls="map-help-overlay" aria-expanded="false">
-      <i class="bi bi-question-circle me-1"></i>{% trans "Help" %}
-    </button>
-  </div>
-  <div class="col-auto text-muted small">
-    <span id="map-count">0</span> {% trans "cameras on map" %}
-  </div>
-</div>
-
 <div id="map-notice" class="alert alert-warning py-2 px-3 small d-none" role="alert"></div>
 
 <form id="map-filters" class="row g-2 mb-3">
@@ -332,6 +355,10 @@
         <li>
           <span class="map-help-keys"><kbd>g</kbd></span>
           <span>{% trans "Locate me" %}</span>
+                <li>
+                  <span class="map-help-keys"><kbd>f</kbd></span>
+                  <span>{% trans "Toggle player fullscreen" %}</span>
+                </li>
         </li>
         <li>
           <span class="map-help-keys"><kbd>/</kbd></span>
@@ -895,6 +922,35 @@
       }
     }
 
+    function toggleMapFullscreen() {
+      const panel = document.getElementById("camera-panel");
+      if (!panel) return;
+
+      const media = panel.querySelector("video.js-hls-player, iframe.js-iframe-player, img.preview");
+      if (!media) return;
+
+      const fullscreenTarget = media.closest(".stream-player") || media;
+      const activeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      if (activeFullscreen && (activeFullscreen === fullscreenTarget || activeFullscreen.contains(fullscreenTarget) || fullscreenTarget.contains(activeFullscreen))) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+        return;
+      }
+
+      if (media.tagName === "VIDEO" && typeof media.webkitEnterFullscreen === "function") {
+        media.webkitEnterFullscreen();
+        return;
+      }
+
+      const requestFullscreen = fullscreenTarget.requestFullscreen || fullscreenTarget.webkitRequestFullscreen;
+      if (requestFullscreen) {
+        requestFullscreen.call(fullscreenTarget);
+      }
+    }
+
     if (mapHelpBtnEl) {
       mapHelpBtnEl.addEventListener("click", (event) => {
         event.preventDefault();
@@ -946,6 +1002,11 @@
       }
 
       const canUseMapShortcuts = !mapHelpOpen && !event.altKey && !event.ctrlKey && !event.metaKey && !isTypingTarget(event.target);
+      if (canUseMapShortcuts && (event.key === "f" || event.key === "F")) {
+        event.preventDefault();
+        toggleMapFullscreen();
+        return;
+      }
       if (canUseMapShortcuts && (event.key === "m" || event.key === "M")) {
         event.preventDefault();
         fitMapToMarkers();

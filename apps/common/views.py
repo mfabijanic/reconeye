@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import admin as django_admin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views import View
+from django.views.generic import TemplateView
 
 from apps.common.celery_activity import get_active_task_summary
 
@@ -64,3 +67,20 @@ class HtmxNavNotificationsView(LoginRequiredMixin, View):
             request=request,
         )
         return HttpResponse(html)
+
+
+class AdminHubView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = "common/admin_hub.html"
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            raise PermissionDenied
+        return super().handle_no_permission()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["admin_app_list"] = django_admin.site.get_app_list(self.request)
+        return ctx

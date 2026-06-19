@@ -10,6 +10,8 @@ from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import DetailView, ListView
 
+from apps.common.audit import log_audit_event
+from apps.common.authz import ROLE_OPERATOR, RoleRequiredMixin
 from apps.scraping.config import (
     get_insecam_country_codes,
     get_insecam_countries_with_labels,
@@ -22,13 +24,14 @@ from apps.scraping.models import ScrapeJob, ScrapeJobStatus
 logger = logging.getLogger(__name__)
 
 SCRAPE_COOLDOWN_MINUTES = 30
+SCRAPE_JOBS_PAGE_SIZE = 25
 
 
 class ScrapeJobListView(LoginRequiredMixin, ListView):
     model = ScrapeJob
     template_name = "scraping/job_list.html"
     context_object_name = "jobs"
-    paginate_by = 30
+    paginate_by = SCRAPE_JOBS_PAGE_SIZE
 
     def get_queryset(self):
         qs = ScrapeJob.objects.all()
@@ -53,7 +56,9 @@ class ScrapeJobDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "job"
 
 
-class TriggerScrapeView(LoginRequiredMixin, View):
+class TriggerScrapeView(LoginRequiredMixin, RoleRequiredMixin, View):
+    required_roles = (ROLE_OPERATOR,)
+
     @staticmethod
     def _has_online_workers() -> bool:
         """Best-effort worker availability check before enqueueing tasks."""
@@ -195,6 +200,18 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                 _("Insecam [%(country)s] scrape queued (job #%(job_id)s): %(task_id)s")
                 % {"country": target_country_code, "job_id": job.pk, "task_id": task.id},
             )
+            log_audit_event(
+                request=request,
+                action="execute",
+                target=job,
+                after_state={
+                    "source_type": job.source_type,
+                    "target_country_code": job.target_country_code,
+                    "status": job.status,
+                    "celery_task_id": job.celery_task_id,
+                },
+                metadata={"operation": "trigger_scrape"},
+            )
         elif source == "WHATSUPCAMS":
             from apps.scraping.tasks import scrape_whatsupcams_job
 
@@ -221,6 +238,18 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                 request,
                 _("WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s")
                 % {"scope": scope, "job_id": job.pk, "task_id": task.id},
+            )
+            log_audit_event(
+                request=request,
+                action="execute",
+                target=job,
+                after_state={
+                    "source_type": job.source_type,
+                    "target_country_code": job.target_country_code,
+                    "status": job.status,
+                    "celery_task_id": job.celery_task_id,
+                },
+                metadata={"operation": "trigger_scrape"},
             )
         elif source == "WINDY":
             from apps.scraping.tasks import scrape_windy_job
@@ -259,10 +288,26 @@ class TriggerScrapeView(LoginRequiredMixin, View):
                     "task_id": task.id,
                 },
             )
+            log_audit_event(
+                request=request,
+                action="execute",
+                target=job,
+                after_state={
+                    "source_type": job.source_type,
+                    "target_country_code": job.target_country_code,
+                    "status": job.status,
+                    "offset_pages": job.offset_pages,
+                    "max_pages": job.max_pages,
+                    "celery_task_id": job.celery_task_id,
+                },
+                metadata={"operation": "trigger_scrape", "windy_start_camera": windy_start_camera},
+            )
         return redirect("scraping:job_list")
 
 
-class CancelScrapeView(LoginRequiredMixin, View):
+class CancelScrapeView(LoginRequiredMixin, RoleRequiredMixin, View):
+    required_roles = (ROLE_OPERATOR,)
+
     def post(self, request, pk: int):
         job = get_object_or_404(ScrapeJob, pk=pk)
 
@@ -278,8 +323,23 @@ class CancelScrapeView(LoginRequiredMixin, View):
 
             AsyncResult(job.celery_task_id).revoke(terminate=True, signal="SIGTERM")
 
+        before_state = {
+            "status": job.status,
+            "error_message": job.error_message,
+        }
         job.mark_cancelled(reason=f"Cancelled by {request.user}")
         logger.info("Cancelled scrape job #%s by user=%s", job.pk, request.user)
+        log_audit_event(
+            request=request,
+            action="cancel",
+            target=job,
+            before_state=before_state,
+            after_state={
+                "status": job.status,
+                "error_message": job.error_message,
+            },
+            metadata={"operation": "cancel_scrape"},
+        )
         messages.success(request, _("Cancelled scrape job #%(job_id)s.") % {"job_id": job.pk})
         return redirect("scraping:job_list")
 
@@ -290,6 +350,7 @@ class HtmxJobListView(LoginRequiredMixin, ListView):
     model = ScrapeJob
     template_name = "htmx/scraping/_job_row.html"
     context_object_name = "jobs"
+    paginate_by = SCRAPE_JOBS_PAGE_SIZE
 
     def get_queryset(self):
         qs = ScrapeJob.objects.all()
@@ -297,7 +358,7 @@ class HtmxJobListView(LoginRequiredMixin, ListView):
             qs = qs.filter(source_type=source)
         if status := self.request.GET.get("status"):
             qs = qs.filter(status=status)
-        return qs[:20]
+        return qs
 
 
 class HtmxJobRowView(LoginRequiredMixin, View):

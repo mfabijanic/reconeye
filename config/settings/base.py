@@ -75,6 +75,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.common.context_processors.common_capabilities",
             ],
         },
     },
@@ -205,6 +206,13 @@ WINDY_API_KEY = env("WINDY_API_KEY", default="")
 WINDY_API_BASE_URL = env("WINDY_API_BASE_URL", default="https://api.windy.com")
 WINDY_WEB_CAMS_PER_PAGE = env.int("WINDY_WEB_CAMS_PER_PAGE", default=50)
 GEOIP_HTTP_TIMEOUT_SECONDS = env.float("GEOIP_HTTP_TIMEOUT_SECONDS", default=4.0)
+
+RECON_EYE_CAPABILITIES = {
+    "dynamic_dashboard_sources": True,
+    "go2rtc_manager": True,
+    "advanced_audit": True,
+    "sidebar_navigation": True,
+}
 
 # Logging
 LOGGING = {
