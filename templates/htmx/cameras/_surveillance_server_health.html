@@ -1,0 +1,10 @@
+{% load i18n %}
+<span class="d-inline-flex align-items-center gap-2 text-muted small">
+  <span>{{ go2rtc_base_url|default:_('go2rtc server') }}</span>
+  {% if not go2rtc_is_online %}
+    <span class="d-inline-flex align-items-center gap-1 text-danger"{% if go2rtc_source_error %} title="{{ go2rtc_source_error }}"{% endif %}>
+      <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+      <span class="badge text-bg-danger">{% trans "Offline" %}</span>
+    </span>
+  {% endif %}
+</span>

@@ -198,6 +198,18 @@ Tests use `pytest`, `pytest-django`, `factory-boy`.
 
 For project conventions and architecture decisions, see [.github/copilot-instructions.md](.github/copilot-instructions.md).
 
+## Legal Notice and Disclaimer
+
+This software is intended for educational, research, and defensive security purposes, including testing systems that you own or are explicitly authorized to assess.
+
+Any unauthorized use, including unauthorized scanning, access attempts, service disruption, or other activity that may violate applicable laws or regulations, is strictly prohibited.
+
+You are solely responsible for how you use this software and for ensuring compliance with all applicable laws, regulations, and contractual obligations. The authors and contributors assume no liability for any direct, indirect, incidental, or consequential damages, losses, claims, or other outcomes arising from the use or misuse of this software.
+
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.
+
+By using this software, you acknowledge that you have read, understood, and agreed to this notice.
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).

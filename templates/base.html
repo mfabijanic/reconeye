@@ -19,8 +19,8 @@
   {% block extra_css %}{% endblock %}
   <style>
     :root {
-      --sidebar-width: 14.5rem;
-      --sidebar-collapsed-width: 3.35rem;
+      --sidebar-width: 13rem;
+      --sidebar-collapsed-width: 3rem;
       --sidebar-active-width: var(--sidebar-width);
       --topbar-height: 2.75rem;
 
@@ -153,6 +153,15 @@
       align-items: center;
       gap: .55rem;
     }
+    .app-sidebar-link i {
+      width: 1.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
     .app-sidebar-link:hover {
       background: color-mix(in srgb, var(--app-neon) 10%, transparent);
       color: var(--app-text);
@@ -173,6 +182,26 @@
       align-items: center;
       justify-content: center;
     }
+    #text-mode-toggle i {
+      width: 1.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    #text-mode-toggle {
+      border-color: transparent;
+      background: transparent;
+    }
+    #text-mode-toggle:hover,
+    #text-mode-toggle:focus,
+    #text-mode-toggle:active {
+      border-color: transparent;
+      background: color-mix(in srgb, var(--app-neon) 10%, transparent);
+      color: var(--app-text);
+      box-shadow: none;
+    }
     .app-sidebar-spacer {
       flex: 1 1 auto;
     }
@@ -183,12 +212,9 @@
       gap: .45rem;
     }
     .app-sidebar-utility-btn.active {
-      border-color: color-mix(in srgb, var(--app-neon) 68%, var(--app-border));
-      background: color-mix(in srgb, var(--app-neon) 16%, transparent);
+      border-color: var(--app-border);
+      background: color-mix(in srgb, var(--app-surface) 96%, transparent);
       color: var(--app-text);
-    }
-    .app-sidebar-top #text-mode-toggle {
-      border-color: color-mix(in srgb, var(--app-neon) 35%, var(--app-border));
     }
     .app-sidebar-popover {
       width: min(22rem, calc(100vw - 2rem));
@@ -263,21 +289,28 @@
     .app-flash-messages {
       position: fixed;
       top: calc(var(--topbar-height) + .5rem);
-      left: 0;
-      right: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(80vw, 60rem);
       z-index: 1014;
       pointer-events: none;
-      padding: 0 1rem;
+      max-width: calc(100vw - 1.5rem);
     }
     .app-flash-messages-inner {
       display: grid;
       gap: .5rem;
-      max-width: 100%;
+      width: 100%;
     }
     .app-flash-messages .alert {
       margin-bottom: 0;
       pointer-events: auto;
       box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .18);
+    }
+    @media (max-width: 767.98px) {
+      .app-flash-messages {
+        top: calc(var(--topbar-height) + .35rem);
+        width: min(92vw, 60rem);
+      }
     }
     .app-sidebar-panel {
       border: 1px solid var(--app-border);
@@ -477,11 +510,27 @@
       html[data-navbar-text-mode="icons-only"] .app-sidebar-controls {
         justify-content: center;
       }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-scroll {
+        padding-left: .4rem;
+        padding-right: .4rem;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-nav {
+        justify-items: center;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-sidebar-link i {
+        width: 1.75rem;
+        font-size: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
       html[data-navbar-text-mode="icons-only"] .app-sidebar-footer .btn {
         justify-content: center !important;
       }
       html[data-navbar-text-mode="icons-only"] .app-sidebar-link {
-        padding: .5rem;
+        width: 2rem;
+        padding: .5rem 0;
+        margin-inline: auto;
       }
       html[data-navbar-text-mode="icons-only"] .app-sidebar-utility-btn {
         width: 1.8rem;
@@ -490,7 +539,10 @@
       html[data-navbar-text-mode="icons-only"] .app-topbar {
         padding-right: .75rem;
       }
-      html[data-navbar-text-mode="icons-only"] .app-topbar-brand .sidebar-brand-text {
+      html[data-navbar-text-mode="icons-only"] .app-topbar-left {
+        justify-content: center;
+      }
+      html[data-navbar-text-mode="icons-only"] .app-topbar-brand {
         display: none;
       }
     }
@@ -515,7 +567,7 @@
     <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="{% trans 'Open navigation' %}">
       <i class="bi bi-list"></i>
     </button>
-    <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn d-none d-lg-inline-flex" id="text-mode-toggle" type="button" aria-label="Toggle sidebar collapse" title="Toggle sidebar collapse">
+    <button class="btn btn-sm app-sidebar-utility-btn d-none d-lg-inline-flex" id="text-mode-toggle" type="button" aria-label="Toggle sidebar collapse" title="Toggle sidebar collapse">
       <i class="bi bi-layout-sidebar-inset"></i>
     </button>
     <a class="app-topbar-brand" href="{% url 'dashboard:index' %}">
@@ -574,7 +626,7 @@
     <div class="offcanvas-body">
       <div class="app-sidebar-scroll">
       <nav class="app-sidebar-nav">
-        <a class="app-sidebar-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}">
+        <a class="app-sidebar-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}" title="{% trans 'Dashboard' %}" aria-label="{% trans 'Dashboard' %}">
           <i class="bi bi-speedometer2"></i><span class="nav-text">{% trans "Dashboard" %}</span>
         </a>
       </nav>
@@ -582,19 +634,22 @@
       <div>
         <div class="app-sidebar-heading">{% trans "Cameras" %}</div>
         <nav class="app-sidebar-nav">
-          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}" href="{% url 'cameras:list' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}active{% endif %}" href="{% url 'cameras:list' %}" title="{% trans 'List' %}" aria-label="{% trans 'List' %}">
             <i class="bi bi-list-ul"></i><span class="nav-text">{% trans "List" %}</span>
           </a>
-          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}" href="{% url 'cameras:map' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}" href="{% url 'cameras:map' %}" title="{% trans 'Map' %}" aria-label="{% trans 'Map' %}">
             <i class="bi bi-geo-alt"></i><span class="nav-text">{% trans "Map" %}</span>
           </a>
           {% if app_capabilities.surveillance %}
-          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}" href="{% url 'cameras:surveillance' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'surveillance' %}active{% endif %}" href="{% url 'cameras:surveillance' %}" title="{% trans 'Surveillance' %}" aria-label="{% trans 'Surveillance' %}">
             <i class="bi bi-display"></i><span class="nav-text">{% trans "Surveillance" %}</span>
           </a>
           {% endif %}
           {% if app_capabilities.go2rtc_manager %}
-          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'go2rtc_manager' or request.resolver_match.url_name == 'go2rtc_viewer' or request.resolver_match.url_name == 'go2rtc_profile_grid' %}active{% endif %}" href="{% url 'cameras:go2rtc_manager' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'go2rtc_viewer' %}active{% endif %}" href="{% url 'cameras:go2rtc_viewer' %}" title="{% trans 'go2rtc Viewer' %}" aria-label="{% trans 'go2rtc Viewer' %}">
+            <i class="bi bi-play-btn"></i><span class="nav-text">{% trans "go2rtc Viewer" %}</span>
+          </a>
+          <a class="app-sidebar-link {% if request.resolver_match.url_name == 'go2rtc_manager' or request.resolver_match.url_name == 'go2rtc_profile_grid' %}active{% endif %}" href="{% url 'cameras:go2rtc_manager' %}" title="{% trans 'go2rtc Manager' %}" aria-label="{% trans 'go2rtc Manager' %}">
             <i class="bi bi-hdd-network"></i><span class="nav-text">{% trans "go2rtc Manager" %}</span>
           </a>
           {% endif %}
@@ -604,11 +659,11 @@
       <div>
         <div class="app-sidebar-heading">{% trans "Operations" %}</div>
         <nav class="app-sidebar-nav">
-          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}" href="{% url 'scraping:job_list' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'scraping' %}active{% endif %}" href="{% url 'scraping:job_list' %}" title="{% trans 'Scrape Jobs' %}" aria-label="{% trans 'Scrape Jobs' %}">
             <i class="bi bi-arrow-repeat"></i><span class="nav-text">{% trans "Scrape Jobs" %}</span>
           </a>
           {% if user.is_staff %}
-          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'common' and request.resolver_match.url_name == 'admin_hub' %}active{% endif %}" href="{% url 'common:admin_hub' %}">
+          <a class="app-sidebar-link {% if request.resolver_match.app_name == 'common' and request.resolver_match.url_name == 'admin_hub' %}active{% endif %}" href="{% url 'common:admin_hub' %}" title="{% trans 'Admin' %}" aria-label="{% trans 'Admin' %}">
             <i class="bi bi-shield-lock"></i><span class="nav-text">{% trans "Admin" %}</span>
           </a>
           {% endif %}
@@ -640,10 +695,10 @@
 
   <div class="{% if user.is_authenticated %}app-main{% endif %}">
     {% if messages %}
-    <div class="app-flash-messages">
+    <div class="app-flash-messages" id="app-flash-messages">
       <div class="app-flash-messages-inner">
         {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert" data-auto-dismiss="{% if 'success' in message.tags or 'info' in message.tags %}true{% else %}false{% endif %}">
           {{ message }}
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -667,6 +722,39 @@
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <script>
   window._csrfToken = "{{ csrf_token }}";
+
+  function initializeFlashMessages() {
+    const flashContainer = document.getElementById("app-flash-messages");
+    if (!flashContainer) {
+      return;
+    }
+
+    flashContainer.querySelectorAll('.alert[data-auto-dismiss="true"]').forEach((alertElement) => {
+      if (alertElement.dataset.dismissScheduled === "true") {
+        return;
+      }
+
+      alertElement.dataset.dismissScheduled = "true";
+
+      window.setTimeout(() => {
+        if (!alertElement.isConnected) {
+          return;
+        }
+
+        if (window.bootstrap && window.bootstrap.Alert) {
+          const existingInstance = window.bootstrap.Alert.getInstance(alertElement);
+          const alertInstance = existingInstance || new window.bootstrap.Alert(alertElement);
+          alertInstance.close();
+          return;
+        }
+
+        alertElement.remove();
+      }, 10000);
+    });
+  }
+
+  initializeFlashMessages();
+
   document.addEventListener("htmx:configRequest", (event) => {
     const method = (event.detail.verb || "").toUpperCase();
     if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
@@ -751,14 +839,10 @@
     const syncControlState = () => {
       const theme = html.getAttribute("data-bs-theme") || "dark";
       const mode = html.getAttribute("data-navbar-text-mode") || "full";
-      const themeBtn = document.getElementById("theme-toggle");
       const textModeBtn = document.getElementById("text-mode-toggle");
       const themeIcon = document.getElementById("theme-toggle-icon");
       const textModeIcon = textModeBtn?.querySelector("i");
 
-      if (themeBtn) {
-        themeBtn.classList.toggle("active", theme === "dark");
-      }
       if (themeIcon) {
         themeIcon.className = theme === "dark" ? "bi bi-moon-stars" : "bi bi-sun";
       }

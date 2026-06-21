@@ -1,0 +1,99 @@
+{% load i18n %}
+<div class="col-12 col-xl-4">
+  <div class="card h-100">
+    <div class="card-header">
+      <strong>{% trans "Add or update go2rtc instance" %}</strong>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'cameras:go2rtc_manager_add' %}" class="row g-2">
+        {% csrf_token %}
+        <div class="col-12">
+          <label class="form-label mb-1">{% trans "Name" %}</label>
+          {{ instance_form.name }}
+        </div>
+        <div class="col-6 col-sm-2">
+          <label class="form-label mb-1">{% trans "Scheme" %}</label>
+          {{ instance_form.scheme }}
+        </div>
+        <div class="col-6 col-sm-4">
+          <label class="form-label mb-1">{% trans "Host" %}</label>
+          {{ instance_form.host }}
+        </div>
+        <div class="col-4 col-sm-2">
+          <label class="form-label mb-1">{% trans "Port" %}</label>
+          {{ instance_form.port }}
+        </div>
+        <div class="col-8 col-sm-4">
+          <label class="form-label mb-1">{% trans "Path" %}</label>
+          {{ instance_form.path }}
+        </div>
+        <div class="col-12">
+          <div class="form-text mt-0">
+            {% trans "Resulting URL" %}:
+            <code id="instance-url-preview">http://host:1984</code>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label mb-1">{% trans "Group / FQDN" %}</label>
+          {{ instance_form.group_label }}
+          <div class="form-text">{% trans "Optional. Leave empty to auto-group by shared IP: instances whose host resolves to a common IP (including one FQDN with several IPs) are grouped automatically on sync. Set a label only to override automatic grouping." %}</div>
+        </div>
+        <div class="col-12 d-grid mt-2">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>{% trans "Save and sync" %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="col-12 col-xl-8">
+  <div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>{% trans "Grid profiles" %}</strong>
+      {% if selected_profile %}
+        <a href="{% url 'cameras:go2rtc_profile_grid' selected_profile.pk %}" class="btn btn-sm btn-outline-info">
+          <i class="bi bi-layout-wtf me-1"></i>{% trans "Open grid" %}
+        </a>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'cameras:go2rtc_profile_add' %}" class="row g-2 mb-3">
+        {% csrf_token %}
+        <div class="col-12">
+          <label class="form-label mb-1">{% trans "Profile name" %}</label>
+          {{ profile_form.name }}
+        </div>
+        <div class="col-12">
+          <label class="form-label mb-1">{% trans "Description" %}</label>
+          {{ profile_form.description }}
+        </div>
+        <div class="col-12 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-collection-play me-1"></i>{% trans "Save profile" %}
+          </button>
+        </div>
+      </form>
+
+      <div class="list-group list-group-flush">
+        {% for profile in profiles %}
+          <a href="{% url 'cameras:go2rtc_manager' %}?tab=setup{% if selected_instance %}&instance={{ selected_instance.pk }}{% endif %}&profile={{ profile.pk }}"
+             class="list-group-item list-group-item-action {% if selected_profile and selected_profile.pk == profile.pk %}active{% endif %}">
+            <div class="d-flex justify-content-between align-items-center">
+              <span>
+                <strong>{{ profile.name }}</strong>
+                {% if profile.description %}
+                  <small class="d-block {% if selected_profile and selected_profile.pk == profile.pk %}text-white-50{% else %}text-muted{% endif %}">{{ profile.description }}</small>
+                {% endif %}
+              </span>
+              <span class="badge {% if selected_profile and selected_profile.pk == profile.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}">{{ profile.items.count }}</span>
+            </div>
+          </a>
+        {% empty %}
+          <div class="text-muted small">{% trans "No profiles yet. Create one for a public wall, private monitoring set, or any mixed multi-instance layout." %}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>

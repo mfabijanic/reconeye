@@ -1,0 +1,36 @@
+{% load i18n %}
+{# Partial template for Surveillance stream list (async-loaded via HTMX) #}
+
+{% if go2rtc_source_error %}
+  <tr>
+    <td colspan="4">
+      <div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        {{ go2rtc_source_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{% trans 'Close' %}"></button>
+      </div>
+    </td>
+  </tr>
+{% elif go2rtc_streams %}
+  {% for stream in go2rtc_streams %}
+    <tr>
+      <td class="px-3"><code>{{ stream.name }}</code></td>
+      <td>{{ stream.producers }}</td>
+      <td>{{ stream.consumers }}</td>
+      <td class="text-end pe-3">
+        <form hx-post="{% url 'cameras:surveillance_add' %}" hx-target="#add-camera-feedback" hx-swap="innerHTML">
+          {% csrf_token %}
+          <input type="hidden" name="stream_name" value="{{ stream.name }}">
+          <input type="hidden" name="title" value="{{ stream.name }}">
+          <button type="submit" class="btn btn-sm btn-outline-info">
+            <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add" %}
+          </button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="4" class="text-center text-muted py-3">{% trans "No streams found." %}</td>
+  </tr>
+{% endif %}

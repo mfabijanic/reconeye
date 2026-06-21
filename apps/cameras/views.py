@@ -205,17 +205,17 @@ class Go2RTCCameraGridView(LoginRequiredMixin, CapabilityRequiredMixin, Template
         # Get surveillance grid items (private instances only)
         selected_cameras = get_surveillance_grid_items_with_adapters()
         
-        # Get first private instance for stream listing in add form
+        # Get first private instance for form URL; don't block on stream discovery
         try:
             default_instance = get_or_create_default_private_instance()
-            streams, source_error = fetch_go2rtc_streams(base_url=default_instance.base_url)
-        except Exception as e:
-            streams = []
-            source_error = f"Error fetching streams: {str(e)}"
+            go2rtc_base_url = default_instance.base_url
+        except Exception:
+            go2rtc_base_url = ""
         
-        ctx["go2rtc_base_url"] = default_instance.base_url if 'default_instance' in locals() else ""
-        ctx["go2rtc_streams"] = streams
-        ctx["go2rtc_source_error"] = source_error
+        # Stream discovery is deferred to HTMX endpoint to unblock initial render
+        ctx["go2rtc_base_url"] = go2rtc_base_url
+        ctx["go2rtc_streams"] = []  # Populated by HTMX partial endpoint
+        ctx["go2rtc_source_error"] = None  # Populated by HTMX partial endpoint
         ctx["selected_cameras"] = selected_cameras
         ctx["go2rtc_form"] = Go2RTCCameraForm()
         return ctx
@@ -577,7 +577,8 @@ class Go2RTCManagerView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateVie
 
         # Tab state: persisted via the ?tab= query parameter so the chosen tab
         # stays active across navigation/redirects until explicitly switched.
-        ctx["active_tab"] = "import" if self.request.GET.get("tab") == "import" else "instances"
+        tab = (self.request.GET.get("tab") or "").strip().lower()
+        ctx["active_tab"] = tab if tab in {"instances", "setup", "import"} else "instances"
         ctx["import_form"] = kwargs.get("import_form") or Go2RTCImportForm()
 
         # Preserve manager list state when jumping to the viewer so users can
@@ -588,6 +589,8 @@ class Go2RTCManagerView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateVie
             "manager_per_page": str(page_size),
             "manager_stream_per_page": str(stream_page_size),
         }
+        if ctx["active_tab"] != "instances":
+            manager_return_params["tab"] = ctx["active_tab"]
         if search_query:
             manager_return_params["manager_q"] = search_query
         if country_filter:
@@ -923,7 +926,7 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleReq
         form = Go2RTCInstanceForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Invalid go2rtc instance input.")
-            return redirect("cameras:go2rtc_manager")
+            return redirect(f"{reverse('cameras:go2rtc_manager')}?tab=setup")
 
         clean = form.cleaned_data
         existing_instance = Go2RTCInstance.objects.filter(name=clean["name"].strip()).first()
@@ -977,7 +980,9 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleReq
             },
             metadata={"operation": "go2rtc_instance_upsert", "stream_count": stream_count, "warning": warning or "", "error": error or ""},
         )
-        return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
+        return redirect(
+            f"{reverse('cameras:go2rtc_manager')}?tab=setup&instance={instance.pk}"
+        )
 
 
 class SyncGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRequiredMixin, View):
@@ -1212,7 +1217,7 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, CapabilityRequiredMixin, Role
         form = Go2RTCGridProfileForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Invalid profile input.")
-            return redirect("cameras:go2rtc_manager")
+            return redirect(f"{reverse('cameras:go2rtc_manager')}?tab=setup")
 
         clean = form.cleaned_data
         existing_profile = Go2RTCGridProfile.objects.filter(name=clean["name"].strip()).first()
@@ -1242,7 +1247,9 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, CapabilityRequiredMixin, Role
             metadata={"operation": "go2rtc_profile_upsert"},
         )
         messages.success(request, f"Profile {'created' if created else 'updated'}: {profile.name}")
-        return redirect(f"{reverse('cameras:go2rtc_manager')}?profile={profile.pk}")
+        return redirect(
+            f"{reverse('cameras:go2rtc_manager')}?tab=setup&profile={profile.pk}"
+        )
 
 
 class Go2RTCProfileGridView(LoginRequiredMixin, CapabilityRequiredMixin, TemplateView):
@@ -1567,4 +1574,61 @@ class HtmxGridItemPlayerView(LoginRequiredMixin, View):
         }
         return HttpResponse(
             render_to_string("htmx/cameras/_player.html", ctx, request=request)
+        )
+
+
+class HtmxSurveillanceStreamListView(LoginRequiredMixin, CapabilityRequiredMixin, View):
+    """Render stream list partial for Surveillance manage panel.
+    
+    Deferred HTMX endpoint to unblock initial page render.
+    Returns HTML partial with stream table or error message.
+    """
+    required_capability = "surveillance"
+
+    def get(self, request: any) -> HttpResponse:
+        try:
+            default_instance = get_or_create_default_private_instance()
+            streams, source_error = fetch_go2rtc_streams(base_url=default_instance.base_url, use_cache=True)
+        except Exception as e:
+            streams = []
+            source_error = f"Error fetching streams: {str(e)}"
+            logger.warning("Surveillance stream list fetch failed: %s", e)
+        
+        ctx = {
+            "go2rtc_streams": streams,
+            "go2rtc_source_error": source_error,
+        }
+        return HttpResponse(
+            render_to_string("htmx/cameras/_surveillance_stream_list.html", ctx, request=request)
+        )
+
+
+class HtmxSurveillanceServerHealthView(LoginRequiredMixin, CapabilityRequiredMixin, View):
+    """Render a live go2rtc server status badge for the Surveillance toolbar."""
+
+    required_capability = "surveillance"
+
+    def get(self, request: any) -> HttpResponse:
+        go2rtc_base_url = ""
+        source_error: str | None = None
+
+        try:
+            default_instance = get_or_create_default_private_instance()
+            go2rtc_base_url = default_instance.base_url
+            _, source_error = fetch_go2rtc_streams(
+                base_url=go2rtc_base_url,
+                timeout_seconds=1.5,
+                use_cache=False,
+            )
+        except Exception as exc:
+            source_error = f"Error checking server status: {str(exc)}"
+            logger.warning("Surveillance server health check failed: %s", exc)
+
+        ctx = {
+            "go2rtc_base_url": go2rtc_base_url,
+            "go2rtc_source_error": source_error,
+            "go2rtc_is_online": source_error is None,
+        }
+        return HttpResponse(
+            render_to_string("htmx/cameras/_surveillance_server_health.html", ctx, request=request)
         )

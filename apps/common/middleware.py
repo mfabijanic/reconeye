@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from django.conf import settings
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import translation
 
@@ -20,9 +21,12 @@ class LoginRequiredMiddleware:
         if not request.user.is_authenticated:
             path = request.path_info
             if not any(pattern.match(path) for pattern in self.exempt_urls):
-                from django.conf import settings as s
-
-                return redirect(f"{s.LOGIN_URL}?next={path}")
+                login_url = f"{settings.LOGIN_URL}?next={path}"
+                if getattr(request, "htmx", None):
+                    response = HttpResponse(status=204)
+                    response["HX-Redirect"] = login_url
+                    return response
+                return redirect(login_url)
         return self.get_response(request)
 
 

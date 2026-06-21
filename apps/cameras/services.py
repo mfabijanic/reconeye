@@ -1462,19 +1462,37 @@ def get_go2rtc_profile_tiles(profile: Go2RTCGridProfile) -> list[dict[str, Any]]
     return tiles
 
 
-def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0) -> tuple[list[dict[str, Any]], str | None]:
+def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float = 4.0, use_cache: bool = True) -> tuple[list[dict[str, Any]], str | None]:
     """Fetch available stream names from go2rtc API.
 
     Returns (streams, error_message). Stream items include keys:
     - name: stream identifier
     - producers: int
     - consumers: int
+    
+    Args:
+        base_url: Go2RTC base URL (defaults to settings.GO2RTC_BASE_URL)
+        timeout_seconds: HTTP request timeout
+        use_cache: If True, cache results for 60 seconds to reduce repeated API calls
     """
+    from django.core.cache import cache as django_cache
+    from apps.common.cache import DOMAIN_GO2RTC, versioned_key
+    
     normalized_base = normalize_go2rtc_base_url(base_url)
     if not normalized_base:
         return [], "GO2RTC_BASE_URL is not configured."
 
+    # Check cache first if enabled
+    if use_cache:
+        base_url_hash = hashlib.md5(normalized_base.encode()).hexdigest()[:8]
+        cache_key = versioned_key(DOMAIN_GO2RTC, "streams", base_url_hash)
+        cached = django_cache.get(cache_key)
+        if cached is not None:
+            logger.debug("go2rtc stream discovery cache hit url=%s", normalized_base)
+            return cached
+
     api_url = f"{normalized_base}/api/streams"
+    start_time = time.time()
     try:
         # verify=False: ignore invalid/self-signed TLS certificates so stream
         # discovery works against go2rtc instances regardless of cert validity.
@@ -1482,8 +1500,11 @@ def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float 
             response = client.get(api_url)
             response.raise_for_status()
             payload = response.json()
+        elapsed = time.time() - start_time
+        logger.debug("go2rtc stream discovery success url=%s elapsed=%.2fs", api_url, elapsed)
     except Exception as exc:
-        logger.warning("go2rtc stream discovery failed url=%s error=%s", api_url, exc)
+        elapsed = time.time() - start_time
+        logger.warning("go2rtc stream discovery failed url=%s error=%s elapsed=%.2fs", api_url, exc, elapsed)
         return [], f"Unable to fetch the stream list from: {api_url}"
 
     streams_obj: dict[str, Any]
@@ -1510,4 +1531,13 @@ def fetch_go2rtc_streams(*, base_url: str | None = None, timeout_seconds: float 
         )
 
     items.sort(key=lambda row: row["name"].lower())
-    return items, None
+    result = (items, None)
+    
+    # Store in cache if enabled
+    if use_cache:
+        base_url_hash = hashlib.md5(normalized_base.encode()).hexdigest()[:8]
+        cache_key = versioned_key(DOMAIN_GO2RTC, "streams", base_url_hash)
+        django_cache.set(cache_key, result, timeout=60)
+        logger.debug("go2rtc stream discovery cached url=%s key=%s", api_url, cache_key)
+    
+    return result

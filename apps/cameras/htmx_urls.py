@@ -13,4 +13,6 @@ urlpatterns = [
     path("<int:pk>/grid-player/", views.HtmxGridItemPlayerView.as_view(), name="grid_player"),
     path("map-panel/<int:pk>/", views.HtmxCameraMapPanelView.as_view(), name="map_panel"),
     path("<int:pk>/check-stream/", views.HtmxCameraCheckStreamView.as_view(), name="check_stream"),
+    path("surveillance/server-health/", views.HtmxSurveillanceServerHealthView.as_view(), name="surveillance_server_health"),
+    path("surveillance/stream-list/", views.HtmxSurveillanceStreamListView.as_view(), name="surveillance_stream_list"),
 ]

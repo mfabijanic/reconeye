@@ -14,6 +14,8 @@ def test_dashboard_renders_sidebar_for_authenticated_user(client, db) -> None:
     content = response.content.decode()
     assert 'id="appSidebar"' in content
     assert "Scrape Jobs" in content
+    assert "go2rtc Viewer" in content
+    assert "go2rtc Manager" in content
 
 
 @override_settings(RECON_EYE_CAPABILITIES={"go2rtc_manager": False})
@@ -24,4 +26,6 @@ def test_dashboard_hides_disabled_go2rtc_navigation(client, db) -> None:
     response = client.get(reverse("dashboard:index"))
 
     assert response.status_code == 200
-    assert "go2rtc Manager" not in response.content.decode()
+    content = response.content.decode()
+    assert "go2rtc Viewer" not in content
+    assert "go2rtc Manager" not in content

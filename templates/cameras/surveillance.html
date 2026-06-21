@@ -10,11 +10,6 @@
 {% endblock %}
 
 {% block topbar_actions %}
-{% if app_capabilities.go2rtc_manager %}
-<a href="{% url 'cameras:go2rtc_manager' %}" class="btn btn-sm btn-outline-secondary">
-  <i class="bi bi-hdd-network me-1"></i>{% trans "Open Manager" %}
-</a>
-{% endif %}
 <span class="badge text-bg-secondary">{{ selected_cameras|length }} {% trans "cameras" %}</span>
 {% endblock %}
 
@@ -440,7 +435,15 @@
 {# ── Toolbar row ───────────────────────────────────────────────────── #}
 <div class="surveillance-toolbar-row" data-autohide="true">
   <div class="surveillance-title">
-    <span class="text-muted small">{{ go2rtc_base_url }}</span>
+    <div id="surveillance-server-health"
+         hx-get="{% url 'cameras_htmx:surveillance_server_health' %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <span class="d-inline-flex align-items-center gap-2 text-muted small">
+        <span>{{ go2rtc_base_url|default:_('go2rtc server') }}</span>
+        <span class="badge text-bg-secondary-subtle border border-secondary-subtle text-secondary-emphasis">{% trans "Checking..." %}</span>
+      </span>
+    </div>
   </div>
   <div class="d-flex align-items-center flex-wrap gap-2">
     <div class="d-flex align-items-center gap-1">
@@ -517,28 +520,18 @@
               <th></th>
             </tr>
           </thead>
-          <tbody>
-            {% for stream in go2rtc_streams %}
-              <tr>
-                <td class="px-3"><code>{{ stream.name }}</code></td>
-                <td>{{ stream.producers }}</td>
-                <td>{{ stream.consumers }}</td>
-                <td class="text-end pe-3">
-                  <form hx-post="{% url 'cameras:surveillance_add' %}" hx-target="#add-camera-feedback" hx-swap="innerHTML">
-                    {% csrf_token %}
-                    <input type="hidden" name="stream_name" value="{{ stream.name }}">
-                    <input type="hidden" name="title" value="{{ stream.name }}">
-                    <button type="submit" class="btn btn-sm btn-outline-info">
-                      <i class="bi bi-grid-3x3-gap me-1"></i>{% trans "Add" %}
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="4" class="text-center text-muted py-3">{% trans "No streams found." %}</td>
-              </tr>
-            {% endfor %}
+          <tbody
+            hx-get="{% url 'cameras_htmx:surveillance_stream_list' %}"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+            class="surveillance-stream-tbody"
+          >
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                {% trans "Loading available streams…" %}
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

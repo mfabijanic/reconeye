@@ -10,12 +10,6 @@
 {% endblock %}
 
 {% block topbar_actions %}
-  <a href="{% url 'cameras:go2rtc_viewer' %}{% if selected_instance %}?instance={{ selected_instance.pk }}&manager_instance={{ selected_instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
-  </a>
-  <a href="{% url 'cameras:surveillance' %}" class="btn btn-sm btn-outline-info">
-    <i class="bi bi-display me-1"></i>{% trans "Open Surveillance Grid" %}
-  </a>
 {% endblock %}
 
 {% block extra_css %}
@@ -57,9 +51,15 @@
   <div class="col-12">
     <ul class="nav nav-tabs go2rtc-manager-tabs" role="tablist">
       <li class="nav-item" role="presentation">
-        <a class="nav-link {% if active_tab != 'import' %}active{% endif %}"
+        <a class="nav-link {% if active_tab == 'instances' %}active{% endif %}"
            href="{% url 'cameras:go2rtc_manager' %}">
-          <i class="bi bi-hdd-network me-1"></i>{% trans "Instances & Profiles" %}
+          <i class="bi bi-hdd-network me-1"></i>{% trans "Instances" %}
+        </a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'setup' %}active{% endif %}"
+           href="{% url 'cameras:go2rtc_manager' %}?tab=setup">
+          <i class="bi bi-sliders me-1"></i>{% trans "Setup" %}
         </a>
       </li>
       <li class="nav-item" role="presentation">
@@ -71,7 +71,9 @@
     </ul>
   </div>
 
-  {% if active_tab == 'import' %}
+  {% if active_tab == 'setup' %}
+    {% include "cameras/_go2rtc_setup_tab.html" %}
+  {% elif active_tab == 'import' %}
     {% include "cameras/_go2rtc_import_tab.html" %}
   {% else %}
 
@@ -79,105 +81,6 @@
     <div class="alert alert-info py-2 mb-0">
       <i class="bi bi-shield-lock me-1"></i>
       {% trans "Remote go2rtc configuration is read-only in ReconEye. The manager only fetches and compares snapshots; it never writes to the remote server." %}
-    </div>
-  </div>
-
-  <div class="col-12 col-xl-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <strong>{% trans "Add or update go2rtc instance" %}</strong>
-      </div>
-      <div class="card-body">
-        <form method="post" action="{% url 'cameras:go2rtc_manager_add' %}" class="row g-2">
-          {% csrf_token %}
-          <div class="col-12">
-            <label class="form-label mb-1">{% trans "Name" %}</label>
-            {{ instance_form.name }}
-          </div>
-          <div class="col-6 col-sm-2">
-            <label class="form-label mb-1">{% trans "Scheme" %}</label>
-            {{ instance_form.scheme }}
-          </div>
-          <div class="col-6 col-sm-4">
-            <label class="form-label mb-1">{% trans "Host" %}</label>
-            {{ instance_form.host }}
-          </div>
-          <div class="col-4 col-sm-2">
-            <label class="form-label mb-1">{% trans "Port" %}</label>
-            {{ instance_form.port }}
-          </div>
-          <div class="col-8 col-sm-4">
-            <label class="form-label mb-1">{% trans "Path" %}</label>
-            {{ instance_form.path }}
-          </div>
-          <div class="col-12">
-            <div class="form-text mt-0">
-              {% trans "Resulting URL" %}:
-              <code id="instance-url-preview">http://host:1984</code>
-            </div>
-          </div>
-          <div class="col-12">
-            <label class="form-label mb-1">{% trans "Group / FQDN" %}</label>
-            {{ instance_form.group_label }}
-            <div class="form-text">{% trans "Optional. Leave empty to auto-group by shared IP: instances whose host resolves to a common IP (including one FQDN with several IPs) are grouped automatically on sync. Set a label only to override automatic grouping." %}</div>
-          </div>
-          <div class="col-12 d-grid mt-2">
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-plus-circle me-1"></i>{% trans "Save and sync" %}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-xl-8">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>{% trans "Grid profiles" %}</strong>
-        {% if selected_profile %}
-          <a href="{% url 'cameras:go2rtc_profile_grid' selected_profile.pk %}" class="btn btn-sm btn-outline-info">
-            <i class="bi bi-layout-wtf me-1"></i>{% trans "Open grid" %}
-          </a>
-        {% endif %}
-      </div>
-      <div class="card-body">
-        <form method="post" action="{% url 'cameras:go2rtc_profile_add' %}" class="row g-2 mb-3">
-          {% csrf_token %}
-          <div class="col-12">
-            <label class="form-label mb-1">{% trans "Profile name" %}</label>
-            {{ profile_form.name }}
-          </div>
-          <div class="col-12">
-            <label class="form-label mb-1">{% trans "Description" %}</label>
-            {{ profile_form.description }}
-          </div>
-          <div class="col-12 d-grid">
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-collection-play me-1"></i>{% trans "Save profile" %}
-            </button>
-          </div>
-        </form>
-
-        <div class="list-group list-group-flush">
-          {% for profile in profiles %}
-            <a href="{% url 'cameras:go2rtc_manager' %}?{% if selected_instance %}instance={{ selected_instance.pk }}&{% endif %}profile={{ profile.pk }}"
-               class="list-group-item list-group-item-action {% if selected_profile and selected_profile.pk == profile.pk %}active{% endif %}">
-              <div class="d-flex justify-content-between align-items-center">
-                <span>
-                  <strong>{{ profile.name }}</strong>
-                  {% if profile.description %}
-                    <small class="d-block {% if selected_profile and selected_profile.pk == profile.pk %}text-white-50{% else %}text-muted{% endif %}">{{ profile.description }}</small>
-                  {% endif %}
-                </span>
-                <span class="badge {% if selected_profile and selected_profile.pk == profile.pk %}text-bg-light{% else %}text-bg-secondary{% endif %}">{{ profile.items.count }}</span>
-              </div>
-            </a>
-          {% empty %}
-            <div class="text-muted small">{% trans "No profiles yet. Create one for a public wall, private monitoring set, or any mixed multi-instance layout." %}</div>
-          {% endfor %}
-        </div>
-      </div>
     </div>
   </div>
 
@@ -192,34 +95,43 @@
             {% if search_query %}{{ instance_filtered_total }}/{{ instance_total }}{% else %}{{ instance_total }}{% endif %}
           </span>
         </strong>
-        {% if selected_instance %}
-          <form method="post"
-                action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
-                hx-post="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
-                hx-target="#go2rtc-manager-workspace"
-                hx-select="#go2rtc-manager-workspace"
-                hx-swap="outerHTML"
-                hx-push-url="true">
-            {% csrf_token %}
-            <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
-            <input type="hidden" name="sort" value="{{ sort }}">
-            <input type="hidden" name="per_page" value="{{ page_size }}">
-            <input type="hidden" name="stream_per_page" value="{{ stream_page_size }}">
-            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-            {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
-            {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
-            {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
-            {% if instances_page.number > 1 %}<input type="hidden" name="page" value="{{ instances_page.number }}">{% endif %}
-            {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
-            {% if stream_query %}<input type="hidden" name="stream_q" value="{{ stream_query }}">{% endif %}
-            {% if streams_page and streams_page.number > 1 %}<input type="hidden" name="stream_page" value="{{ streams_page.number }}">{% endif %}
-            {% if compare_from %}<input type="hidden" name="diff_from" value="{{ compare_from.pk }}">{% endif %}
-            {% if compare_to %}<input type="hidden" name="diff_to" value="{{ compare_to.pk }}">{% endif %}
-            <button type="submit" class="btn btn-sm btn-outline-info">
-              <i class="bi bi-arrow-repeat me-1"></i>{% trans "Sync now" %}
-            </button>
-          </form>
-        {% endif %}
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          {% if selected_instance %}
+            <a href="{% url 'cameras:go2rtc_viewer' %}?instance={{ selected_instance.pk }}&manager_instance={{ selected_instance.pk }}{% if manager_return_query %}&{{ manager_return_query }}{% endif %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
+            </a>
+            <form method="post"
+                  action="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
+                  hx-post="{% url 'cameras:go2rtc_manager_sync' selected_instance.pk %}"
+                  hx-target="#go2rtc-manager-workspace"
+                  hx-select="#go2rtc-manager-workspace"
+                  hx-swap="outerHTML"
+                  hx-push-url="true">
+              {% csrf_token %}
+              <input type="hidden" name="instance" value="{{ selected_instance.pk }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+              <input type="hidden" name="per_page" value="{{ page_size }}">
+              <input type="hidden" name="stream_per_page" value="{{ stream_page_size }}">
+              {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+              {% if selected_country %}<input type="hidden" name="country" value="{{ selected_country }}">{% endif %}
+              {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+              {% if selected_has_geo %}<input type="hidden" name="has_geo" value="1">{% endif %}
+              {% if instances_page.number > 1 %}<input type="hidden" name="page" value="{{ instances_page.number }}">{% endif %}
+              {% if selected_profile %}<input type="hidden" name="profile" value="{{ selected_profile.pk }}">{% endif %}
+              {% if stream_query %}<input type="hidden" name="stream_q" value="{{ stream_query }}">{% endif %}
+              {% if streams_page and streams_page.number > 1 %}<input type="hidden" name="stream_page" value="{{ streams_page.number }}">{% endif %}
+              {% if compare_from %}<input type="hidden" name="diff_from" value="{{ compare_from.pk }}">{% endif %}
+              {% if compare_to %}<input type="hidden" name="diff_to" value="{{ compare_to.pk }}">{% endif %}
+              <button type="submit" class="btn btn-sm btn-outline-info">
+                <i class="bi bi-arrow-repeat me-1"></i>{% trans "Sync now" %}
+              </button>
+            </form>
+          {% else %}
+            <a href="{% url 'cameras:go2rtc_viewer' %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-play-btn me-1"></i>{% trans "Open Viewer" %}
+            </a>
+          {% endif %}
+        </div>
       </div>
 
       <div class="card-body border-bottom py-2 flex-grow-0">
@@ -626,7 +538,7 @@
   </div>
   </div>
 
-  {% endif %}{# active_tab != 'import' #}
+  {% endif %}{# active_tab == 'instances' #}
 </div>
 {% endblock %}
 

@@ -23,3 +23,13 @@ def test_disabled_go2rtc_capability_hides_route(client, db) -> None:
     response = client.get(reverse("cameras:go2rtc_manager"))
 
     assert response.status_code == 404
+
+
+@override_settings(RECON_EYE_CAPABILITIES={"go2rtc_manager": False})
+def test_disabled_go2rtc_capability_hides_viewer_route(client, db) -> None:
+    user = User.objects.create_user(username="cap-viewer-user", password="pw")
+    client.force_login(user)
+
+    response = client.get(reverse("cameras:go2rtc_viewer"))
+
+    assert response.status_code == 404
