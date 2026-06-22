@@ -1349,6 +1349,7 @@ class CameraMapDataView(LoginRequiredMixin, View):
             max_value=5000,
         )
         include_preview = request.GET.get("preview") in {"1", "true", "yes"}
+        include_go2rtc_instances = request.GET.get("go2rtc") in {"1", "true", "yes"}
 
         payload = get_camera_map_markers(
             source_type=source,
@@ -1360,6 +1361,7 @@ class CameraMapDataView(LoginRequiredMixin, View):
             max_lng=max_lng,
             limit=limit,
             include_preview=include_preview,
+            include_go2rtc_instances=include_go2rtc_instances,
         )
         payload["limit"] = limit
         return JsonResponse(payload)
@@ -1390,6 +1392,119 @@ class HtmxCameraMapPanelView(LoginRequiredMixin, View):
                 ),
                 "status_is_stale": status_is_stale,
                 "status_stale_minutes": map_settings["status_stale_minutes"],
+            },
+            request=request,
+        )
+        return HttpResponse(html)
+
+
+class HtmxGo2RTCInstanceMapPanelView(LoginRequiredMixin, View):
+    """Return go2rtc instance panel fragment for map marker clicks."""
+
+    PAGE_SIZE_CHOICES = (10, 25, 50)
+    DEFAULT_PAGE_SIZE = 25
+
+    def _resolve_page_size(self, request) -> int:
+        try:
+            value = int(request.GET.get("per_page", self.DEFAULT_PAGE_SIZE))
+        except (TypeError, ValueError):
+            return self.DEFAULT_PAGE_SIZE
+        return value if value in self.PAGE_SIZE_CHOICES else self.DEFAULT_PAGE_SIZE
+
+    @staticmethod
+    def _all_stream_rows(instance: Go2RTCInstance) -> list[dict[str, object]]:
+        streams = list(
+            instance.streams.exclude(stream_name__iexact="xdebug").order_by("stream_name")
+        )
+        if streams:
+            return [
+                {
+                    "stream_name": stream.stream_name,
+                    "producers_count": stream.producers_count,
+                    "consumers_count": stream.consumers_count,
+                }
+                for stream in streams
+            ]
+
+        fallback_streams, _error = fetch_go2rtc_streams(base_url=instance.base_url, use_cache=True)
+        return [
+            {
+                "stream_name": row.get("name", ""),
+                "producers_count": row.get("producers", 0),
+                "consumers_count": row.get("consumers", 0),
+            }
+            for row in fallback_streams
+            if str(row.get("name") or "").strip()
+            and str(row.get("name") or "").strip().lower() != "xdebug"
+        ]
+
+    def get(self, request, pk: int, *args, **kwargs):
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+        instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        all_streams = self._all_stream_rows(instance)
+        page_size = self._resolve_page_size(request)
+        paginator = Paginator(all_streams, page_size)
+        try:
+            streams_page = paginator.page(request.GET.get("page", 1))
+        except PageNotAnInteger:
+            streams_page = paginator.page(1)
+        except EmptyPage:
+            streams_page = paginator.page(paginator.num_pages)
+
+        selected_stream_name = (request.GET.get("stream_name") or "").strip()
+        selected_stream = next(
+            (row for row in all_streams if row["stream_name"] == selected_stream_name), None
+        )
+
+        stream_urls = None
+        if selected_stream is not None:
+            stream_urls = build_go2rtc_stream_urls(instance.base_url, str(selected_stream["stream_name"]))
+
+        html = render_to_string(
+            "htmx/cameras/_go2rtc_instance_panel.html",
+            {
+                "instance": instance,
+                "streams_page": streams_page,
+                "streams": streams_page.object_list,
+                "stream_total": len(all_streams),
+                "page_size": page_size,
+                "page_size_choices": self.PAGE_SIZE_CHOICES,
+                "selected_stream": selected_stream,
+                "selected_stream_urls": stream_urls,
+                "selected_stream_name": selected_stream_name,
+                "sync_status_display": instance.get_last_sync_status_display(),
+                "sync_status_color": (
+                    "success"
+                    if instance.last_sync_status == Go2RTCInstance.LastSyncStatus.SUCCESS
+                    else "warning"
+                    if instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED
+                    else "danger"
+                    if instance.last_sync_status == Go2RTCInstance.LastSyncStatus.FAILED
+                    else "secondary"
+                ),
+            },
+            request=request,
+        )
+        return HttpResponse(html)
+
+
+class HtmxGo2RTCInstanceStreamPlayerView(LoginRequiredMixin, View):
+    """Return a go2rtc iframe player fragment for a selected instance stream."""
+
+    def get(self, request, pk: int, *args, **kwargs):
+        instance = get_object_or_404(Go2RTCInstance, pk=pk, is_active=True)
+        stream_name = (request.GET.get("stream_name") or "").strip()
+        if not stream_name:
+            return HttpResponse("", status=400)
+
+        urls = build_go2rtc_stream_urls(instance.base_url, stream_name)
+        html = render_to_string(
+            "htmx/cameras/_go2rtc_instance_player.html",
+            {
+                "title": stream_name,
+                "stream_name": stream_name,
+                "go2rtc_src": urls.get("webrtc_embed") or urls.get("viewer") or urls.get("webrtc") or "",
             },
             request=request,
         )

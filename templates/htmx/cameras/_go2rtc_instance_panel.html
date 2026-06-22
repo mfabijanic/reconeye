@@ -1,0 +1,90 @@
+{% load i18n %}
+{% url 'cameras_htmx:map_panel_instance' instance.pk as panel_base_url %}
+<div data-go2rtc-instance-id="{{ instance.pk }}" class="d-flex flex-column h-100">
+  <div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+      <h6 class="mb-0">{{ instance.name }}</h6>
+      <div class="small text-muted text-truncate" style="max-width: 16rem;" title="{{ instance.base_url }}">{{ instance.base_url }}</div>
+    </div>
+    <span class="badge text-bg-{{ sync_status_color }} flex-shrink-0">{{ sync_status_display }}</span>
+  </div>
+
+  <div id="go2rtc-player" class="mb-2 flex-shrink-0" style="min-height: 40vh;">
+    {% if selected_stream_urls %}
+      {% include "htmx/cameras/_go2rtc_player.html" with go2rtc_src=selected_stream_urls.webrtc_embed title=selected_stream.stream_name %}
+    {% else %}
+      <div class="border rounded p-3 text-muted small text-center d-flex align-items-center justify-content-center h-100">
+        {% trans "Select a stream to start playback." %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-1 gap-2 flex-shrink-0">
+    <span class="small text-muted fw-semibold">
+      {% trans "Streams" %}
+      <span class="text-secondary fw-normal">{{ stream_total }}</span>
+    </span>
+    <select
+      class="form-select form-select-sm"
+      style="width: auto;"
+      hx-get="{{ panel_base_url }}?{% if selected_stream_name %}stream_name={{ selected_stream_name|urlencode }}&{% endif %}page=1"
+      hx-target="#camera-panel"
+      hx-swap="innerHTML"
+      hx-include="this"
+      name="per_page"
+      aria-label="{% trans 'Per page' %}"
+    >
+      {% for size in page_size_choices %}
+        <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="list-group list-group-flush flex-grow-1 overflow-y-auto mb-2" style="min-height: 0;">
+    {% for stream in streams %}
+      <button
+        type="button"
+        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2 px-2 py-2{% if selected_stream_name == stream.stream_name %} active{% endif %}"
+        hx-get="{% url 'cameras_htmx:map_panel_instance_stream' instance.pk %}?stream_name={{ stream.stream_name|urlencode }}&_panel={{ instance.pk }}&_per_page={{ page_size }}"
+        hx-target="#go2rtc-player"
+        hx-swap="innerHTML"
+      >
+        <span class="text-truncate"><code>{{ stream.stream_name }}</code></span>
+        <span class="d-flex align-items-center gap-1 flex-shrink-0">
+          <span class="badge text-bg-secondary" title="{% trans 'Producers' %}">{{ stream.producers_count }}</span>
+          <span class="badge text-bg-secondary" title="{% trans 'Consumers' %}">{{ stream.consumers_count }}</span>
+        </span>
+      </button>
+    {% empty %}
+      <div class="text-muted small px-2 py-3">{% trans "No streams available." %}</div>
+    {% endfor %}
+  </div>
+
+  {% if streams_page.paginator.num_pages > 1 %}
+    <div class="d-flex align-items-center justify-content-between gap-1 flex-shrink-0">
+      {% if streams_page.has_previous %}
+        <a class="btn btn-sm btn-outline-secondary"
+           hx-get="{{ panel_base_url }}?page={{ streams_page.previous_page_number }}&per_page={{ page_size }}{% if selected_stream_name %}&stream_name={{ selected_stream_name|urlencode }}{% endif %}"
+           hx-target="#camera-panel"
+           hx-swap="innerHTML">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+      {% endif %}
+
+      <span class="small text-muted">{{ streams_page.number }}/{{ streams_page.paginator.num_pages }}</span>
+
+      {% if streams_page.has_next %}
+        <a class="btn btn-sm btn-outline-secondary"
+           hx-get="{{ panel_base_url }}?page={{ streams_page.next_page_number }}&per_page={{ page_size }}{% if selected_stream_name %}&stream_name={{ selected_stream_name|urlencode }}{% endif %}"
+           hx-target="#camera-panel"
+           hx-swap="innerHTML">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

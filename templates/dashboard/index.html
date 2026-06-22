@@ -25,12 +25,12 @@
   <div class="col">
     <div class="card stat-card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-arrow-repeat me-1"></i>{% trans "Active Scrape Jobs" %}</span>
+        <span><i class="bi bi-arrow-repeat me-1"></i>{% trans "Recent Scrape Jobs" %}</span>
         <a href="{% url 'scraping:job_list' %}" class="btn btn-sm btn-outline-secondary">{% trans "View all" %}</a>
       </div>
       <div
         id="active-jobs"
-        hx-get="{% url 'scraping_htmx:htmx_jobs' %}"
+        hx-get="{% url 'dashboard_htmx:htmx_active_jobs' %}"
         hx-trigger="load, every 10s"
         hx-swap="innerHTML"
         class="card-body p-0"

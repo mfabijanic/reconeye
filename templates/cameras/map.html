@@ -42,7 +42,7 @@
     position: relative;
   }
   #camera-map {
-    min-height: 68vh;
+    min-height: 88vh;
     border: 1px solid #30363d;
     border-radius: 0.5rem;
     overflow: hidden;
@@ -67,12 +67,40 @@
     border-radius: 0.5rem;
     background: #161b22;
     color: #e6edf3;
-    min-height: 68vh;
+    height: 88vh;
+    min-height: 88vh;
+    max-height: 88vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
-  html[data-bs-theme="light"] .map-sidebar {
-    background: #ffffff;
-    border-color: #d0d7de;
-    color: #0f172a;
+  #camera-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+  #camera-panel > h6,
+  #camera-panel > p {
+    flex-shrink: 0;
+  }
+  #camera-panel #go2rtc-player {
+    min-height: 40vh;
+    flex-shrink: 0;
+  }
+  #camera-panel .go2rtc-player-wrap {
+    height: 40vh;
+    flex-shrink: 0;
+  }
+  #camera-panel .go2rtc-iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  #camera-panel .list-group {
+    min-height: 0;
   }
   .map-sidebar .preview {
     width: 100%;
@@ -193,6 +221,8 @@
   }
   .map-marker-online { background: #238636; }
   .map-marker-offline { background: #da3633; }
+  .map-marker-go2rtc { background: #58a6ff; }
+  .map-marker-go2rtc-offline { background: #6e7681; }
   .map-marker-selected {
     width: 18px;
     height: 18px;
@@ -230,6 +260,12 @@
   }
   .map-marker-selected.map-marker-offline {
     background: color-mix(in srgb, #da3633 80%, #58a6ff 20%);
+  }
+  .map-marker-selected.map-marker-go2rtc {
+    background: color-mix(in srgb, #58a6ff 80%, #238636 20%);
+  }
+  .map-marker-selected.map-marker-go2rtc-offline {
+    background: color-mix(in srgb, #6e7681 80%, #58a6ff 20%);
   }
   .cluster-online { background: #238636; }
   .cluster-mixed { background: #9a6700; }
@@ -458,6 +494,7 @@
 
     const dataUrl = "{% url 'cameras:map_data' %}";
     const panelUrlTemplate = "{% url 'cameras_htmx:map_panel' 0 %}";
+    const go2rtcPanelUrlTemplate = "{% url 'cameras_htmx:map_panel_instance' 0 %}";
     const panelEl = document.getElementById("camera-panel");
     const countEl = document.getElementById("map-count");
     const noticeEl = document.getElementById("map-notice");
@@ -475,6 +512,7 @@
     let moveDebounceHandle = null;
     let suppressMoveEnd = false;
     let selectedCameraId = null;
+    let selectedGo2RTCInstanceId = null;
     let selectedMarker = null;
     // If we restored a saved position, mark lastBounds as already known
     // so the first viewport load does NOT call fitBounds (which would override the restored zoom).
@@ -547,6 +585,10 @@
       return panelUrlTemplate.replace("/0/", `/${cameraId}/`);
     }
 
+    function getGo2rtcPanelUrl(instanceId) {
+      return go2rtcPanelUrlTemplate.replace("/0/", `/${instanceId}/`);
+    }
+
     function applyFiltersFromUrl() {
       const params = new URLSearchParams(window.location.search);
       ["source", "country", "online"].forEach((name) => {
@@ -589,6 +631,13 @@
       return camera.is_online
         ? '<span class="badge badge-online">Online</span>'
         : '<span class="badge badge-offline">Offline</span>';
+    }
+
+    function instanceStatusBadge(instance) {
+      const status = String(instance.last_sync_status || "");
+      const label = status === "SUCCESS" ? I18N.online : status === "UNAUTHORIZED" ? "Unauthorized" : status === "FAILED" ? I18N.offline : "Never";
+      const cls = status === "SUCCESS" ? "text-bg-success" : status === "UNAUTHORIZED" ? "text-bg-warning" : status === "FAILED" ? "text-bg-danger" : "text-bg-secondary";
+      return `<span class="badge ${cls}">${label}</span>`;
     }
 
     function isStatusStale(camera) {
@@ -676,7 +725,10 @@
     }
 
     function markerIcon(camera, { selected = false } = {}) {
-      const statusClass = camera.is_online ? "map-marker-online" : "map-marker-offline";
+      const isGo2rtc = camera.marker_kind === "go2rtc_instance";
+      const statusClass = isGo2rtc
+        ? (camera.is_online ? "map-marker-go2rtc" : "map-marker-go2rtc-offline")
+        : (camera.is_online ? "map-marker-online" : "map-marker-offline");
       const selectedClass = selected ? "map-marker-selected" : "";
       return L.divIcon({
         className: "",
@@ -689,12 +741,41 @@
       if (selectedMarker && selectedMarker !== marker && selectedMarker.__cameraData) {
         selectedMarker.setIcon(markerIcon(selectedMarker.__cameraData, { selected: false }));
       }
-      selectedCameraId = camera?.id || null;
+      if (camera?.marker_kind === "go2rtc_instance") {
+        selectedCameraId = null;
+        selectedGo2RTCInstanceId = camera.id || null;
+      } else {
+        selectedCameraId = camera?.id || null;
+        selectedGo2RTCInstanceId = null;
+      }
       selectedMarker = marker || null;
       if (selectedMarker && selectedMarker.__cameraData) {
         selectedMarker.setIcon(markerIcon(selectedMarker.__cameraData, { selected: true }));
       }
     }
+
+    function go2rtcPopupContent(instance) {
+      const title = esc(instance.display_title || instance.title || `Instance #${instance.id}`);
+      const host = esc(instance.host || "");
+      const baseUrl = esc(instance.base_url || "");
+      return `
+        <div style="min-width:240px; max-width:280px;">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong>${title}</strong>
+            <span>${instanceStatusBadge(instance)}</span>
+          </div>
+          <div class="small text-muted mb-2">${host}:${esc(instance.port || "")}</div>
+          <div class="small text-muted mb-2"><code>${baseUrl}</code></div>
+          <a class="btn btn-sm btn-outline-info" href="#" onclick="window.__reconeyeOpenGo2rtcPanel(${instance.id}); return false;">${I18N.openDetails}</a>
+        </div>
+      `;
+    }
+
+    function openGo2rtcPanel(instanceId) {
+      htmx.ajax("GET", getGo2rtcPanelUrl(instanceId), { target: "#camera-panel", swap: "innerHTML" });
+    }
+
+    window.__reconeyeOpenGo2rtcPanel = openGo2rtcPanel;
 
     function setLoading(active) {
       loadingEl.classList.toggle("active", active);
@@ -743,6 +824,7 @@
       params.set("limit", String(DEFAULT_MARKER_LIMIT));
       // Keep marker payload light; detailed preview comes from side panel endpoint.
       params.set("preview", "0");
+      params.set("go2rtc", "1");
       if (useViewport) {
         const bounds = map.getBounds();
         params.set("min_lat", String(bounds.getSouth()));
@@ -780,16 +862,19 @@
 
         const bounds = [];
         let selectedCameraFound = false;
+        let selectedGo2RTCFound = false;
         selectedMarker = null;
         const plotted = spiderfyOverlappingMarkers(markers);
         plotted.forEach(({ camera, lat, lng }) => {
-          const isSelected = selectedCameraId === camera.id;
+          const isSelected = camera.marker_kind === "go2rtc_instance"
+            ? selectedGo2RTCInstanceId === camera.id
+            : selectedCameraId === camera.id;
           const marker = L.marker([lat, lng], {
             icon: markerIcon(camera, { selected: isSelected }),
             cameraOnline: camera.is_online === true,
           });
           marker.__cameraData = camera;
-          marker.bindPopup(popupContent(camera), {
+          marker.bindPopup(camera.marker_kind === "go2rtc_instance" ? go2rtcPopupContent(camera) : popupContent(camera), {
             autoPan: false,
           });
           marker.on("mouseover", () => {
@@ -797,7 +882,11 @@
           });
           marker.on("click", () => {
             setSelectedMarker(marker, camera);
-            htmx.ajax("GET", getPanelUrl(camera.id), { target: "#camera-panel", swap: "innerHTML" });
+            if (camera.marker_kind === "go2rtc_instance") {
+              openGo2rtcPanel(camera.id);
+            } else {
+              htmx.ajax("GET", getPanelUrl(camera.id), { target: "#camera-panel", swap: "innerHTML" });
+            }
           });
           if (CLOSE_POPUP_ON_MOUSEOUT) {
             marker.on("mouseout", () => {
@@ -808,12 +897,20 @@
           bounds.push([lat, lng]);
           if (isSelected) {
             selectedMarker = marker;
-            selectedCameraFound = true;
+            if (camera.marker_kind === "go2rtc_instance") {
+              selectedGo2RTCFound = true;
+            } else {
+              selectedCameraFound = true;
+            }
           }
         });
 
         if (selectedCameraId && !selectedCameraFound) {
           selectedCameraId = null;
+          selectedMarker = null;
+        }
+        if (selectedGo2RTCInstanceId && !selectedGo2RTCFound) {
+          selectedGo2RTCInstanceId = null;
           selectedMarker = null;
         }
 
@@ -926,7 +1023,7 @@
       const panel = document.getElementById("camera-panel");
       if (!panel) return;
 
-      const media = panel.querySelector("video.js-hls-player, iframe.js-iframe-player, img.preview");
+      const media = panel.querySelector("video.js-hls-player, iframe.js-iframe-player, iframe.go2rtc-iframe, img.preview");
       if (!media) return;
 
       const fullscreenTarget = media.closest(".stream-player") || media;
@@ -1063,7 +1160,6 @@
               <div
                 class="suggestion-item p-2 border-bottom"
                 style="cursor: pointer; transition: background 0.15s;"
-                data-lat="${latAttr}"
                 data-lng="${lngAttr}"
                 data-label="${labelAttr}"
               >

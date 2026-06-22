@@ -680,6 +680,7 @@ def get_camera_map_markers(
     max_lng: float | None = None,
     limit: int = 1500,
     include_preview: bool = False,
+    include_go2rtc_instances: bool = False,
 ) -> dict[str, Any]:
     """Return cached marker payload for the map view.
 
@@ -700,7 +701,7 @@ def get_camera_map_markers(
         "map:"
         f"src={source_type}:country={country}:online={is_online}:"
         f"min_lat={min_lat}:max_lat={max_lat}:min_lng={min_lng}:max_lng={max_lng}:"
-        f"limit={limit}:preview={include_preview}:display=v2",
+        f"limit={limit}:preview={include_preview}:go2rtc={include_go2rtc_instances}:display=v3",
     )
     cached = cache.get(cache_key)
     if cached is not None:
@@ -773,6 +774,66 @@ def get_camera_map_markers(
         "total": total,
         "truncated": total > limit,
     }
+
+    if include_go2rtc_instances:
+        instance_qs = Go2RTCInstance.objects.filter(is_active=True, geo_latitude__isnull=False, geo_longitude__isnull=False)
+        instance_qs = instance_qs.exclude(geo_latitude=0, geo_longitude=0)
+        if country:
+            instance_qs = instance_qs.filter(
+                Q(location_override_enabled=True, override_country__iexact=country)
+                | Q(location_override_enabled=False, geo_country__iexact=country)
+                | Q(
+                    location_override_enabled=True,
+                    override_country="",
+                    geo_country__iexact=country,
+                )
+            )
+        if is_online is not None:
+            desired_status = Go2RTCInstance.LastSyncStatus.SUCCESS if is_online else None
+            if desired_status is not None:
+                instance_qs = instance_qs.filter(last_sync_status=desired_status)
+            else:
+                instance_qs = instance_qs.exclude(last_sync_status=Go2RTCInstance.LastSyncStatus.SUCCESS)
+        if min_lat is not None:
+            instance_qs = instance_qs.filter(geo_latitude__gte=min_lat)
+        if max_lat is not None:
+            instance_qs = instance_qs.filter(geo_latitude__lte=max_lat)
+        if min_lng is not None:
+            instance_qs = instance_qs.filter(geo_longitude__gte=min_lng)
+        if max_lng is not None:
+            instance_qs = instance_qs.filter(geo_longitude__lte=max_lng)
+
+        instance_total = instance_qs.count()
+        instance_markers: list[dict[str, Any]] = []
+        for instance in instance_qs.order_by("name")[:limit]:
+            instance_markers.append(
+                {
+                    "id": instance.pk,
+                    "marker_kind": "go2rtc_instance",
+                    "title": instance.name,
+                    "display_title": instance.name,
+                    "name": instance.name,
+                    "host": instance.host,
+                    "port": instance.port,
+                    "base_url": instance.base_url,
+                    "latitude": instance.effective_latitude,
+                    "longitude": instance.effective_longitude,
+                    "is_online": instance.last_sync_status == Go2RTCInstance.LastSyncStatus.SUCCESS,
+                    "last_sync_status": instance.last_sync_status,
+                    "last_synced_at": instance.last_synced_at,
+                    "group_label": instance.display_group,
+                    "country": instance.effective_country,
+                    "city": instance.effective_city,
+                }
+            )
+
+        payload["markers"].extend(instance_markers)
+        payload["count"] = len(payload["markers"])
+        payload["go2rtc_count"] = len(instance_markers)
+        payload["go2rtc_total"] = instance_total
+        payload["go2rtc_truncated"] = instance_total > limit
+        payload["total"] = total + instance_total
+        payload["truncated"] = total > limit or instance_total > limit
     cache.set(cache_key, payload, TTL_CAMERAS)
     logger.info(
         "camera_map_data cache_hit=0 count=%s total=%s truncated=%s elapsed_ms=%.2f",

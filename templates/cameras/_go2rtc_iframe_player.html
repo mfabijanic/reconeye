@@ -9,6 +9,6 @@
     allow="autoplay; fullscreen; picture-in-picture"
     allowfullscreen
     referrerpolicy="no-referrer"
-    {% if tabindex is not None %}tabindex="{{ tabindex }}"{% endif %}
+    tabindex="{{ tabindex|default:'-1' }}"
   ></iframe>
 </div>
