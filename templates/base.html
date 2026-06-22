@@ -567,7 +567,7 @@
     <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="{% trans 'Open navigation' %}">
       <i class="bi bi-list"></i>
     </button>
-    <button class="btn btn-sm app-sidebar-utility-btn d-none d-lg-inline-flex" id="text-mode-toggle" type="button" aria-label="Toggle sidebar collapse" title="Toggle sidebar collapse">
+    <button class="btn btn-sm app-sidebar-utility-btn d-none d-lg-inline-flex" id="text-mode-toggle" type="button" aria-label="{% trans 'Toggle sidebar collapse' %}" title="{% trans 'Toggle sidebar collapse' %}">
       <i class="bi bi-layout-sidebar-inset"></i>
     </button>
     <a class="app-topbar-brand" href="{% url 'dashboard:index' %}">
@@ -673,13 +673,13 @@
       <div>
         <div class="app-sidebar-heading">{% trans "Display" %}</div>
         <div class="app-sidebar-controls">
-          <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn" id="theme-toggle" type="button" aria-label="Toggle color theme"><i class="bi bi-moon-stars" id="theme-toggle-icon"></i></button>
+          <button class="btn btn-sm btn-outline-secondary app-sidebar-utility-btn" id="theme-toggle" type="button" aria-label="{% trans 'Toggle color theme' %}"><i class="bi bi-moon-stars" id="theme-toggle-icon"></i></button>
         </div>
         <div class="app-sidebar-style-row mt-2">
           <label id="camera-style-label" class="small text-muted mb-0" for="camera-style-select">{% trans "Style" %}</label>
           <select class="form-select form-select-sm" id="camera-style-select" aria-label="{% trans 'Camera frame profile' %}">
             <option value="subtle">{% trans "Subtle" %}</option>
-            <option value="neon">Neon</option>
+            <option value="neon">{% trans "Neon" %}</option>
             <option value="max-cyber">{% trans "Max Cyber" %}</option>
           </select>
         </div>

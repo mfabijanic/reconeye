@@ -31,9 +31,9 @@
     <form class="d-flex gap-2 align-items-center mb-0" method="get">
       <select name="source" class="form-select form-select-sm">
         <option value="">{% trans "All sources" %}</option>
-        <option value="INSECAM"{% if request.GET.source == 'INSECAM' %} selected{% endif %}>Insecam</option>
-        <option value="WHATSUPCAMS"{% if request.GET.source == 'WHATSUPCAMS' %} selected{% endif %}>WhatsUpCams</option>
-        <option value="WINDY"{% if request.GET.source == 'WINDY' %} selected{% endif %}>Windy</option>
+        <option value="INSECAM"{% if request.GET.source == 'INSECAM' %} selected{% endif %}>{% trans "Insecam" %}</option>
+        <option value="WHATSUPCAMS"{% if request.GET.source == 'WHATSUPCAMS' %} selected{% endif %}>{% trans "WhatsUpCams" %}</option>
+        <option value="WINDY"{% if request.GET.source == 'WINDY' %} selected{% endif %}>{% trans "Windy" %}</option>
       </select>
       <select name="status" class="form-select form-select-sm">
         <option value="">{% trans "All statuses" %}</option>
@@ -48,9 +48,9 @@
     <form class="d-flex gap-2 align-items-center mb-0" method="post" action="{% url 'scraping:trigger' %}" id="trigger-scrape-form">
       {% csrf_token %}
       <select name="source_type" id="trigger-source-type" class="form-select form-select-sm">
-        <option value="INSECAM">Insecam</option>
-        <option value="WHATSUPCAMS">WhatsUpCams</option>
-        <option value="WINDY">Windy</option>
+        <option value="INSECAM">{% trans "Insecam" %}</option>
+        <option value="WHATSUPCAMS">{% trans "WhatsUpCams" %}</option>
+        <option value="WINDY">{% trans "Windy" %}</option>
       </select>
       <select name="country_code" id="trigger-country-code" class="form-select form-select-sm" style="min-width:200px">
         {# Options populated by JS on load and on source_type change #}

@@ -16,6 +16,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
@@ -298,7 +299,7 @@ class RemoveGo2RTCCameraView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRe
             after_state={**before_state, "is_active": False},
             metadata={"operation": "surveillance_remove"},
         )
-        messages.success(request, f"Removed from surveillance: {grid_item.title or grid_item.stream_name}")
+        messages.success(request, _("Removed from surveillance: {title}").format(title=grid_item.title or grid_item.stream_name))
         return redirect("cameras:surveillance")
 
 
@@ -925,7 +926,7 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleReq
     def post(self, request, *args, **kwargs):
         form = Go2RTCInstanceForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Invalid go2rtc instance input.")
+            messages.error(request, _("Invalid go2rtc instance input."))
             return redirect(f"{reverse('cameras:go2rtc_manager')}?tab=setup")
 
         clean = form.cleaned_data
@@ -955,15 +956,15 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleReq
 
         stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
-            messages.warning(request, f"Instance saved, but sync failed: {error}")
+            messages.warning(request, _("Instance spremljena, ali sinkronizacija neuspješna: {error}").format(error=error))
         elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
-            messages.warning(request, f"go2rtc instance {'added' if created else 'updated'}. Unauthorized: {warning or 'authentication required.'}")
+            messages.warning(request, _("go2rtc instance {action}. Neovlašteno: {warning}").format(action=_('added') if created else _('updated'), warning=warning or _('authentication required.')))
         else:
-            action = "added" if created else "updated"
+            action = _("added") if created else _("updated")
             if warning:
-                messages.warning(request, f"go2rtc instance {action}. Synced {stream_count} streams, but warning: {warning}")
+                messages.warning(request, _("go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}").format(action=action, stream_count=stream_count, warning=warning))
             else:
-                messages.success(request, f"go2rtc instance {action}. Synced {stream_count} streams.")
+                messages.success(request, _("go2rtc instance {action}. Sinkronizirano {stream_count} tokova.").format(action=action, stream_count=stream_count))
         log_audit_event(
             request=request,
             action="create" if created else "update",
@@ -998,14 +999,14 @@ class SyncGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRe
         }
         stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
-            messages.error(request, f"Sync failed for {instance.name}: {error}")
+            messages.error(request, _("Sinkronizacija neuspješna za {name}: {error}").format(name=instance.name, error=error))
         elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
-            messages.warning(request, f"Sync unauthorized for {instance.name}: {warning or 'authentication required.'}")
+            messages.warning(request, _("Sinkronizacija neovlaštena za {name}: {warning}").format(name=instance.name, warning=warning or _('authentication required.')))
         else:
             if warning:
-                messages.warning(request, f"Sync completed for {instance.name}. {stream_count} streams available. Warning: {warning}")
+                messages.warning(request, _("Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}").format(name=instance.name, stream_count=stream_count, warning=warning))
             else:
-                messages.success(request, f"Sync completed for {instance.name}. {stream_count} streams available.")
+                messages.success(request, _("Sinkronizacija završena za {name}. {stream_count} tokova dostupno.").format(name=instance.name, stream_count=stream_count))
 
         # Preserve current manager UI state after sync (search/filter/pagination).
         manager_state_keys = (
@@ -1111,13 +1112,13 @@ class Go2RTCImportConfirmView(LoginRequiredMixin, CapabilityRequiredMixin, RoleR
         import_url = f"{reverse('cameras:go2rtc_manager')}?tab=import"
         csv_b64 = request.POST.get("csv_b64", "")
         if not csv_b64:
-            messages.error(request, "Nothing to import.")
+            messages.error(request, _("Nothing to import."))
             return redirect(import_url)
 
         try:
             csv_bytes = base64.b64decode(csv_b64.encode("ascii"), validate=True)
         except (binascii.Error, ValueError):
-            messages.error(request, "Import payload was corrupted; please preview again.")
+            messages.error(request, _("Import payload was corrupted; please preview again."))
             return redirect(import_url)
 
         report = import_go2rtc_instances(CsvInstanceImportSource(csv_bytes), sync=True)
@@ -1135,10 +1136,15 @@ class Go2RTCImportConfirmView(LoginRequiredMixin, CapabilityRequiredMixin, RoleR
         )
         messages.success(
             request,
-            (
-                f"Import done: {report.created} added, {report.updated} updated, "
-                f"{report.skipped} skipped. Sync dispatched for "
-                f"{report.synced_dispatched} instance(s)."
+            _(
+                "Import done: {created} added, {updated} updated, "
+                "{skipped} skipped. Sync dispatched for "
+                "{synced_dispatched} instance(s)."
+            ).format(
+                created=report.created,
+                updated=report.updated,
+                skipped=report.skipped,
+                synced_dispatched=report.synced_dispatched,
             ),
         )
         return redirect(import_url)
@@ -1163,7 +1169,7 @@ class BulkAddGo2RTCStreamsView(LoginRequiredMixin, CapabilityRequiredMixin, Role
         )
 
         if not form.is_valid():
-            messages.error(request, "Select at least one stream and target profile.")
+            messages.error(request, _("Select at least one stream and target profile."))
             return redirect(f"{reverse('cameras:go2rtc_manager')}?instance={instance.pk}")
 
         selected = form.cleaned_data["stream_names"]
@@ -1189,7 +1195,7 @@ class BulkAddGo2RTCStreamsView(LoginRequiredMixin, CapabilityRequiredMixin, Role
 
         messages.success(
             request,
-            f"Added to profile {profile.name}: {created_count} new, {updated_count} updated.",
+            _("Added to profile {profile}: {created_count} new, {updated_count} updated.").format(profile=profile.name, created_count=created_count, updated_count=updated_count),
         )
         log_audit_event(
             request=request,
@@ -1216,7 +1222,7 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, CapabilityRequiredMixin, Role
     def post(self, request, *args, **kwargs):
         form = Go2RTCGridProfileForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Invalid profile input.")
+            messages.error(request, _("Invalid profile input."))
             return redirect(f"{reverse('cameras:go2rtc_manager')}?tab=setup")
 
         clean = form.cleaned_data
@@ -1246,7 +1252,7 @@ class AddGo2RTCGridProfileView(LoginRequiredMixin, CapabilityRequiredMixin, Role
             },
             metadata={"operation": "go2rtc_profile_upsert"},
         )
-        messages.success(request, f"Profile {'created' if created else 'updated'}: {profile.name}")
+        messages.success(request, _("Profil {action}: {name}").format(action=_('kreiran') if created else _('ažuriran'), name=profile.name))
         return redirect(
             f"{reverse('cameras:go2rtc_manager')}?tab=setup&profile={profile.pk}"
         )
@@ -1289,7 +1295,7 @@ class RemoveGo2RTCProfileItemView(LoginRequiredMixin, CapabilityRequiredMixin, R
             after_state={**before_state, "is_active": False},
             metadata={"operation": "go2rtc_profile_item_remove"},
         )
-        messages.success(request, f"Removed stream from profile {item.profile.name}: {item.title or item.stream_name}")
+        messages.success(request, _("Removed stream from profile {profile}: {title}").format(profile=item.profile.name, title=item.title or item.stream_name))
         return redirect(reverse("cameras:go2rtc_profile_grid", kwargs={"pk": item.profile_id}))
 
 

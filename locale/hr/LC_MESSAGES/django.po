@@ -1,7 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: reconeye 0.1.0\n"
-"POT-Creation-Date: 2026-05-31 00:00+0000\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-22 20:51+0000\n"
 "PO-Revision-Date: 2026-05-31 00:00+0000\n"
 "Last-Translator: ReconEye Team\n"
 "Language-Team: Croatian\n"
@@ -11,590 +12,1903 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-msgid "Dashboard"
-msgstr "Nadzorna ploča"
-
-msgid "Cameras"
-msgstr "Kamere"
-
-msgid "Surveillance"
-msgstr "Nadzor"
-
-msgid "Map"
-msgstr "Karta"
-
-msgid "Scrape Jobs"
-msgstr "Poslovi prikupljanja"
-
-msgid "Admin"
-msgstr "Administracija"
-
-msgid "Style"
-msgstr "Stil"
-
-msgid "Camera frame profile"
-msgstr "Profil okvira kamere"
-
-msgid "Subtle"
-msgstr "Suptilno"
-
-msgid "Max Cyber"
-msgstr "Maksimalni cyber"
-
-msgid "Settings"
-msgstr "Postavke"
-
-msgid "Logout"
-msgstr "Odjava"
-
-msgid "Login"
-msgstr "Prijava"
-
-msgid "Sign in to continue"
-msgstr "Prijavite se za nastavak"
-
-msgid "Sign in"
-msgstr "Prijavi se"
-
-msgid "Map settings"
-msgstr "Postavke karte"
-
-msgid "Interface language"
-msgstr "Jezik sučelja"
-
-msgid "Disable clustering at zoom"
-msgstr "Isključi grupiranje na razini uvećanja"
-
-msgid "Marker limit"
-msgstr "Ograničenje markera"
-
-msgid "Status stale minutes"
-msgstr "Minute do zastarjelog statusa"
-
-msgid "Popup close on mouse out"
-msgstr "Zatvori skočni prozor pri izlasku miša"
-
-msgid "Use global default"
-msgstr "Koristi globalnu zadanu vrijednost"
-
-msgid "Enabled"
-msgstr "Omogućeno"
-
-msgid "Disabled"
-msgstr "Onemogućeno"
-
-msgid "Empty = use global default."
-msgstr "Prazno = koristi globalnu zadanu vrijednost."
-
-msgid "Save settings"
-msgstr "Spremi postavke"
-
-msgid "Back to map"
-msgstr "Natrag na kartu"
-
-msgid "Settings saved."
-msgstr "Postavke su spremljene."
-
-msgid "Open map"
-msgstr "Otvori kartu"
-
-msgid "total"
-msgstr "ukupno"
-
-msgid "Search title…"
-msgstr "Pretraži naslov…"
-
-msgid "All countries"
-msgstr "Sve države"
-
-msgid "All sources"
-msgstr "Svi izvori"
-
-msgid "All statuses"
-msgstr "Svi statusi"
-
-msgid "Online"
-msgstr "Online"
-
-msgid "Offline"
-msgstr "Offline"
-
+#: apps/cameras/admin.py:34 templates/cameras/list.html:65
 msgid "Geo fallback (country)"
 msgstr "Geo fallback (država)"
 
-msgid "Reset"
-msgstr "Resetiraj"
-
-msgid "Stream ID"
-msgstr "ID streama"
-
-msgid "Source"
-msgstr "Izvor"
-
-msgid "Country"
-msgstr "Država"
-
-msgid "City"
-msgstr "Grad"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Check stream availability"
-msgstr "Provjeri dostupnost streama"
-
-msgid "Partial metadata"
-msgstr "Djelomični metapodaci"
-
+#: apps/cameras/admin.py:38
 msgid "Yes"
 msgstr "Da"
 
+#: apps/cameras/admin.py:38
 msgid "No"
 msgstr "Ne"
 
-msgid "Stream URL"
-msgstr "URL streama"
-
-msgid "Page URL"
-msgstr "URL stranice"
-
-msgid "Last checked"
-msgstr "Zadnja provjera"
-
-msgid "Created"
-msgstr "Kreirano"
-
-msgid "Back"
-msgstr "Natrag"
-
-msgid "Active Scrape Jobs"
-msgstr "Aktivni poslovi prikupljanja"
-
-msgid "View all"
-msgstr "Prikaži sve"
-
-msgid "Loading…"
-msgstr "Učitavanje…"
-
-msgid "Choose country…"
-msgstr "Odaberite državu…"
-
-msgid "All countries (optional)…"
-msgstr "Sve države (opcionalno)…"
-
-msgid "Filter"
-msgstr "Filtriraj"
-
-msgid "Trigger scrape"
-msgstr "Pokreni prikupljanje"
-
-msgid "Progress"
-msgstr "Napredak"
-
-msgid "Found"
-msgstr "Pronađeno"
-
-msgid "New"
-msgstr "Novo"
-
-msgid "Updated"
-msgstr "Ažurirano"
-
-msgid "Started"
-msgstr "Pokrenuto"
-
-msgid "Duration"
-msgstr "Trajanje"
-
-msgid "Action"
-msgstr "Akcija"
-
-msgid "Running"
-msgstr "Pokrenuto"
-
-msgid "Success"
-msgstr "Uspješno"
-
-msgid "Unauthorized"
-msgstr "Neautorizirano"
-
-msgid "Warning"
-msgstr "Upozorenje"
-
-msgid "Failed"
-msgstr "Neuspješno"
-
-msgid "Cancelled"
-msgstr "Otkazano"
-
-msgid "Pending"
-msgstr "Na čekanju"
-
-msgid "Discovering cameras…"
-msgstr "Otkrivanje kamera…"
-
-msgid "Cancel"
-msgstr "Otkaži"
-
-msgid "No jobs yet."
-msgstr "Još nema poslova."
-
-msgid "Total cameras"
-msgstr "Ukupno kamera"
-
-msgid "Active jobs"
-msgstr "Aktivni poslovi"
-
-msgid "Top Countries"
-msgstr "Najzastupljenije države"
-
-msgid "By Source"
-msgstr "Po izvoru"
-
-msgid "Stale status"
-msgstr "Zastarjeli status"
-
-msgid "Coordinates"
-msgstr "Koordinate"
-
-msgid "Unknown"
-msgstr "Nepoznato"
-
-msgid "Never"
-msgstr "Nikad"
-
-msgid "Open details"
-msgstr "Otvori detalje"
-
-msgid "Check stream"
-msgstr "Provjeri stream"
-
-msgid "Open stream"
-msgstr "Otvori stream"
-
-msgid "Title"
-msgstr "Naslov"
-
-msgid "Partial"
-msgstr "Djelomično"
-
-msgid "No cameras found."
-msgstr "Nijedna kamera nije pronađena."
-
-msgid "Camera pagination"
-msgstr "Straničenje kamera"
-
-msgid "Checking..."
-msgstr "Provjera..."
-
-msgid "Task ID"
-msgstr "ID zadatka"
-
-msgid "Task"
-msgstr "Zadatak"
-
-msgid "%(elapsed)s ago"
-msgstr "prije %(elapsed)s"
-
-msgid "Camera"
-msgstr "Kamera"
-
-msgid "LIVE"
-msgstr "UŽIVO"
-
-msgid "Toggle mute"
-msgstr "Uključi ili isključi zvuk"
-
-msgid "Fullscreen"
-msgstr "Cijeli zaslon"
-
-msgid "Camera preview"
-msgstr "Pregled kamere"
-
-msgid "Camera Map"
-msgstr "Karta kamera"
-
-msgid "Fit markers"
-msgstr "Prilagodi markere"
-
-msgid "Locate me"
-msgstr "Lociraj me"
-
-msgid "cameras on map"
-msgstr "kamera na karti"
-
-msgid "Search location…"
-msgstr "Pretraži lokaciju…"
-
-msgid "Loading"
-msgstr "Učitavanje"
-
-msgid "Camera details"
-msgstr "Detalji kamere"
-
-msgid "Click a marker to preview the camera and view metadata."
-msgstr "Kliknite marker za pregled kamere i prikaz metapodataka."
-
-msgid "Cluster"
-msgstr "Grupa"
-
-msgid "Total"
-msgstr "Ukupno"
-
-msgid "cameras"
-msgstr "kamera"
-
-msgid "Stale"
-msgstr "Zastarjelo"
-
-msgid "No cameras found for current filters."
-msgstr "Nema kamera za trenutačne filtre."
-
-msgid "Failed to load map data."
-msgstr "Učitavanje podataka karte nije uspjelo."
-
-msgid "Showing"
-msgstr "Prikazano"
-
-msgid "of"
-msgstr "od"
-
-msgid "markers in this area. Zoom in or filter to narrow results."
-msgstr "markera na ovom području. Uvećajte ili filtrirajte za sužavanje rezultata."
-
-msgid "You are here"
-msgstr "Vi ste ovdje"
-
-msgid "No locations found"
-msgstr "Lokacije nisu pronađene"
-
-msgid "Columns"
-msgstr "Stupci"
-
-msgid "Force the number of columns (disable for automatic)"
-msgstr "Nametni broj stupaca (isključite za automatski način)"
-
-msgid "Lock the number of columns (automatic or manual selection)"
-msgstr "Zaključaj broj stupaca (automatski ili ručni odabir)"
-
-msgid "Auto"
-msgstr "Automatski"
-
-msgid "Show or hide camera labels"
-msgstr "Prikaži ili sakrij oznake kamera"
-
-msgid "Labels"
-msgstr "Oznake"
-
-msgid "Edit grid (add or remove cameras)"
-msgstr "Uredi mrežu (dodaj ili ukloni kamere)"
-
-msgid "Edit"
-msgstr "Uredi"
-
-msgid "Make sure the go2rtc API is available at"
-msgstr "Provjerite je li go2rtc API dostupan na"
-
-msgid "Add a camera by stream name"
-msgstr "Dodaj kameru po nazivu streama"
-
-msgid "Edit mode"
-msgstr "Način uređivanja"
-
-msgid "Stream name"
-msgstr "Naziv streama"
-
-msgid "Display title (optional)"
-msgstr "Prikazni naslov (opcionalno)"
-
-msgid "Add to grid"
-msgstr "Dodaj u mrežu"
-
-msgid "Available streams from source"
-msgstr "Dostupni streamovi iz izvora"
-
-msgid "Stream"
-msgstr "Stream"
-
-msgid "Producers"
-msgstr "Producenti"
-
-msgid "Consumers"
-msgstr "Konzumenti"
-
-msgid "Add"
-msgstr "Dodaj"
-
-msgid "No streams found."
-msgstr "Nema pronađenih streamova."
-
-msgid "(no title)"
-msgstr "(bez naslova)"
-
-msgid "Remove from grid"
-msgstr "Ukloni iz mreže"
-
-msgid "No go2rtc cameras have been added to the grid yet."
-msgstr "Još nijedna go2rtc kamera nije dodana u mrežu."
-
-msgid "Fixed"
-msgstr "Fiksno"
-
-msgid "Done"
-msgstr "Gotovo"
-
-msgid "Choose a valid scrape source."
-msgstr "Odaberite valjani izvor prikupljanja."
-
-msgid "Choose a country for Insecam scrape."
-msgstr "Odaberite državu za Insecam prikupljanje."
-
-msgid "Country '%(country)s' is not enabled in INSECAM_COUNTRY_CODES config."
-msgstr "Država '%(country)s' nije omogućena u konfiguraciji INSECAM_COUNTRY_CODES."
-
-msgid "Country '%(country)s' is not enabled in WHATSUPCAMS_COUNTRY_CODES config."
-msgstr "Država '%(country)s' nije omogućena u konfiguraciji WHATSUPCAMS_COUNTRY_CODES."
-
-msgid "%(source)s%(suffix)s already has an active job (#%(job_id)s, %(status)s)."
-msgstr "%(source)s%(suffix)s već ima aktivan posao (#%(job_id)s, %(status)s)."
-
-msgid "No Celery workers are online. Start a worker and try again."
-msgstr "Nema aktivnih Celery workera. Pokrenite worker i pokušajte ponovno."
-
-msgid "Failed to enqueue Insecam scrape. Check broker/worker status."
-msgstr "Red čekanja za Insecam prikupljanje nije uspio. Provjerite broker/worker status."
-
-msgid "Insecam [%(country)s] scrape queued (job #%(job_id)s): %(task_id)s"
-msgstr "Insecam [%(country)s] prikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
-
-msgid "Failed to enqueue WhatsUpCams scrape. Check broker/worker status."
-msgstr "Red čekanja za WhatsUpCams prikupljanje nije uspio. Provjerite broker/worker status."
-
-msgid "WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s"
-msgstr "WhatsUpCams %(scope)sprikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
-
-msgid "Job #%(job_id)s is already %(status)s."
-msgstr "Posao #%(job_id)s je već %(status)s."
-
-msgid "Cancelled scrape job #%(job_id)s."
-msgstr "Posao prikupljanja #%(job_id)s je otkazan."
-
-msgid "Invalidate scrape jobs cache"
-msgstr "Poništi cache poslova prikupljanja"
-
-msgid "Scrape jobs cache invalidated."
-msgstr "Cache poslova prikupljanja je poništen."
-
-msgid "Trigger Insecam scrape now"
-msgstr "Pokreni Insecam prikupljanje odmah"
-
-msgid "Insecam scrape task queued: %(task_id)s"
-msgstr "Insecam zadatak prikupljanja stavljen u red: %(task_id)s"
-
-msgid "Trigger WhatsUpCams scrape now"
-msgstr "Pokreni WhatsUpCams prikupljanje odmah"
-
-msgid "WhatsUpCams scrape task queued: %(task_id)s"
-msgstr "WhatsUpCams zadatak prikupljanja stavljen u red: %(task_id)s"
-
+#: apps/cameras/admin.py:67
 msgid "Invalidate cameras cache"
 msgstr "Poništi cache kamera"
 
+#: apps/cameras/admin.py:70
 msgid "Cameras cache invalidated."
 msgstr "Cache kamera je poništen."
 
+#: apps/cameras/admin.py:73
 msgid "Invalidate dashboard cache"
 msgstr "Poništi cache nadzorne ploče"
 
+#: apps/cameras/admin.py:76
 msgid "Dashboard cache invalidated."
 msgstr "Cache nadzorne ploče je poništen."
 
+#: apps/cameras/admin.py:79
 msgid "Invalidate ALL cache"
 msgstr "Poništi cijeli cache"
 
+#: apps/cameras/admin.py:82
 msgid "All cache invalidated."
 msgstr "Cijeli cache je poništen."
 
+#: apps/cameras/admin.py:85
 msgid "Refresh Nominatim geocache for selected cameras"
 msgstr "Osvježi Nominatim geocache za odabrane kamere"
 
+#: apps/cameras/admin.py:91
 msgid "No cameras selected."
 msgstr "Nijedna kamera nije odabrana."
 
+#: apps/cameras/admin.py:97
+#, python-format
 msgid "Queued geolocation refresh for %(count)s camera(s). Task: %(task_id)s"
 msgstr "Osvježavanje geolokacije stavljeno u red za %(count)s kamera. Zadatak: %(task_id)s"
 
+#: apps/cameras/admin.py:137 apps/cameras/admin.py:359
 msgid "Location"
 msgstr "Lokacija"
 
+#: apps/cameras/admin.py:138
 msgid "URLs"
 msgstr "URL-ovi"
 
+#: apps/cameras/admin.py:139 templates/cameras/detail.html:46
+#: templates/htmx/cameras/_camera_table.html:11
+#: templates/htmx/cameras/_import_preview.html:27
+#: templates/htmx/scraping/_job_row.html:7
+msgid "Status"
+msgstr "Status"
+
+#: apps/cameras/admin.py:140
 msgid "Payload"
 msgstr "Payload"
 
+#: apps/cameras/admin.py:141
 msgid "Timestamps"
 msgstr "Vremenske oznake"
 
+#: apps/cameras/admin.py:146
 msgid "stream"
 msgstr "stream"
 
-msgid "Start camera"
-msgstr "Početna kamera"
+#: apps/cameras/admin.py:149 templates/cameras/go2rtc_manager.html:303
+#: templates/cameras/surveillance.html:517
+msgid "Stream"
+msgstr "Stream"
 
-msgid "block"
-msgstr "blok"
+#: apps/cameras/admin.py:189
+msgid "Re-resolve host IPs (for auto-grouping)"
+msgstr ""
 
-msgid "blocks"
-msgstr "blokova"
+#: apps/cameras/admin.py:208
+#, python-format
+msgid "Re-resolved %(ok)s instance(s); %(failed)s could not be resolved."
+msgstr ""
 
-msgid "Windy scraping currently supports up to offset 1000 on this API tier."
-msgstr "Windy prikupljanje trenutno podržava do pomaka 1000 na ovom API nivou."
+#: apps/cameras/admin.py:213
+#, fuzzy
+#| msgid "Search location…"
+msgid "Refresh GeoIP location"
+msgstr "Pretraži lokaciju…"
 
-msgid "Enter a valid Windy start camera."
-msgstr "Unesite ispravan početni broj kamere za Windy."
+#: apps/cameras/admin.py:232
+#, python-format
+msgid "GeoIP refresh completed: %(found)s located, %(no_public_ip)s without public IPs, %(geoip_miss)s public IPs without GeoIP match."
+msgstr ""
 
-msgid "Windy start camera must be 0, 1000, 2000, and so on."
-msgstr "Početna kamera za Windy mora biti 0, 1000, 2000 i tako dalje."
+#: apps/cameras/admin.py:238
+msgid "Sync selected go2rtc instances"
+msgstr ""
 
-msgid "Windy start camera above 1000 is not available on the current API tier."
-msgstr "Početna kamera iznad 1000 nije dostupna na trenutnom API nivou."
+#: apps/cameras/admin.py:249
+#, python-format
+msgid "Queued sync for %(count)s go2rtc instance(s)."
+msgstr ""
 
-msgid "Enter a valid number of Windy blocks."
-msgstr "Unesite ispravan broj blokova za Windy."
+#: apps/cameras/admin.py:316
+msgid "Auto GeoIP"
+msgstr ""
 
-msgid "Windy block count must be between 1 and 20."
-msgstr "Broj blokova za Windy mora biti između 1 i 20."
+#: apps/cameras/admin.py:330
+msgid "Manual override"
+msgstr ""
 
-msgid "When Windy start camera is 1000, only 1 block is available on this API tier."
-msgstr "Kada je početna kamera 1000, dostupan je samo 1 blok na trenutnom API nivou."
+#: apps/cameras/admin.py:341
+#, fuzzy
+#| msgid "Partial metadata"
+msgid "Sync metadata"
+msgstr "Djelomični metapodaci"
 
-msgid "Failed to enqueue Windy scrape. Check broker/worker status."
-msgstr "Red čekanja za Windy prikupljanje nije uspio. Provjerite broker/worker status."
+#: apps/cameras/admin.py:354
+msgid "Resolved IPs"
+msgstr ""
 
-msgid "Windy %(scope)s scrape queued from %(start)s (job #%(job_id)s): %(task_id)s"
-msgstr "Windy %(scope)s prikupljanje stavljeno u red od %(start)s (posao #%(job_id)s): %(task_id)s"
+#: apps/cameras/views.py:302
+#, python-brace-format
+#| msgid "Remove from grid"
+msgid "Removed from surveillance: {title}"
+msgstr "Uklonjeno iz nadzora: {title}"
 
+#: apps/cameras/views.py:929
+msgid "Invalid go2rtc instance input."
+msgstr "Nevaljani unos go2rtc instance."
+
+#: apps/cameras/views.py:959
+#, python-brace-format
+msgid "Instance spremljena, ali sinkronizacija neuspješna: {error}"
+msgstr "Instance spremljena, ali sinkronizacija neuspješna: {error}"
+
+#: apps/cameras/views.py:961
+#, python-brace-format
+msgid "go2rtc instance {action}. Neovlašteno: {warning}"
+msgstr "go2rtc instance {action}. Neovlašteno: {warning}"
+
+#: apps/cameras/views.py:961 apps/cameras/views.py:963
+msgid "added"
+msgstr "dodano"
+
+#: apps/cameras/views.py:961 apps/cameras/views.py:963
+#, fuzzy
+#| msgid "Updated"
+msgid "updated"
+msgstr "Ažurirano"
+
+#: apps/cameras/views.py:961 apps/cameras/views.py:1004
+msgid "authentication required."
+msgstr "autentifikacija obavezna."
+
+#: apps/cameras/views.py:965
+#, python-brace-format
+msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}"
+msgstr "go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}"
+
+#: apps/cameras/views.py:967
+#, python-brace-format
+msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova."
+msgstr "go2rtc instance {action}. Sinkronizirano {stream_count} tokova."
+
+#: apps/cameras/views.py:1002
+#, python-brace-format
+msgid "Sinkronizacija neuspješna za {name}: {error}"
+msgstr "Sinkronizacija neuspješna za {name}: {error}"
+
+#: apps/cameras/views.py:1004
+#, python-brace-format
+msgid "Sinkronizacija neovlaštena za {name}: {warning}"
+msgstr "Sinkronizacija neovlaštena za {name}: {warning}"
+
+#: apps/cameras/views.py:1007
+#, python-brace-format
+msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
+msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
+
+#: apps/cameras/views.py:1009
+#, python-brace-format
+msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
+msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
+
+#: apps/cameras/views.py:1115
+msgid "Nothing to import."
+msgstr "Nema čega za uvoz."
+
+#: apps/cameras/views.py:1121
+msgid "Import payload was corrupted; please preview again."
+msgstr "Uvezeni podaci su oštećeni; molim ponovno pregledajte."
+
+#: apps/cameras/views.py:1140
+#, python-brace-format
+msgid "Import done: {created} added, {updated} updated, {skipped} skipped. Sync dispatched for {synced_dispatched} instance(s)."
+msgstr "Uvoz gotov: {created} dodano, {updated} ažurirano, {skipped} preskočeno. Sinkronizacija raspoređena za {synced_dispatched} instance(e)."
+
+#: apps/cameras/views.py:1172
+msgid "Select at least one stream and target profile."
+msgstr "Odaberite najmanje jedan tok i ciljni profil."
+
+#: apps/cameras/views.py:1198
+#, python-brace-format
+msgid "Added to profile {profile}: {created_count} new, {updated_count} updated."
+msgstr "Dodano profilu {profile}: {created_count} novo, {updated_count} ažurirano."
+
+#: apps/cameras/views.py:1225
+msgid "Invalid profile input."
+msgstr "Nevaljani unos profila."
+
+#: apps/cameras/views.py:1255
+#, python-brace-format
+msgid "Profil {action}: {name}"
+msgstr "Profil {action}: {name}"
+
+#: apps/cameras/views.py:1255
+msgid "kreiran"
+msgstr "kreiran"
+
+#: apps/cameras/views.py:1255
+msgid "ažuriran"
+msgstr ""
+
+#: apps/cameras/views.py:1298
+#, python-brace-format
+msgid "Removed stream from profile {profile}: {title}"
+msgstr "Tok uklonjen iz profila {profile}: {title}"
+
+#: apps/scraping/admin.py:16
+msgid "Invalidate scrape jobs cache"
+msgstr "Poništi cache poslova prikupljanja"
+
+#: apps/scraping/admin.py:19
+msgid "Scrape jobs cache invalidated."
+msgstr "Cache poslova prikupljanja je poništen."
+
+#: apps/scraping/admin.py:22
+msgid "Trigger Insecam scrape now"
+msgstr "Pokreni Insecam prikupljanje odmah"
+
+#: apps/scraping/admin.py:27
+#, python-format
+msgid "Insecam scrape task queued: %(task_id)s"
+msgstr "Insecam zadatak prikupljanja stavljen u red: %(task_id)s"
+
+#: apps/scraping/admin.py:30
+msgid "Trigger WhatsUpCams scrape now"
+msgstr "Pokreni WhatsUpCams prikupljanje odmah"
+
+#: apps/scraping/admin.py:35
+#, python-format
+msgid "WhatsUpCams scrape task queued: %(task_id)s"
+msgstr "WhatsUpCams zadatak prikupljanja stavljen u red: %(task_id)s"
+
+#: apps/scraping/admin.py:38
 msgid "Trigger Windy scrape now"
 msgstr "Pokreni Windy prikupljanje odmah"
 
+#: apps/scraping/admin.py:43
+#, python-format
 msgid "Windy scrape task queued: %(task_id)s"
 msgstr "Windy zadatak prikupljanja stavljen u red: %(task_id)s"
 
+#: apps/scraping/admin.py:46
 msgid "Cleanup: Deactivate partial/non-live Windy cameras"
 msgstr "Čišćenje: Deaktiviraj djelomične/ne-live Windy kamere"
 
+#: apps/scraping/admin.py:62
+#, python-format
 msgid "Deactivated %(count)s partial/non-live Windy cameras"
 msgstr "Deaktivirano %(count)s djelomičnih/ne-live Windy kamera"
 
+#: apps/scraping/admin.py:65
 msgid "No partial Windy cameras found."
 msgstr "Nisu pronađene djelomične Windy kamere."
 
+#: apps/scraping/admin.py:116 templates/htmx/scraping/_job_row.html:8
+msgid "Progress"
+msgstr "Napredak"
+
+#: apps/scraping/admin.py:125 templates/htmx/scraping/_job_row.html:13
+msgid "Duration"
+msgstr "Trajanje"
+
+#: apps/scraping/views.py:87
+msgid "Enter a valid Windy start camera."
+msgstr "Unesite ispravan početni broj kamere za Windy."
+
+#: apps/scraping/views.py:91
+msgid "Windy start camera must be 0, 1000, 2000, and so on."
+msgstr "Početna kamera za Windy mora biti 0, 1000, 2000 i tako dalje."
+
+#: apps/scraping/views.py:98
+msgid "Windy start camera above 1000 is not available on the current API tier."
+msgstr "Početna kamera iznad 1000 nije dostupna na trenutnom API nivou."
+
+#: apps/scraping/views.py:106
+msgid "Enter a valid number of Windy blocks."
+msgstr "Unesite ispravan broj blokova za Windy."
+
+#: apps/scraping/views.py:110
+msgid "Windy block count must be between 1 and 20."
+msgstr "Broj blokova za Windy mora biti između 1 i 20."
+
+#: apps/scraping/views.py:117
+msgid "When Windy start camera is 1000, only 1 block is available on this API tier."
+msgstr "Kada je početna kamera 1000, dostupan je samo 1 blok na trenutnom API nivou."
+
+#: apps/scraping/views.py:123
+msgid "Choose a valid scrape source."
+msgstr "Odaberite valjani izvor prikupljanja."
+
+#: apps/scraping/views.py:127
+msgid "Choose a country for Insecam scrape."
+msgstr "Odaberite državu za Insecam prikupljanje."
+
+#: apps/scraping/views.py:133
+#, python-format
+msgid "Country '%(country)s' is not enabled in INSECAM_COUNTRY_CODES config."
+msgstr "Država '%(country)s' nije omogućena u konfiguraciji INSECAM_COUNTRY_CODES."
+
+#: apps/scraping/views.py:141
+#, python-format
+msgid "Country '%(country)s' is not enabled in WHATSUPCAMS_COUNTRY_CODES config."
+msgstr "Država '%(country)s' nije omogućena u konfiguraciji WHATSUPCAMS_COUNTRY_CODES."
+
+#: apps/scraping/views.py:157
+#, python-format
+msgid "%(source)s%(suffix)s already has an active job (#%(job_id)s, %(status)s)."
+msgstr "%(source)s%(suffix)s već ima aktivan posao (#%(job_id)s, %(status)s)."
+
+#: apps/scraping/views.py:171
+msgid "No Celery workers are online. Start a worker and try again."
+msgstr "Nema aktivnih Celery workera. Pokrenite worker i pokušajte ponovno."
+
+#: apps/scraping/views.py:186
+msgid "Failed to enqueue Insecam scrape. Check broker/worker status."
+msgstr "Red čekanja za Insecam prikupljanje nije uspio. Provjerite broker/worker status."
+
+#: apps/scraping/views.py:200
+#, python-format
+msgid "Insecam [%(country)s] scrape queued (job #%(job_id)s): %(task_id)s"
+msgstr "Insecam [%(country)s] prikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
+
+#: apps/scraping/views.py:224
+msgid "Failed to enqueue WhatsUpCams scrape. Check broker/worker status."
+msgstr "Red čekanja za WhatsUpCams prikupljanje nije uspio. Provjerite broker/worker status."
+
+#: apps/scraping/views.py:239
+#, python-format
+msgid "WhatsUpCams %(scope)sscrape queued (job #%(job_id)s): %(task_id)s"
+msgstr "WhatsUpCams %(scope)sprikupljanje stavljeno u red (posao #%(job_id)s): %(task_id)s"
+
+#: apps/scraping/views.py:268
+msgid "Failed to enqueue Windy scrape. Check broker/worker status."
+msgstr "Red čekanja za Windy prikupljanje nije uspio. Provjerite broker/worker status."
+
+#: apps/scraping/views.py:283
+#, python-format
+msgid "Windy %(scope)s scrape queued from %(start)s (job #%(job_id)s): %(task_id)s"
+msgstr "Windy %(scope)s prikupljanje stavljeno u red od %(start)s (posao #%(job_id)s): %(task_id)s"
+
+#: apps/scraping/views.py:317
+#, python-format
+msgid "Job #%(job_id)s is already %(status)s."
+msgstr "Posao #%(job_id)s je već %(status)s."
+
+#: apps/scraping/views.py:343
+#, python-format
+msgid "Cancelled scrape job #%(job_id)s."
+msgstr "Posao prikupljanja #%(job_id)s je otkazan."
+
+#: apps/users/forms.py:25 templates/users/settings.html:113
+msgid "Popup close on mouse out"
+msgstr "Zatvori skočni prozor pri izlasku miša"
+
+#: apps/users/forms.py:28
+msgid "Use global default"
+msgstr "Koristi globalnu zadanu vrijednost"
+
+#: apps/users/forms.py:29
+msgid "Enabled"
+msgstr "Omogućeno"
+
+#: apps/users/forms.py:30
+msgid "Disabled"
+msgstr "Onemogućeno"
+
+#: apps/users/forms.py:85 templates/users/settings.html:47
+msgid "Interface language"
+msgstr "Jezik sučelja"
+
+#: apps/users/views.py:65
+msgid "Settings saved."
+msgstr "Postavke su spremljene."
+
+#: templates/admin/base_site.html:52
+msgid "ReconEye Admin"
+msgstr ""
+
+#: templates/base.html:567
+msgid "Open navigation"
+msgstr ""
+
+#: templates/base.html:570
+msgid "Toggle sidebar collapse"
+msgstr "Sažmi bočnu traku"
+
+#: templates/base.html:583 templates/base.html:588
+#, fuzzy
+#| msgid "Location"
+msgid "Notifications"
+msgstr "Lokacija"
+
+#: templates/base.html:590
+msgid "Loading notifications..."
+msgstr ""
+
+#: templates/base.html:595
+msgid "User menu"
+msgstr ""
+
+#: templates/base.html:599 templates/users/settings.html:3
+#: templates/users/settings.html:8
+msgid "Settings"
+msgstr "Postavke"
+
+#: templates/base.html:601 templates/base.html:666 templates/base.html:667
+msgid "Admin"
+msgstr "Administracija"
+
+#: templates/base.html:607
+msgid "Logout"
+msgstr "Odjava"
+
+#: templates/base.html:624
+#: templates/htmx/cameras/_surveillance_stream_list.html:10
+msgid "Close"
+msgstr ""
+
+#: templates/base.html:629 templates/base.html:630
+#: templates/dashboard/index.html:3 templates/dashboard/index.html:8
+msgid "Dashboard"
+msgstr "Nadzorna ploča"
+
+#: templates/base.html:635 templates/cameras/list.html:3
+msgid "Cameras"
+msgstr "Kamere"
+
+#: templates/base.html:637 templates/base.html:638
+#: templates/cameras/list.html:8
+msgid "List"
+msgstr ""
+
+#: templates/base.html:640 templates/base.html:641 templates/cameras/map.html:8
+msgid "Map"
+msgstr "Karta"
+
+#: templates/base.html:644 templates/base.html:645
+#: templates/cameras/surveillance.html:3 templates/cameras/surveillance.html:8
+msgid "Surveillance"
+msgstr "Nadzor"
+
+#: templates/base.html:649 templates/base.html:650
+#: templates/cameras/go2rtc_viewer.html:4
+#: templates/cameras/go2rtc_viewer.html:9
+msgid "go2rtc Viewer"
+msgstr ""
+
+#: templates/base.html:652 templates/base.html:653
+#: templates/cameras/go2rtc_manager.html:3
+#: templates/cameras/go2rtc_manager.html:8
+msgid "go2rtc Manager"
+msgstr ""
+
+#: templates/base.html:660
+#, fuzzy
+#| msgid "Duration"
+msgid "Operations"
+msgstr "Trajanje"
+
+#: templates/base.html:662 templates/base.html:663
+#: templates/htmx/common/_nav_notifications_panel.html:9
+#: templates/scraping/job_list.html:3 templates/scraping/job_list.html:8
+msgid "Scrape Jobs"
+msgstr "Poslovi prikupljanja"
+
+#: templates/base.html:674
+msgid "Display"
+msgstr ""
+
+#: templates/base.html:676
+#| msgid "Toggle mute"
+msgid "Toggle color theme"
+msgstr "Promijeni temu boja"
+
+#: templates/base.html:679
+msgid "Style"
+msgstr "Stil"
+
+#: templates/base.html:680
+msgid "Camera frame profile"
+msgstr "Profil okvira kamere"
+
+#: templates/base.html:681
+msgid "Subtle"
+msgstr "Suptilno"
+
+#: templates/base.html:682
+msgid "Neon"
+msgstr "Neon"
+
+#: templates/base.html:683
+msgid "Max Cyber"
+msgstr "Maksimalni cyber"
+
+#: templates/cameras/_go2rtc_iframe_player.html:6
+#: templates/htmx/cameras/_map_panel.html:3
+#: templates/htmx/cameras/_windy_player.html:21
+msgid "Camera"
+msgstr "Kamera"
+
+#: templates/cameras/_go2rtc_import_tab.html:5
+msgid "Import go2rtc instances from CSV"
+msgstr ""
+
+#: templates/cameras/_go2rtc_import_tab.html:10
+msgid "Required header columns: name, host. Optional: scheme (default http), port (default 1984), path, group_label."
+msgstr ""
+
+#: templates/cameras/_go2rtc_import_tab.html:13
+msgid "Preview is a dry-run: nothing is saved until you confirm. On confirm, each instance is upserted and a background sync is dispatched automatically."
+msgstr ""
+
+#: templates/cameras/_go2rtc_import_tab.html:24
+msgid "CSV file"
+msgstr ""
+
+#: templates/cameras/_go2rtc_import_tab.html:28
+msgid "Or paste CSV"
+msgstr ""
+
+#: templates/cameras/_go2rtc_import_tab.html:33
+msgid "Preview (dry-run)"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_footer.html:20
+#: templates/cameras/go2rtc_manager.html:350
+#, python-format
+msgid "Page %(current)s of %(total)s"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_footer.html:59
+#: templates/cameras/_go2rtc_instance_menu_footer.html:108
+msgid "Go to page"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_footer.html:76
+#, python-format
+msgid "Page %(current)s / %(total)s"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:8
+msgid "Auto-grouped by shared IP address"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:9
+msgid "auto IP"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:36
+#: templates/cameras/_go2rtc_instance_menu_list.html:86
+msgid "Never synced"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:43
+msgid "Open in Viewer"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:44
+msgid "Viewer"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:46
+#: templates/cameras/go2rtc_manager.html:223
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:24
+#, fuzzy
+#| msgid "Stream"
+msgid "Streams"
+msgstr "Stream"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:49
+#: templates/cameras/_go2rtc_instance_menu_list.html:92
+#: templates/htmx/scraping/_job_row.html:41
+msgid "Success"
+msgstr "Uspješno"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:49
+#: templates/cameras/_go2rtc_instance_menu_list.html:92
+msgid "Unauthorized"
+msgstr "Neautorizirano"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:49
+#: templates/cameras/_go2rtc_instance_menu_list.html:92
+#: templates/htmx/common/_nav_notifications_panel.html:55
+#: templates/htmx/scraping/_job_row.html:43
+msgid "Failed"
+msgstr "Neuspješno"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:49
+#: templates/cameras/_go2rtc_instance_menu_list.html:92
+#: templates/htmx/cameras/_map_panel.html:27
+msgid "Never"
+msgstr "Nikad"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:53
+#: templates/cameras/_go2rtc_instance_menu_list.html:96
+msgid "Warning"
+msgstr "Upozorenje"
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:102
+msgid "Copy instance URL"
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:114
+#: templates/cameras/_go2rtc_instance_menu_list.html:120
+#: templates/cameras/go2rtc_viewer.html:561
+msgid "No instances match your search."
+msgstr ""
+
+#: templates/cameras/_go2rtc_instance_menu_list.html:116
+#: templates/cameras/_go2rtc_instance_menu_list.html:122
+#: templates/cameras/go2rtc_viewer.html:555
+msgid "No go2rtc instances yet."
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:5
+msgid "Add or update go2rtc instance"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:11
+#: templates/htmx/cameras/_import_preview.html:24
+msgid "Name"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:15
+msgid "Scheme"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:19
+msgid "Host"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:23
+msgid "Port"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:27
+#: templates/cameras/go2rtc_manager.html:502
+msgid "Path"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:32
+msgid "Resulting URL"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:37
+#: templates/cameras/go2rtc_manager.html:165
+#: templates/cameras/go2rtc_viewer.html:435
+msgid "Group / FQDN"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:39
+msgid "Optional. Leave empty to auto-group by shared IP: instances whose host resolves to a common IP (including one FQDN with several IPs) are grouped automatically on sync. Set a label only to override automatic grouping."
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:43
+msgid "Save and sync"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:54
+msgid "Grid profiles"
+msgstr ""
+
+#: templates/cameras/_go2rtc_setup_tab.html:57
+#, fuzzy
+#| msgid "Open stream"
+msgid "Open grid"
+msgstr "Otvori stream"
+
+#: templates/cameras/_go2rtc_setup_tab.html:65
+#, fuzzy
+#| msgid "Stream name"
+msgid "Profile name"
+msgstr "Naziv streama"
+
+#: templates/cameras/_go2rtc_setup_tab.html:69
+#, fuzzy
+#| msgid "Duration"
+msgid "Description"
+msgstr "Trajanje"
+
+#: templates/cameras/_go2rtc_setup_tab.html:74
+#, fuzzy
+#| msgid "Camera frame profile"
+msgid "Save profile"
+msgstr "Profil okvira kamere"
+
+#: templates/cameras/_go2rtc_setup_tab.html:94
+msgid "No profiles yet. Create one for a public wall, private monitoring set, or any mixed multi-instance layout."
+msgstr ""
+
+#: templates/cameras/_unified_player.html:31
+#: templates/cameras/surveillance.html:568
 msgid "Loading stream…"
 msgstr "Učitavanje streama…"
 
+#: templates/cameras/_unified_player.html:56
+msgid "Camera preview"
+msgstr "Pregled kamere"
+
+#: templates/cameras/detail.html:18 templates/cameras/detail.html:19
+msgid "Refresh player"
+msgstr ""
+
+#: templates/cameras/detail.html:22
+msgid "Back"
+msgstr "Natrag"
+
+#: templates/cameras/detail.html:35
+#, fuzzy
+#| msgid "Loading…"
+msgid "Loading player…"
+msgstr "Učitavanje…"
+
+#: templates/cameras/detail.html:41 templates/htmx/cameras/_map_panel.html:14
+msgid "Stream ID"
+msgstr "ID streama"
+
+#: templates/cameras/detail.html:43 templates/htmx/cameras/_camera_table.html:8
+#: templates/htmx/cameras/_map_panel.html:18
+#: templates/htmx/scraping/_job_row.html:6
+msgid "Source"
+msgstr "Izvor"
+
+#: templates/cameras/detail.html:44 templates/cameras/go2rtc_manager.html:182
+#: templates/htmx/cameras/_camera_table.html:9
+#: templates/htmx/cameras/_map_panel.html:19
+msgid "Country"
+msgstr "Država"
+
+#: templates/cameras/detail.html:45
+#: templates/htmx/cameras/_camera_table.html:10
+#: templates/htmx/cameras/_map_panel.html:20
+msgid "City"
+msgstr "Grad"
+
+#: templates/cameras/detail.html:54 templates/cameras/map.html:439
+#: templates/htmx/cameras/_map_panel.html:39
+msgid "Check stream availability"
+msgstr "Provjeri dostupnost streama"
+
+#: templates/cameras/detail.html:60
+#: templates/htmx/cameras/_camera_table.html:36
+msgid "Partial metadata"
+msgstr "Djelomični metapodaci"
+
+#: templates/cameras/detail.html:60
+msgid "Yes,No"
+msgstr ""
+
+#: templates/cameras/detail.html:61
+msgid "Stream URL"
+msgstr "URL streama"
+
+#: templates/cameras/detail.html:67
 msgid "Live URL"
 msgstr "Live URL"
 
+#: templates/cameras/detail.html:69
 msgid "Resolving…"
 msgstr "Razrješavanje…"
+
+#: templates/cameras/detail.html:73
+msgid "Page URL"
+msgstr "URL stranice"
+
+#: templates/cameras/detail.html:77
+#: templates/htmx/cameras/_camera_table.html:13
+#: templates/htmx/cameras/_map_panel.html:23
+msgid "Last checked"
+msgstr "Zadnja provjera"
+
+#: templates/cameras/detail.html:78
+msgid "Created"
+msgstr "Kreirano"
+
+#: templates/cameras/go2rtc_manager.html:56
+#: templates/cameras/go2rtc_viewer.html:391
+msgid "Instances"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:62
+msgid "Setup"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:68
+msgid "Import"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:83
+msgid "Remote go2rtc configuration is read-only in ReconEye. The manager only fetches and compares snapshots; it never writes to the remote server."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:93
+msgid "Registered instances"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:101
+#: templates/cameras/go2rtc_manager.html:131
+msgid "Open Viewer"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:126
+msgid "Sync now"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:143
+#: templates/cameras/go2rtc_manager.html:158
+msgid "Search"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:149
+msgid "Search name, host or group…"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:151
+#, fuzzy
+#| msgid "Search title…"
+msgid "Search instances"
+msgstr "Pretraži naslov…"
+
+#: templates/cameras/go2rtc_manager.html:154
+#: templates/cameras/go2rtc_viewer.html:425
+msgid "Clear search"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:162
+msgid "Sort by"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:164
+#: templates/cameras/go2rtc_viewer.html:434
+msgid "Newest"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:166
+#: templates/cameras/go2rtc_viewer.html:436
+msgid "Name (A–Z)"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:167
+#: templates/cameras/go2rtc_viewer.html:437
+msgid "Name (Z–A)"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:168
+#: templates/cameras/go2rtc_viewer.html:438
+#, fuzzy
+#| msgid "Status"
+msgid "Sync status"
+msgstr "Status"
+
+#: templates/cameras/go2rtc_manager.html:169
+#: templates/cameras/go2rtc_viewer.html:439
+msgid "Streams (high→low)"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:170
+#: templates/cameras/go2rtc_viewer.html:440
+msgid "Streams (low→high)"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:174
+#: templates/cameras/go2rtc_manager.html:263
+#: templates/cameras/go2rtc_viewer.html:460
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:35
+msgid "Per page"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:184
+#: templates/cameras/go2rtc_viewer.html:445 templates/cameras/list.html:34
+#: templates/cameras/map.html:335
+msgid "All countries"
+msgstr "Sve države"
+
+#: templates/cameras/go2rtc_manager.html:191
+msgid "City contains"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:192
+msgid "Any city"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:197
+msgid "Only with geolocation"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:202
+msgid "or"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:202
+msgid "to focus"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:203
+msgid "to clear"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:252
+msgid "Filter streams by name…"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:256
+msgid "Clear stream filter"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:260
+#: templates/scraping/job_list.html:44
+msgid "Filter"
+msgstr "Filtriraj"
+
+#: templates/cameras/go2rtc_manager.html:274
+msgid "Select an instance to filter and browse streams."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:286
+msgid "Select all visible streams"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:294
+msgid "Add selected to profile"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:304
+#: templates/cameras/go2rtc_viewer.html:588
+#: templates/cameras/surveillance.html:518
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:54
+msgid "Producers"
+msgstr "Producenti"
+
+#: templates/cameras/go2rtc_manager.html:305
+#: templates/cameras/go2rtc_viewer.html:591
+#: templates/cameras/surveillance.html:519
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:55
+msgid "Consumers"
+msgstr "Konzumenti"
+
+#: templates/cameras/go2rtc_manager.html:322
+msgid "No streams match this filter."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:324
+#: templates/cameras/go2rtc_viewer.html:566
+msgid "No synced streams for this instance yet."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:369
+msgid "Choose or add an instance to see streams."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:380
+msgid "Latest config snapshot"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:385
+#: templates/cameras/go2rtc_manager.html:444
+#: templates/cameras/go2rtc_manager.html:454
+#: templates/cameras/go2rtc_manager.html:469
+#: templates/cameras/go2rtc_manager.html:480
+msgid "Changed"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:387
+#: templates/cameras/go2rtc_manager.html:482
+msgid "No change"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:395
+#: templates/cameras/go2rtc_manager.html:471
+msgid "Hash"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:397
+msgid "Diff"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:406
+#, python-format
+msgid "The config snapshot is large (%(kb)s) and is not rendered here to keep the page responsive. Use the hash and diff summary above, or inspect it in the Django admin."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:412
+msgid "No config snapshot available yet."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:421
+msgid "Config history and diff"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:424
+msgid "Comparing"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:440
+msgid "From snapshot"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:450
+msgid "To snapshot"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:460
+#, fuzzy
+#| msgid "Showing"
+msgid "Show diff"
+msgstr "Prikazano"
+
+#: templates/cameras/go2rtc_manager.html:468
+msgid "Fetched at"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:470
+msgid "Diff summary"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:503
+msgid "Type"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:504
+msgid "Before"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:505
+msgid "After"
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:529
+msgid "No differences for selected snapshots (or only one snapshot exists)."
+msgstr ""
+
+#: templates/cameras/go2rtc_manager.html:532
+msgid "No config history available yet."
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:3
+msgid "go2rtc Grid"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:14
+msgid "Manager"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:213
+#: templates/cameras/surveillance.html:458
+#: templates/cameras/surveillance.html:629
+msgid "Auto"
+msgstr "Automatski"
+
+#: templates/cameras/go2rtc_profile_grid.html:216
+#: templates/cameras/surveillance.html:462
+msgid "Labels"
+msgstr "Oznake"
+
+#: templates/cameras/go2rtc_profile_grid.html:219
+#: templates/cameras/surveillance.html:465
+#: templates/cameras/surveillance.html:631
+msgid "Edit"
+msgstr "Uredi"
+
+#: templates/cameras/go2rtc_profile_grid.html:222
+#: templates/cameras/go2rtc_viewer.html:520 templates/cameras/map.html:20
+#: templates/cameras/surveillance.html:468
+msgid "Help"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:239
+#, fuzzy
+#| msgid "Remove from grid"
+msgid "Remove from profile"
+msgstr "Ukloni iz mreže"
+
+#: templates/cameras/go2rtc_profile_grid.html:249
+msgid "This profile has no streams yet."
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:259
+#: templates/cameras/go2rtc_viewer.html:608 templates/cameras/map.html:374
+#: templates/cameras/surveillance.html:587
+msgid "Keyboard Help"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:260
+#: templates/cameras/go2rtc_viewer.html:609
+#: templates/cameras/surveillance.html:588
+msgid "Shortcuts for faster grid navigation."
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:262
+#: templates/cameras/go2rtc_viewer.html:611 templates/cameras/map.html:377
+#: templates/cameras/surveillance.html:590
+msgid "Close help"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:270
+#: templates/cameras/go2rtc_viewer.html:622
+#: templates/cameras/surveillance.html:598
+msgid "Move focus between tiles"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:274
+#: templates/cameras/go2rtc_viewer.html:626
+#: templates/cameras/surveillance.html:602
+msgid "Move focus with arrow keys"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:278
+#: templates/cameras/go2rtc_viewer.html:630
+#: templates/cameras/surveillance.html:606
+#, fuzzy
+#| msgid "Fullscreen"
+msgid "Fullscreen focused tile"
+msgstr "Cijeli zaslon"
+
+#: templates/cameras/go2rtc_profile_grid.html:282
+#: templates/cameras/go2rtc_viewer.html:638 templates/cameras/map.html:385
+#: templates/cameras/surveillance.html:610
+msgid "Open or close this Help panel"
+msgstr ""
+
+#: templates/cameras/go2rtc_profile_grid.html:286
+#: templates/cameras/go2rtc_viewer.html:642
+#: templates/cameras/surveillance.html:614
+msgid "Close Help"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:17
+msgid "Toggle HTML prefetch for neighbouring pages"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:18
+msgid "Prefetch"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:392
+msgid "visible"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:396
+#: templates/cameras/go2rtc_viewer.html:556
+#: templates/cameras/go2rtc_viewer.html:567
+#, fuzzy
+#| msgid "Open map"
+msgid "Open Manager"
+msgstr "Otvori kartu"
+
+#: templates/cameras/go2rtc_viewer.html:402
+msgid "Pinned"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:402
+#, fuzzy
+#| msgid "Auto"
+msgid "Autohide"
+msgstr "Automatski"
+
+#: templates/cameras/go2rtc_viewer.html:422
+#, fuzzy
+#| msgid "Search title…"
+msgid "Search instances…"
+msgstr "Pretraži naslov…"
+
+#: templates/cameras/go2rtc_viewer.html:433
+msgid "Sort instances"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:444
+#, fuzzy
+#| msgid "Country"
+msgid "Country filter"
+msgstr "Država"
+
+#: templates/cameras/go2rtc_viewer.html:456
+msgid "City contains…"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:457
+msgid "City filter"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:461
+msgid "Instances per page"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:470
+msgid "Geo"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:476
+msgid "Apply filters"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:495
+#, fuzzy
+#| msgid "No cameras selected."
+msgid "No instance selected"
+msgstr "Nijedna kamera nije odabrana."
+
+#: templates/cameras/go2rtc_viewer.html:496
+msgid "Choose an instance to start playback."
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:503
+#: templates/cameras/go2rtc_viewer.html:505
+#, fuzzy
+#| msgid "stream"
+msgid "streams"
+msgstr "stream"
+
+#: templates/cameras/go2rtc_viewer.html:509
+#, fuzzy
+#| msgid "Page URL"
+msgid "Page"
+msgstr "URL stranice"
+
+#: templates/cameras/go2rtc_viewer.html:517
+msgid "Copy active stream URL"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:545
+msgid "Jump to page"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:582
+#, fuzzy
+#| msgid "Stream URL"
+msgid "Copy stream URL"
+msgstr "URL streama"
+
+#: templates/cameras/go2rtc_viewer.html:618
+msgid "Grid navigation"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:634
+msgid "Copy focused stream URL"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:647
+msgid "Search and paging"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:651
+#: templates/cameras/go2rtc_viewer.html:655
+msgid "Focus instance search"
+msgstr ""
+
+#: templates/cameras/go2rtc_viewer.html:659
+msgid "Next / previous stream page"
+msgstr ""
+
+#: templates/cameras/list.html:14
+msgid "Open map"
+msgstr "Otvori kartu"
+
+#: templates/cameras/list.html:16
+msgid "total"
+msgstr "ukupno"
+
+#: templates/cameras/list.html:27
+msgid "Search title…"
+msgstr "Pretraži naslov…"
+
+#: templates/cameras/list.html:42 templates/cameras/map.html:327
+#: templates/scraping/job_list.html:33
+msgid "All sources"
+msgstr "Svi izvori"
+
+#: templates/cameras/list.html:50 templates/cameras/map.html:343
+#: templates/scraping/job_list.html:39
+msgid "All statuses"
+msgstr "Svi statusi"
+
+#: templates/cameras/list.html:51 templates/cameras/map.html:344
+#: templates/cameras/map.html:426 templates/htmx/cameras/_camera_table.html:29
+#: templates/htmx/cameras/_status_badge.html:16
+#: templates/htmx/dashboard/_stats.html:12
+msgid "Online"
+msgstr "Online"
+
+#: templates/cameras/list.html:52 templates/cameras/map.html:345
+#: templates/cameras/map.html:427 templates/htmx/cameras/_camera_table.html:31
+#: templates/htmx/cameras/_status_badge.html:18
+#: templates/htmx/cameras/_surveillance_server_health.html:7
+#: templates/htmx/dashboard/_stats.html:18
+msgid "Offline"
+msgstr "Offline"
+
+#: templates/cameras/list.html:69 templates/cameras/map.html:349
+msgid "Reset"
+msgstr "Resetiraj"
+
+#: templates/cameras/map.html:3
+msgid "Camera Map"
+msgstr "Karta kamera"
+
+#: templates/cameras/map.html:14
+msgid "Fit markers"
+msgstr "Prilagodi markere"
+
+#: templates/cameras/map.html:17 templates/cameras/map.html:393
+msgid "Locate me"
+msgstr "Lociraj me"
+
+#: templates/cameras/map.html:22
+#, fuzzy
+#| msgid "Open map"
+msgid "on map"
+msgstr "Otvori kartu"
+
+#: templates/cameras/map.html:315
+msgid "Search location…"
+msgstr "Pretraži lokaciju…"
+
+#: templates/cameras/map.html:358
+msgid "Loading"
+msgstr "Učitavanje"
+
+#: templates/cameras/map.html:364 templates/cameras/map.html:431
+msgid "Camera details"
+msgstr "Detalji kamere"
+
+#: templates/cameras/map.html:365 templates/cameras/map.html:440
+msgid "Click a marker to preview the camera and view metadata."
+msgstr "Kliknite marker za pregled kamere i prikaz metapodataka."
+
+#: templates/cameras/map.html:375
+msgid "Shortcuts for faster map navigation."
+msgstr ""
+
+#: templates/cameras/map.html:389
+msgid "Fit map to visible markers"
+msgstr ""
+
+#: templates/cameras/map.html:396
+msgid "Toggle player fullscreen"
+msgstr ""
+
+#: templates/cameras/map.html:401
+msgid "Focus location search"
+msgstr ""
+
+#: templates/cameras/map.html:405
+msgid "Close Help or blur location search"
+msgstr ""
+
+#: templates/cameras/map.html:423
+msgid "Cluster"
+msgstr "Grupa"
+
+#: templates/cameras/map.html:424
+msgid "Total"
+msgstr "Ukupno"
+
+#: templates/cameras/map.html:425 templates/cameras/surveillance.html:13
+#: templates/cameras/surveillance.html:470 templates/scraping/job_list.html:64
+#: templates/scraping/job_list.html:65 templates/scraping/job_list.html:66
+#: templates/scraping/job_list.html:67 templates/scraping/job_list.html:68
+#: templates/scraping/job_list.html:69 templates/scraping/job_list.html:70
+msgid "cameras"
+msgstr "kamera"
+
+#: templates/cameras/map.html:428 templates/htmx/cameras/_map_panel.html:19
+msgid "Unknown"
+msgstr "Nepoznato"
+
+#: templates/cameras/map.html:429 templates/htmx/cameras/_map_panel.html:33
+msgid "Open details"
+msgstr "Otvori detalje"
+
+#: templates/cameras/map.html:430
+msgid "Stale"
+msgstr "Zastarjelo"
+
+#: templates/cameras/map.html:432
+msgid "No cameras found for current filters."
+msgstr "Nema kamera za trenutačne filtre."
+
+#: templates/cameras/map.html:433
+msgid "Failed to load map data."
+msgstr "Učitavanje podataka karte nije uspjelo."
+
+#: templates/cameras/map.html:434
+msgid "Showing"
+msgstr "Prikazano"
+
+#: templates/cameras/map.html:435
+msgid "of"
+msgstr "od"
+
+#: templates/cameras/map.html:436
+msgid "markers in this area. Zoom in or filter to narrow results."
+msgstr "markera na ovom području. Uvećajte ili filtrirajte za sužavanje rezultata."
+
+#: templates/cameras/map.html:437
+msgid "You are here"
+msgstr "Vi ste ovdje"
+
+#: templates/cameras/map.html:438
+msgid "No locations found"
+msgstr "Lokacije nisu pronađene"
+
+#: templates/cameras/surveillance.html:443
+#: templates/htmx/cameras/_surveillance_server_health.html:3
+msgid "go2rtc server"
+msgstr ""
+
+#: templates/cameras/surveillance.html:444
+#: templates/htmx/cameras/_status_badge.html:9
+msgid "Checking..."
+msgstr "Provjera..."
+
+#: templates/cameras/surveillance.html:450
+msgid "Force the number of columns (disable for automatic)"
+msgstr "Nametni broj stupaca (isključite za automatski način)"
+
+#: templates/cameras/surveillance.html:450
+msgid "Columns"
+msgstr "Stupci"
+
+#: templates/cameras/surveillance.html:457
+msgid "Lock the number of columns (automatic or manual selection)"
+msgstr "Zaključaj broj stupaca (automatski ili ručni odabir)"
+
+#: templates/cameras/surveillance.html:461
+msgid "Show or hide camera labels"
+msgstr "Prikaži ili sakrij oznake kamera"
+
+#: templates/cameras/surveillance.html:464
+msgid "Edit grid (add or remove cameras)"
+msgstr "Uredi mrežu (dodaj ili ukloni kamere)"
+
+#: templates/cameras/surveillance.html:467
+msgid "Keyboard shortcuts help"
+msgstr ""
+
+#: templates/cameras/surveillance.html:479
+msgid "Make sure the go2rtc API is available at"
+msgstr "Provjerite je li go2rtc API dostupan na"
+
+#: templates/cameras/surveillance.html:486
+msgid "Add a camera by stream name"
+msgstr "Dodaj kameru po nazivu streama"
+
+#: templates/cameras/surveillance.html:487
+msgid "Edit mode"
+msgstr "Način uređivanja"
+
+#: templates/cameras/surveillance.html:494
+msgid "Stream name"
+msgstr "Naziv streama"
+
+#: templates/cameras/surveillance.html:498
+msgid "Display title (optional)"
+msgstr "Prikazni naslov (opcionalno)"
+
+#: templates/cameras/surveillance.html:503
+msgid "Add to grid"
+msgstr "Dodaj u mrežu"
+
+#: templates/cameras/surveillance.html:511
+msgid "Available streams from source"
+msgstr "Dostupni streamovi iz izvora"
+
+#: templates/cameras/surveillance.html:532
+#, fuzzy
+#| msgid "Loading stream…"
+msgid "Loading available streams…"
+msgstr "Učitavanje streama…"
+
+#: templates/cameras/surveillance.html:549
+#: templates/cameras/surveillance.html:550
+#: templates/htmx/cameras/_camera_table.html:22
+msgid "(no title)"
+msgstr "(bez naslova)"
+
+#: templates/cameras/surveillance.html:555
+msgid "Remove from grid"
+msgstr "Ukloni iz mreže"
+
+#: templates/cameras/surveillance.html:578
+msgid "No go2rtc cameras have been added to the grid yet."
+msgstr "Još nijedna go2rtc kamera nije dodana u mrežu."
+
+#: templates/cameras/surveillance.html:628
+msgid "Fixed"
+msgstr "Fiksno"
+
+#: templates/cameras/surveillance.html:630
+msgid "Done"
+msgstr "Gotovo"
+
+#: templates/common/admin_hub.html:3 templates/common/admin_hub.html:8
+#, fuzzy
+#| msgid "Admin"
+msgid "Admin Hub"
+msgstr "Administracija"
+
+#: templates/common/admin_hub.html:14
+msgid "Open classic admin"
+msgstr ""
+
+#: templates/common/admin_hub.html:24
+msgid "Admin Hub is a staff-only overview. Use the links below to navigate to model management pages. For complex operations (inlines, bulk actions, history), use the classic admin."
+msgstr ""
+
+#: templates/common/admin_hub.html:34
+msgid "Open app in classic admin"
+msgstr ""
+
+#: templates/common/admin_hub.html:45
+#, fuzzy
+#| msgid "View all"
+msgid "View list"
+msgstr "Prikaži sve"
+
+#: templates/common/admin_hub.html:50
+msgid "Add new"
+msgstr ""
+
+#: templates/common/admin_hub.html:64
+msgid "No admin-registered models visible for your account."
+msgstr ""
+
+#: templates/dashboard/index.html:28
+#, fuzzy
+#| msgid "Active Scrape Jobs"
+msgid "Recent Scrape Jobs"
+msgstr "Aktivni poslovi prikupljanja"
+
+#: templates/dashboard/index.html:29
+msgid "View all"
+msgstr "Prikaži sve"
+
+#: templates/dashboard/index.html:38
+msgid "Loading…"
+msgstr "Učitavanje…"
+
+#: templates/htmx/cameras/_camera_table.html:7
+msgid "Title"
+msgstr "Naslov"
+
+#: templates/htmx/cameras/_camera_table.html:12
+msgid "Partial"
+msgstr "Djelomično"
+
+#: templates/htmx/cameras/_camera_table.html:53
+msgid "No cameras found."
+msgstr "Nijedna kamera nije pronađena."
+
+#: templates/htmx/cameras/_camera_table.html:61
+msgid "Camera pagination"
+msgstr "Straničenje kamera"
+
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:17
+msgid "Select a stream to start playback."
+msgstr ""
+
+#: templates/htmx/cameras/_go2rtc_instance_panel.html:59
+#, fuzzy
+#| msgid "Check stream availability"
+msgid "No streams available."
+msgstr "Provjeri dostupnost streama"
+
+#: templates/htmx/cameras/_import_preview.html:9
+#, python-format
+msgid "%(counter)s valid"
+msgid_plural "%(counter)s valid"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: templates/htmx/cameras/_import_preview.html:13
+#, python-format
+msgid "%(counter)s invalid"
+msgid_plural "%(counter)s invalid"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: templates/htmx/cameras/_import_preview.html:16
+msgid "Dry-run preview — nothing has been saved yet."
+msgstr ""
+
+#: templates/htmx/cameras/_import_preview.html:25
+#, fuzzy
+#| msgid "Page URL"
+msgid "Base URL"
+msgstr "URL stranice"
+
+#: templates/htmx/cameras/_import_preview.html:26
+msgid "Group"
+msgstr ""
+
+#: templates/htmx/cameras/_import_preview.html:39
+msgid "OK"
+msgstr ""
+
+#: templates/htmx/cameras/_import_preview.html:48
+msgid "No rows parsed from the provided CSV."
+msgstr ""
+
+#: templates/htmx/cameras/_import_preview.html:62
+#, python-format
+msgid "Import %(counter)s instance and sync"
+msgid_plural "Import %(counter)s instances and sync"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: templates/htmx/cameras/_import_preview.html:65
+msgid "Invalid rows will be skipped."
+msgstr ""
+
+#: templates/htmx/cameras/_import_preview.html:70
+msgid "No valid rows to import. Fix the errors above and preview again."
+msgstr ""
+
+#: templates/htmx/cameras/_map_panel.html:7
+msgid "Stale status"
+msgstr "Zastarjeli status"
+
+#: templates/htmx/cameras/_map_panel.html:21
+msgid "Coordinates"
+msgstr "Koordinate"
+
+#: templates/htmx/cameras/_map_panel.html:41
+msgid "Check stream"
+msgstr "Provjeri stream"
+
+#: templates/htmx/cameras/_map_panel.html:44
+msgid "Open stream"
+msgstr "Otvori stream"
+
+#: templates/htmx/cameras/_status_badge.html:11
+msgid "Task ID"
+msgstr "ID zadatka"
+
+#: templates/htmx/cameras/_status_badge.html:11
+msgid "Task"
+msgstr "Zadatak"
+
+#: templates/htmx/cameras/_status_badge.html:21
+#, python-format
+msgid "%(elapsed)s ago"
+msgstr "prije %(elapsed)s"
+
+#: templates/htmx/cameras/_surveillance_stream_list.html:26
+msgid "Add"
+msgstr "Dodaj"
+
+#: templates/htmx/cameras/_surveillance_stream_list.html:34
+msgid "No streams found."
+msgstr "Nema pronađenih streamova."
+
+#: templates/htmx/common/_nav_notifications_panel.html:12
+#, python-format
+msgid "%(count)s active job"
+msgid_plural "%(count)s active jobs"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:14
+#, fuzzy
+#| msgid "Active jobs"
+msgid "No active jobs"
+msgstr "Aktivni poslovi"
+
+#: templates/htmx/common/_nav_notifications_panel.html:26
+msgid "Background Tasks"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:29
+#, python-format
+msgid "%(count)s running task"
+msgid_plural "%(count)s running tasks"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:34
+msgid "No active background tasks"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:38
+msgid "Last activity"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:45
+msgid "Recent Results"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:57
+msgid "Completed"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:63
+#, python-format
+msgid "New %(new_count)s, updated %(updated_count)s, found %(found_count)s"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:68
+msgid "Finished"
+msgstr ""
+
+#: templates/htmx/common/_nav_notifications_panel.html:77
+msgid "All quiet. No running activity."
+msgstr ""
+
+#: templates/htmx/dashboard/_stats.html:6
+msgid "Total cameras"
+msgstr "Ukupno kamera"
+
+#: templates/htmx/dashboard/_stats.html:24
+msgid "Active jobs"
+msgstr "Aktivni poslovi"
+
+#: templates/htmx/dashboard/_stats.html:33
+msgid "Top Countries"
+msgstr "Najzastupljenije države"
+
+#: templates/htmx/dashboard/_stats.html:45
+msgid "By Source"
+msgstr "Po izvoru"
+
+#: templates/htmx/dashboard/_stats.html:52
+msgid "No active sources yet."
+msgstr ""
+
+#: templates/htmx/scraping/_job_row.html:9
+msgid "Found"
+msgstr "Pronađeno"
+
+#: templates/htmx/scraping/_job_row.html:10
+msgid "New"
+msgstr "Novo"
+
+#: templates/htmx/scraping/_job_row.html:11
+msgid "Updated"
+msgstr "Ažurirano"
+
+#: templates/htmx/scraping/_job_row.html:12
+msgid "Started"
+msgstr "Pokrenuto"
+
+#: templates/htmx/scraping/_job_row.html:14
+msgid "Action"
+msgstr "Akcija"
+
+#: templates/htmx/scraping/_job_row.html:38
+msgid "Running"
+msgstr "Pokrenuto"
+
+#: templates/htmx/scraping/_job_row.html:45
+msgid "Cancelled"
+msgstr "Otkazano"
+
+#: templates/htmx/scraping/_job_row.html:47
+msgid "Pending"
+msgstr "Na čekanju"
+
+#: templates/htmx/scraping/_job_row.html:73
+msgid "Cancel"
+msgstr "Otkaži"
+
+#: templates/htmx/scraping/_job_row.html:82
+msgid "No jobs yet."
+msgstr "Još nema poslova."
+
+#: templates/scraping/job_list.html:13
+msgid "Filter and trigger jobs"
+msgstr ""
+
+#: templates/scraping/job_list.html:20
+msgid "Choose country…"
+msgstr "Odaberite državu…"
+
+#: templates/scraping/job_list.html:23 templates/scraping/job_list.html:26
+msgid "All countries (optional)…"
+msgstr "Sve države (opcionalno)…"
+
+#: templates/scraping/job_list.html:34 templates/scraping/job_list.html:51
+msgid "Insecam"
+msgstr "Insecam"
+
+#: templates/scraping/job_list.html:35 templates/scraping/job_list.html:52
+msgid "WhatsUpCams"
+msgstr "WhatsUpCams"
+
+#: templates/scraping/job_list.html:36 templates/scraping/job_list.html:53
+msgid "Windy"
+msgstr "Windy"
+
+#: templates/scraping/job_list.html:60 templates/scraping/job_list.html:61
+msgid "Start camera"
+msgstr "Početna kamera"
+
+#: templates/scraping/job_list.html:64
+msgid "block"
+msgstr "blok"
+
+#: templates/scraping/job_list.html:65 templates/scraping/job_list.html:66
+#: templates/scraping/job_list.html:67 templates/scraping/job_list.html:68
+#: templates/scraping/job_list.html:69 templates/scraping/job_list.html:70
+msgid "blocks"
+msgstr "blokova"
+
+#: templates/scraping/job_list.html:72
+msgid "Windy scraping currently supports up to offset 1000 on this API tier."
+msgstr "Windy prikupljanje trenutno podržava do pomaka 1000 na ovom API nivou."
+
+#: templates/scraping/job_list.html:75
+msgid "Trigger scrape"
+msgstr "Pokreni prikupljanje"
+
+#: templates/users/login.html:7
+msgid "Login"
+msgstr "Prijava"
+
+#: templates/users/login.html:23
+msgid "Sign in to continue"
+msgstr "Prijavite se za nastavak"
+
+#: templates/users/login.html:39
+msgid "Sign in"
+msgstr "Prijavi se"
+
+#: templates/users/settings.html:35
+#, fuzzy
+#| msgid "Map settings"
+msgid "UI settings"
+msgstr "Postavke karte"
+
+#: templates/users/settings.html:68
+msgid "Map settings"
+msgstr "Postavke karte"
+
+#: templates/users/settings.html:80
+msgid "Disable clustering at zoom"
+msgstr "Isključi grupiranje na razini uvećanja"
+
+#: templates/users/settings.html:83 templates/users/settings.html:94
+#: templates/users/settings.html:105
+msgid "Empty = use global default."
+msgstr "Prazno = koristi globalnu zadanu vrijednost."
+
+#: templates/users/settings.html:91
+msgid "Marker limit"
+msgstr "Ograničenje markera"
+
+#: templates/users/settings.html:102
+msgid "Status stale minutes"
+msgstr "Minute do zastarjelog statusa"
+
+#: templates/users/settings.html:133
+msgid "Save settings"
+msgstr "Spremi postavke"
+
+#: templates/users/settings.html:135
+msgid "Back to map"
+msgstr "Natrag na kartu"
+
+#~ msgid "Discovering cameras…"
+#~ msgstr "Otkrivanje kamera…"
+
+#~ msgid "LIVE"
+#~ msgstr "UŽIVO"
+
+#~ msgid "cameras on map"
+#~ msgstr "kamera na karti"
