@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: reconeye 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-22 20:51+0000\n"
+"POT-Creation-Date: 2026-06-22 21:10+0000\n"
 "PO-Revision-Date: 2026-05-31 00:00+0000\n"
 "Last-Translator: ReconEye Team\n"
 "Language-Team: Croatian\n"
@@ -142,7 +142,6 @@ msgstr ""
 
 #: apps/cameras/views.py:302
 #, python-brace-format
-#| msgid "Remove from grid"
 msgid "Removed from surveillance: {title}"
 msgstr "Uklonjeno iz nadzora: {title}"
 
@@ -152,12 +151,13 @@ msgstr "Nevaljani unos go2rtc instance."
 
 #: apps/cameras/views.py:959
 #, python-brace-format
-msgid "Instance spremljena, ali sinkronizacija neuspješna: {error}"
+msgid "Instance saved, but sync failed: {error}"
 msgstr "Instance spremljena, ali sinkronizacija neuspješna: {error}"
 
 #: apps/cameras/views.py:961
 #, python-brace-format
-msgid "go2rtc instance {action}. Neovlašteno: {warning}"
+#| msgid "go2rtc instance {action}. Neovlašteno: {warning}"
+msgid "go2rtc instance {action}. Unauthorized: {warning}"
 msgstr "go2rtc instance {action}. Neovlašteno: {warning}"
 
 #: apps/cameras/views.py:961 apps/cameras/views.py:963
@@ -175,33 +175,36 @@ msgid "authentication required."
 msgstr "autentifikacija obavezna."
 
 #: apps/cameras/views.py:965
-#, python-brace-format
-msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}"
+#, fuzzy, python-brace-format
+#| msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}"
+msgid "go2rtc instance {action}. Synced {stream_count} streams, but warning: {warning}"
 msgstr "go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}"
 
 #: apps/cameras/views.py:967
-#, python-brace-format
-msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova."
+#, fuzzy, python-brace-format
+#| msgid "go2rtc instance {action}. Sinkronizirano {stream_count} tokova."
+msgid "go2rtc instance {action}. Synced {stream_count} streams."
 msgstr "go2rtc instance {action}. Sinkronizirano {stream_count} tokova."
 
 #: apps/cameras/views.py:1002
 #, python-brace-format
-msgid "Sinkronizacija neuspješna za {name}: {error}"
+msgid "Sync failed for {name}: {error}"
 msgstr "Sinkronizacija neuspješna za {name}: {error}"
 
 #: apps/cameras/views.py:1004
-#, python-brace-format
-msgid "Sinkronizacija neovlaštena za {name}: {warning}"
+#, fuzzy, python-brace-format
+#| msgid "Sinkronizacija neovlaštena za {name}: {warning}"
+msgid "Sync unauthorized for {name}: {warning}"
 msgstr "Sinkronizacija neovlaštena za {name}: {warning}"
 
 #: apps/cameras/views.py:1007
 #, python-brace-format
-msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
+msgid "Sync completed for {name}. {stream_count} streams available. Warning: {warning}"
 msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
 
 #: apps/cameras/views.py:1009
 #, python-brace-format
-msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
+msgid "Sync completed for {name}. {stream_count} streams available."
 msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
 
 #: apps/cameras/views.py:1115
@@ -512,7 +515,6 @@ msgid "Display"
 msgstr ""
 
 #: templates/base.html:676
-#| msgid "Toggle mute"
 msgid "Toggle color theme"
 msgstr "Promijeni temu boja"
 
@@ -1903,6 +1905,22 @@ msgstr "Spremi postavke"
 #: templates/users/settings.html:135
 msgid "Back to map"
 msgstr "Natrag na kartu"
+
+#, python-brace-format
+#~ msgid "Instance spremljena, ali sinkronizacija neuspješna: {error}"
+#~ msgstr "Instance spremljena, ali sinkronizacija neuspješna: {error}"
+
+#, python-brace-format
+#~ msgid "Sinkronizacija neuspješna za {name}: {error}"
+#~ msgstr "Sinkronizacija neuspješna za {name}: {error}"
+
+#, python-brace-format
+#~ msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
+#~ msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}"
+
+#, python-brace-format
+#~ msgid "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
+#~ msgstr "Sinkronizacija završena za {name}. {stream_count} tokova dostupno."
 
 #~ msgid "Discovering cameras…"
 #~ msgstr "Otkrivanje kamera…"

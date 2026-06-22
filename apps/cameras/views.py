@@ -956,15 +956,15 @@ class AddGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleReq
 
         stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
-            messages.warning(request, _("Instance spremljena, ali sinkronizacija neuspješna: {error}").format(error=error))
+            messages.error(request, _("Instance saved, but sync failed: {error}").format(error=error))
         elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
-            messages.warning(request, _("go2rtc instance {action}. Neovlašteno: {warning}").format(action=_('added') if created else _('updated'), warning=warning or _('authentication required.')))
+            messages.warning(request, _("go2rtc instance {action}. Unauthorized: {warning}").format(action=_('added') if created else _('updated'), warning=warning or _('authentication required.')))
         else:
             action = _("added") if created else _("updated")
             if warning:
-                messages.warning(request, _("go2rtc instance {action}. Sinkronizirano {stream_count} tokova, upozorenje: {warning}").format(action=action, stream_count=stream_count, warning=warning))
+                messages.warning(request, _("go2rtc instance {action}. Synced {stream_count} streams, but warning: {warning}").format(action=action, stream_count=stream_count, warning=warning))
             else:
-                messages.success(request, _("go2rtc instance {action}. Sinkronizirano {stream_count} tokova.").format(action=action, stream_count=stream_count))
+                messages.success(request, _("go2rtc instance {action}. Synced {stream_count} streams.").format(action=action, stream_count=stream_count))
         log_audit_event(
             request=request,
             action="create" if created else "update",
@@ -999,14 +999,14 @@ class SyncGo2RTCInstanceView(LoginRequiredMixin, CapabilityRequiredMixin, RoleRe
         }
         stream_count, error, warning = sync_go2rtc_instance(instance)
         if error:
-            messages.error(request, _("Sinkronizacija neuspješna za {name}: {error}").format(name=instance.name, error=error))
+            messages.error(request, _("Sync failed for {name}: {error}").format(name=instance.name, error=error))
         elif instance.last_sync_status == Go2RTCInstance.LastSyncStatus.UNAUTHORIZED:
-            messages.warning(request, _("Sinkronizacija neovlaštena za {name}: {warning}").format(name=instance.name, warning=warning or _('authentication required.')))
+            messages.warning(request, _("Sync unauthorized for {name}: {warning}").format(name=instance.name, warning=warning or _('authentication required.')))
         else:
             if warning:
-                messages.warning(request, _("Sinkronizacija završena za {name}. {stream_count} tokova dostupno. Upozorenje: {warning}").format(name=instance.name, stream_count=stream_count, warning=warning))
+                messages.warning(request, _("Sync completed for {name}. {stream_count} streams available. Warning: {warning}").format(name=instance.name, stream_count=stream_count, warning=warning))
             else:
-                messages.success(request, _("Sinkronizacija završena za {name}. {stream_count} tokova dostupno.").format(name=instance.name, stream_count=stream_count))
+                messages.success(request, _("Sync completed for {name}. {stream_count} streams available.").format(name=instance.name, stream_count=stream_count))
 
         # Preserve current manager UI state after sync (search/filter/pagination).
         manager_state_keys = (
