@@ -778,6 +778,11 @@ def get_camera_map_markers(
     if include_go2rtc_instances:
         instance_qs = Go2RTCInstance.objects.filter(is_active=True, geo_latitude__isnull=False, geo_longitude__isnull=False)
         instance_qs = instance_qs.exclude(geo_latitude=0, geo_longitude=0)
+        if source_type:
+            if source_type == SourceType.GO2RTC:
+                instance_qs = instance_qs.filter(is_private=False)
+            else:
+                instance_qs = instance_qs.filter(pk__in=[])
         if country:
             instance_qs = instance_qs.filter(
                 Q(location_override_enabled=True, override_country__iexact=country)
